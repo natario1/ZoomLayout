@@ -7,7 +7,7 @@
 # ZoomLayout & ZoomEngine
 
 This repo provides utilities to animate the zoom (scale) and pan (translation) of *something*, either
-programmatically or through touch events. For a showcase try the demo app.
+programmatically or through touch events. Try the demo app.
 
 ```groovy
 compile 'com.otaliastudios:zoomlayout:1.0.0'
@@ -84,8 +84,8 @@ Presumably ZoomImageView **won't** work if:
 - the view has wrap_content as a dimension
 - you change the scaleType (read [later](#zoom) to know more)
 
-There are lots of libraries on this topic and this is not necessarily better - it is one of
-the many possible implementations of the zoom engine.
+There are lots of libraries on this topic and this is not necessarily *better*, but it is
+a natural implementations of the zoom engine. It is fast, lightweight and simple.
     
 ### APIs
 
@@ -102,7 +102,7 @@ There is no strict limit over what you can do with a `Matrix`,
 - transform `View` hierarchies
 - apply to `ImageView`s or `Bitmap`
 - transform `MotionEvent`s
-- whatever you can think of
+- probably more
 
 ### Zoom
 
