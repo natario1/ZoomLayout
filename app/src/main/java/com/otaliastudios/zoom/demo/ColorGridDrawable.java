@@ -15,6 +15,7 @@ import android.support.annotation.ColorInt;
 import android.support.annotation.IntRange;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.view.View;
 import android.widget.GridLayout;
@@ -30,9 +31,13 @@ public class ColorGridDrawable extends Drawable {
     private final static int[][] COLOR_CACHE = new int[ROWS][COLS];
 
     private final Paint mPaint = new Paint();
+    private final TextPaint mTextPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final Rect mRect = new Rect(0, 0, 150, 150);
 
     public ColorGridDrawable() {
+        mTextPaint.setColor(Color.WHITE);
+        mTextPaint.setTextAlign(Paint.Align.CENTER);
+        mTextPaint.setTextSize((float) getIntrinsicHeight() / 10f);
     }
 
     @Override
@@ -67,6 +72,10 @@ public class ColorGridDrawable extends Drawable {
                 canvas.restoreToCount(restore);
             }
         }
+        canvas.drawText("This is a drawable.",
+                getIntrinsicWidth() / 2f,
+                getIntrinsicHeight() / 2f,
+                mTextPaint);
     }
 
     private static int getColor(int row, int col) {

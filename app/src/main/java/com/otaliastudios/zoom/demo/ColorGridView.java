@@ -1,15 +1,19 @@
 package com.otaliastudios.zoom.demo;
 
 import android.content.Context;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.drawable.ColorDrawable;
 import android.support.annotation.AttrRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.text.Layout;
+import android.text.StaticLayout;
+import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.view.View;
 import android.widget.GridLayout;
-import android.widget.Toast;
 
 import java.util.Random;
 
@@ -19,6 +23,8 @@ public class ColorGridView extends GridLayout {
     private final static int ROWS = 20;
     private final static int COLS = 20;
     private final static Random R = new Random();
+
+    private StaticLayout mText;
 
     public ColorGridView(@NonNull Context context) {
         this(context, null);
@@ -30,6 +36,7 @@ public class ColorGridView extends GridLayout {
 
     public ColorGridView(@NonNull final Context context, @Nullable AttributeSet attrs, @AttrRes int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+        setWillNotDraw(false);
         setRowCount(ROWS);
         setColumnCount(COLS);
         for (int row = 0; row < ROWS; row++) {
@@ -55,13 +62,26 @@ public class ColorGridView extends GridLayout {
         view.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
-                // Toast.makeText(context,
-                //     "Blackening R: " + r + " G:" + g + " B:" + b,
-                //     Toast.LENGTH_SHORT).show();
                 view.setBackgroundColor(Color.BLACK);
             }
         });
         return view;
     }
 
+    @Override
+    protected void dispatchDraw(Canvas canvas) {
+        super.dispatchDraw(canvas);
+        if (mText == null) {
+            TextPaint paint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+            paint.setColor(Color.WHITE);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setTextSize(150f * (float) ROWS / 10f);
+            mText = new StaticLayout("This is a view hierarchy, with clickable childs.",
+                    paint, getWidth(), Layout.Alignment.ALIGN_NORMAL, 1, 0, false);
+        }
+        canvas.save();
+        canvas.translate(getWidth() / 2f, (getHeight() - mText.getHeight()) / 2f);
+        mText.draw(canvas);
+        canvas.restore();
+    }
 }
