@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_weight="1"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.otaliastudios.zoom.ZoomLayout
+        android:layout_weight="1"
+        android:id="@+id/zoom_layout"
+        android:layout_width="match_parent"
+        android:layout_height="0dp">
+
+        <com.otaliastudios.zoom.demo.ColorGridView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+    </com.otaliastudios.zoom.ZoomLayout>
+
+    <com.otaliastudios.zoom.ZoomImageView
+        android:layout_weight="1"
+        android:id="@+id/zoom_image"
+        android:visibility="gone"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"/>
+
+    <LinearLayout
+        android:background="@color/colorAccent"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <Button
+            android:text="View hierarchy"
+            android:id="@+id/show_zl"
+            android:background="@null"
+            android:layout_weight="0.5"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            android:text="Image"
+            android:id="@+id/show_ziv"
+            android:background="@null"
+            android:layout_weight="0.5"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"/>
+
+    </LinearLayout>
+
+</LinearLayout>
