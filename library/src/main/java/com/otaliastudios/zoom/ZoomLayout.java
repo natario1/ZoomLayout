@@ -40,7 +40,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener {
     private Matrix mMatrix = new Matrix();
     private float[] mMatrixValues = new float[9];
     private RectF mChildRect = new RectF();
-    private boolean mHasClickableChildren = true;
+    private boolean mHasClickableChildren;
 
     public ZoomLayout(@NonNull Context context) {
         this(context, null);
@@ -55,7 +55,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener {
         TypedArray a = context.getTheme().obtainStyledAttributes(attrs, R.styleable.ZoomEngine, defStyleAttr, 0);
         boolean overScrollable = a.getBoolean(R.styleable.ZoomEngine_overScrollable, true);
         boolean overPinchable = a.getBoolean(R.styleable.ZoomEngine_overPinchable, true);
-        boolean hasChildren = a.getBoolean(R.styleable.ZoomEngine_hasClickableChildren, true);
+        boolean hasChildren = a.getBoolean(R.styleable.ZoomEngine_hasClickableChildren, false);
         float minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, -1);
         float maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, -1);
         a.recycle();
