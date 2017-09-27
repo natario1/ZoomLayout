@@ -25,7 +25,7 @@ compile 'com.otaliastudios:zoomlayout:1.0.0'
 - Lightweight, no dependencies
 - API 16
 
-In fact, both ZoomLayout and ZoomImageView are just very simple implementations of the
+In fact, both `ZoomLayout` and `ZoomImageView` are just very simple implementations of the
 internal [`ZoomEngine`](#zoomengine). The zoom engine lets you animate everything through
 constant updates, as long as you feed it with touch events, with a `Matrix`-based mechanism
 that makes it very flexible.
