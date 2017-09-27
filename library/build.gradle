@@ -1,4 +1,10 @@
 apply plugin: 'com.android.library'
+apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'com.jfrog.bintray'
+
+// Required by bintray
+version = '1.0.0'
+group = 'com.otaliastudios'
 
 android {
 
@@ -23,3 +29,101 @@ android {
 dependencies {
     compile "com.android.support:support-annotations:$supportLibVersion"
 }
+
+
+install {
+    repositories.mavenInstaller {
+        pom.project {
+            name 'ZoomLayout'
+            description 'A View container that supports zooming and panning of View hierarchies and more.'
+            url 'https://github.com/natario1/ZoomLayout'
+
+            packaging 'aar'
+            groupId project.group
+            artifactId 'zoom'
+            version project.version
+
+            licenses {
+                license {
+                    name 'The Apache Software License, Version 2.0'
+                    url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                }
+            }
+            scm {
+                connection 'https://github.com/natario1/ZoomLayout.git'
+                developerConnection 'https://github.com/natario1/ZoomLayout.git'
+                url 'https://github.com/natario1/ZoomLayout'
+
+            }
+            developers {
+                developer {
+                    id = 'natario'
+                    name 'Natario'
+                }
+            }
+        }
+    }
+}
+
+def bintrayUser = System.getenv("BINTRAY_USER")
+def bintrayKey = System.getenv("BINTRAY_KEY")
+if (bintrayKey == null) {
+    Properties props = new Properties()
+    props.load(project.rootProject.file('local.properties').newDataInputStream())
+    bintrayUser = props.getProperty('bintray.user')
+    bintrayKey = props.get('bintray.key')
+}
+
+bintray {
+    // https://github.com/bintray/gradle-bintray-plugin
+    user = bintrayUser
+    key = bintrayKey
+    configurations = ['archives']
+    pkg {
+        repo = 'android'
+        name = 'ZoomLayout'
+        licenses = ['Apache-2.0']
+        vcsUrl = 'https://github.com/natario1/ZoomLayout.git'
+        publish = true
+        override = true
+        version {
+            name = project.version
+            desc = 'ZoomLayout v. '+project.version
+            released = new Date()
+            vcsTag = 'v'+project.version
+        }
+    }
+}
+
+// From official sample https://github.com/bintray/bintray-examples/blob/master/gradle-aar-example/build.gradle
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from android.sourceSets.main.java.sourceFiles
+}
+
+task javadoc(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+    classpath += project.files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
+    project.android.libraryVariants.all { variant ->
+        if (variant.name == 'release') {
+            classpath += files(variant.javaCompile.classpath)
+        }
+    }
+    exclude '**/BuildConfig.java'
+    exclude '**/R.java'
+    exclude '**/internal/**'
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives javadocJar
+    archives sourcesJar
+}
+
+// export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home
+// To deploy ./gradlew bintrayUpload

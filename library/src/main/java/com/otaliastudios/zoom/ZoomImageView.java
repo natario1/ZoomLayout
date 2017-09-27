@@ -1,5 +1,6 @@
 package com.otaliastudios.zoom;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
@@ -25,6 +26,7 @@ import android.widget.ImageView;
  *
  * TODO: support padding (from inside ZoomEngine that gets the view)
  */
+@SuppressLint("AppCompatCustomView")
 public class ZoomImageView extends ImageView implements ZoomEngine.Listener {
 
     private final static String TAG = ZoomImageView.class.getSimpleName();
