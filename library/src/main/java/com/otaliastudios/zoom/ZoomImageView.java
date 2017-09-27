@@ -31,7 +31,6 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener {
 
     private ZoomEngine mEngine;
     private Matrix mMatrix = new Matrix();
-    private float[] mMatrixValues = new float[9];
     private RectF mDrawableRect = new RectF();
 
     public ZoomImageView(@NonNull Context context) {

@@ -3,6 +3,7 @@ package com.otaliastudios.zoom;
 import android.content.Context;
 import android.graphics.Matrix;
 import android.graphics.RectF;
+import android.os.Build;
 import android.support.annotation.IntDef;
 import android.util.Log;
 import android.view.GestureDetector;
@@ -99,7 +100,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
         mFlingScroller = new OverScroller(context);
         mScaleDetector = new ScaleGestureDetector(context, new PinchListener());
-        mScaleDetector.setQuickScaleEnabled(false);
+        if (Build.VERSION.SDK_INT >= 19) mScaleDetector.setQuickScaleEnabled(false);
         mFlingDragDetector = new GestureDetector(context, new FlingScrollListener());
         container.getViewTreeObserver().addOnGlobalLayoutListener(this);
     }

@@ -1,5 +1,6 @@
-package com.otaliastudios.vitae.views;
+package com.otaliastudios.zoom;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Rect;
@@ -23,9 +24,11 @@ import java.util.List;
 
 /**
  * A copy of platform {@link android.widget.HorizontalScrollView} that can actually
- * scroll in two dimensions (that is, panning).
+ * scroll in two dimensions (that is, panning). API19.
+ * In the end it was not used.
  */
 @Deprecated
+@SuppressLint("NewApi")
 class PannableView extends FrameLayout {
 
     private static final int ANIMATED_SCROLL_GAP = 250;

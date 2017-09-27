@@ -174,8 +174,8 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener {
         }
         mHasClickableChildren = hasClickableChildren;
 
-        // Update.
-        if (isLaidOut()) {
+        // Update if we were laid out already.
+        if (getWidth() > 0 && getHeight() > 0) {
             if (mHasClickableChildren) {
                 onUpdate(mEngine, mMatrix);
             } else {
