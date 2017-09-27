@@ -40,7 +40,7 @@ install {
 
             packaging 'aar'
             groupId project.group
-            artifactId 'zoom'
+            artifactId 'zoomlayout'
             version project.version
 
             licenses {
