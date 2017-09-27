@@ -14,8 +14,8 @@ compile 'com.otaliastudios:zoomlayout:1.0.0'
 ```
 
 <p>
-  <img src="art/preview_hierarchy.png" width="250" vspace="20" hspace="5">
-  <img src="art/preview_bitmap.png" width="250" vspace="20" hspace="5">
+  <img src="art/preview_hierarchy.gif" width="250" vspace="20" hspace="5">
+  <img src="art/preview_bitmap.gif" width="250" vspace="20" hspace="5">
 </p>
 
 ## Features
@@ -49,7 +49,7 @@ A container for view hierarchies that can be panned or zoomed.
 </com.otaliastudios.zoom.ZoomLayout>
 ```
     
-#### Children
+### Children
     
 ZoomLayout supports only a single child, but that child can have as many children as you wish.
 If any of these children is clickable or should react to touch events, you are required to set
@@ -58,7 +58,7 @@ If any of these children is clickable or should react to touch events, you are r
 The child view will be measured as wrap content with no limits in space, as in a 2D scroll view.
 So it can be as big as you want.
 
-#### APIs
+### APIs
 
 You can access all the [internal APIs](#zoomengine) using `zoomLayout.getEngine()`.
 
@@ -87,7 +87,7 @@ Presumably ZoomImageView **won't** work if:
 There are lots of libraries on this topic and this is not necessarily better - it is one of
 the many possible implementations of the zoom engine.
     
-#### APIs
+### APIs
 
 You can access all the [internal APIs](#zoomengine) using `zoomImageView.getEngine()`.
 
