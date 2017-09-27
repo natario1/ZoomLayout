@@ -15,8 +15,6 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 
-import com.otaliastudios.zoom.R;
-
 
 /**
  * Uses {@link ZoomEngine} to allow zooming and pan events onto a view hierarchy.
