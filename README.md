@@ -84,7 +84,7 @@ Presumably ZoomImageView **won't** work if:
 - the view has wrap_content as a dimension
 - you change the scaleType (read [later](#zoom) to know more)
 
-There are lots of libraries on this topic and this is not necessarily *better*, but it is
+There are lots of libraries on this topic and this is not necessarily *better*, yet it is
 a natural implementations of the zoom engine. It is fast, lightweight and simple.
     
 ### APIs
@@ -110,19 +110,29 @@ The engine currently applies, by default, a "center inside" policy when it is in
 This means that the content (whatever it is) is scaled down (or up) to fit the parent view bounds,
 without cropping.
 
-This **base zoom** is not taken into accounts in the zoom APIs: after the first scale is applied,
-`getZoom()` will return 1. You can know the actual scale by quering the matrix directly, or by
-using `getRealZoom()`.
+This base zoom makes the difference between **zoom** and **realZoom**. Table should be descriptive enough:
+
+|Zoom type|Value|Description|
+|---------|-----|-----------|
+|Zoom|`ZoomEngine.TYPE_ZOOM`|The scale value after the initial, center-inside base zoom was applied. `zoom == 1` means that the content fits the screen perfectly.|
+|Real zoom|`ZoomEngine.TYPE_REAL_ZOOM`|The actual scale value, including the initial base zoom. `realZoom == 1` means that the 1 inch of the content fits 1 inch of the screen.|
+
+Some of the zoom APIs will let you pass an integer (either `TYPE_ZOOM` or `TYPE_REAL_ZOOM`)
+to define the zoom you are referencing to. Depending on the context, imposing restrictions on one type
+will make more sense than the other - e. g., in a PDF viewer, you might want to cap real zoom at `1`.
 
 |API|Description|Default value|
 |---|-----------|-------------|
 |`getZoom()`|Returns the current zoom, not taking into account the base scale.|`1`|
 |`getRealZoom()`|Returns the current zoom taking into account the base scale. This is the matrix scale.|`-`|
-|`setMinZoom(float)`|Sets the lower bound when pinching out.|`0.8`|
-|`setMaxZoom(float)`|Sets the upper bound when pinching in.|`2.5`|
+|`setMinZoom(float, @ZoomType int)`|Sets the lower bound when pinching out.|`0.8`, `TYPE_ZOOM`|
+|`setMaxZoom(float, @ZoomType int)`|Sets the upper bound when pinching in.|`2.5`, `TYPE_REAL_ZOOM`|
 |`setOverPinchable(boolean)`|If true, the content will be allowed to zoom outside its bounds, then return to its position.|`true`|
-|`zoomTo(float, boolean)`|Zooms to the given value, animating if needed.|`-`|
-|`zoomBy(float, boolean)`|Applies the given factor to the current zoom, animating if needed.|`-`|
+|`realZoomTo(float, boolean)`|Moves the real zoom to the given value, animating if needed.|`-`|
+|`zoomTo(float, boolean)`|Moves the zoom to the given value, animating if needed.|`-`|
+|`zoomBy(float, boolean)`|Applies the given factor to the current zoom, animating if needed. OK for both types.|`-`|
+
+The `moveTo(float, float, float, boolean)` API will let you animate both zoom and [pan](#pan) at the same time.
 
 ### Pan
 
@@ -141,6 +151,8 @@ In any case the current scale is not considered, so your system won't change if 
 |`setOverScrollable(boolean)`|If true, the content will be allowed to pan outside its bounds, then return to its position.|`true`|
 |`panTo(float, float, boolean)`|Pans to the given values, animating if needed.|`-`|
 |`panBy(float, float, boolean)`|Applies the given deltas to the current pan, animating if needed.|`-`|
+
+The `moveTo(float, float, float, boolean)` API will let you animate both [zoom](#zoom) and pan at the same time.
 
 ### Direct usage
 
