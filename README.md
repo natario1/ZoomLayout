@@ -6,7 +6,7 @@
 
 # ZoomLayout & ZoomEngine
 
-This repo provides utilities to animate the zoom (scale) and pan (translation) of *something*, either
+This library provides flexible utilities to control and animate zoom and translation of Views and much more - either
 programmatically or through touch events. Try the demo app.
 
 ```groovy
