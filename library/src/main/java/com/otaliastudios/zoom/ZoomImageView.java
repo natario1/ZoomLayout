@@ -75,7 +75,6 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener {
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        Log.e(TAG, "onTouchEvent.");
         return mEngine.onTouchEvent(ev) || super.onTouchEvent(ev);
     }
 
