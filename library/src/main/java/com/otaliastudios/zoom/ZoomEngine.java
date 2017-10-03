@@ -164,19 +164,10 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     // Returns true if we should go to that mode.
     private boolean setMode(@Mode int mode) {
-        LOG.i("setMode:", ms(mode));
+        LOG.v("trySetMode:", ms(mode));
         if (!mInitialized) return false;
         if (mode == mMode) return true;
         int oldMode = mMode;
-
-        switch (oldMode) {
-            case FLINGING:
-                mFlingScroller.forceFinished(true);
-                break;
-            case ANIMATING:
-                mClearAnimation = true;
-                break;
-        }
 
         switch (mode) {
             case SCROLLING:
@@ -192,6 +183,18 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                 dispatchOnIdle();
                 break;
         }
+
+        // Now that it succeeded, do some cleanup.
+        switch (oldMode) {
+            case FLINGING:
+                mFlingScroller.forceFinished(true);
+                break;
+            case ANIMATING:
+                mClearAnimation = true;
+                break;
+        }
+
+        LOG.i("setMode:", ms(mode));
         mMode = mode;
         return true;
     }
