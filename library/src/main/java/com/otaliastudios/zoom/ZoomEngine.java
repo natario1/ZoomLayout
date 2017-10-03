@@ -115,6 +115,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     private float mBaseZoom; // mZoom * mBaseZoom matches the matrix scale.
     private boolean mOverScrollable = true;
     private boolean mOverPinchable = true;
+    private boolean mClearAnimation;
     private OverScroller mFlingScroller;
     private int[] mTemp = new int[3];
 
@@ -171,6 +172,9 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         switch (oldMode) {
             case FLINGING:
                 mFlingScroller.forceFinished(true);
+                break;
+            case ANIMATING:
+                mClearAnimation = true;
                 break;
         }
 
@@ -774,6 +778,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                            final boolean allowOverScroll, final boolean allowOverPinch) {
         newZoom = ensureScaleBounds(newZoom, allowOverScroll);
         if (setMode(ANIMATING)) {
+            mClearAnimation = false;
             final long startTime = System.currentTimeMillis();
             final float startZoom = mZoom;
             final float endZoom = newZoom;
@@ -781,18 +786,20 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             final float startY = getRealPanY();
             final float endX = startX + deltaX;
             final float endY = startY + deltaY;
+            Log.e(TAG, "animateTo endX=" + endX);
             mView.post(new Runnable() {
                 @Override
                 public void run() {
+                    if (mClearAnimation) return;
                     float time = interpolateAnimationTime(startTime);
                     float zoom = startZoom + time * (endZoom - startZoom);
                     float x = startX + time * (endX - startX);
                     float y = startY + time * (endY - startY);
                     moveTo(zoom, x - getRealPanX(), y - getRealPanY(), allowOverScroll, allowOverPinch);
-                    if (time < 1f) {
-                        mView.postOnAnimation(this);
-                    } else {
+                    if (time >= 1f) {
                         setMode(NONE);
+                    } else {
+                        mView.postOnAnimation(this);
                     }
                 }
             });
