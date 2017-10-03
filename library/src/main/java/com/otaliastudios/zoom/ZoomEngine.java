@@ -670,7 +670,6 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     /**
      * Which is the max zoom that should be allowed.
-     * Should be greater than (or equal to) 1 and anyway greater than (or equal to) min zoom.
      * If {@link #setOverPinchable(boolean)} is set to true, this can be over-pinched
      * for a brief time.
      *
@@ -682,8 +681,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @param type the constraint mode
      */
     public void setMaxZoom(float maxZoom, @ZoomType int type) {
-        if (maxZoom < 1 || resolveZoom(maxZoom, type) < resolveZoom(mMinZoom, mMinZoomMode)) {
-            throw new IllegalArgumentException("Max zoom should be >= 1 and >= min zoom.");
+        if (maxZoom < 0) {
+            throw new IllegalArgumentException("Max zoom should be >= 0.");
         }
         mMaxZoom = maxZoom;
         mMaxZoomMode = type;
@@ -694,7 +693,6 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     /**
      * Which is the min zoom that should be allowed.
-     * Should be smaller than (or equal to) the current max zoom.
      * If {@link #setOverPinchable(boolean)} is set to true, this can be over-pinched
      * for a brief time.
      *
@@ -704,8 +702,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @param type the constraint mode
      */
     public void setMinZoom(float minZoom, @ZoomType int type) {
-        if (resolveZoom(minZoom, type) > resolveZoom(mMaxZoom, type)) {
-            throw new IllegalArgumentException("Min zoom should be < max zoom.");
+        if (minZoom < 0) {
+            throw new IllegalArgumentException("Min zoom should be >= 0");
         }
         mMinZoom = minZoom;
         mMinZoomMode = type;
