@@ -91,6 +91,10 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener {
         setImageMatrix(mMatrix);
     }
 
+    @Override
+    public void onIdle(ZoomEngine engine) {
+    }
+
     //endregion
 
     //region APIs

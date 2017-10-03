@@ -36,7 +36,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     private static final String TAG = ZoomEngine.class.getSimpleName();
     private static final Interpolator INTERPOLATOR = new AccelerateDecelerateInterpolator();
-    private static final int ANIMATION_DURATION = 200;
+    private static final int ANIMATION_DURATION = 280;
 
     /**
      * An interface to listen for updates in the inner matrix. This will be called
@@ -49,10 +49,18 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
          * but is not guaranteed to be stable. For a long lasting value it is recommended
          * to make a copy of it using {@link Matrix#set(Matrix)}.
          *
-         * @param helper the helper hosting the matrix
+         * @param engine the engine hosting the matrix
          * @param matrix a matrix with the given updates
          */
-        void onUpdate(ZoomEngine helper, Matrix matrix);
+        void onUpdate(ZoomEngine engine, Matrix matrix);
+
+        /**
+         * Notifies that the engine is in an idle state. This means that (most probably)
+         * running animations have completed and there are no touch actions in place.
+         *
+         * @param engine this engine
+         */
+        void onIdle(ZoomEngine engine);
     }
 
     private static final int NONE = 0;
@@ -150,6 +158,9 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             case PINCHING:
                 if (oldMode == ANIMATING) return false;
                 break;
+            case NONE:
+                dispatchOnIdle();
+                break;
         }
         mMode = mode;
         return true;
@@ -195,13 +206,19 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     @Override
     public void onGlobalLayout() {
-        int width = mView.getWidth(); // - mView.getPaddingLeft() - mView.getPaddingRight();
-        int height = mView.getHeight(); // - mView.getPaddingTop() - mView.getPaddingBottom();
+        int width = mView.getWidth();
+        int height = mView.getHeight();
         if (width <= 0 || height <= 0) return;
         if (width != mViewWidth || height != mViewHeight) {
-            mViewWidth = width;
-            mViewHeight = height;
-            init();
+            // if (false && mInitialized) {
+                // View dimensions changed while we are already laid out. Treat this as a complete reset.
+                // Log.e(TAG, "init: was initialized but view dimensions changed. Reset.");
+                // RectF base = new RectF(mContentBaseRect);
+                // clear();
+                // init(width, height, base);
+            // } else {
+                init(width, height, mContentBaseRect);
+            // }
         }
     }
 
@@ -213,32 +230,94 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      */
     public void setContentSize(RectF rect) {
         if (rect.width() <= 0 || rect.height() <= 0) return;
-        if (!rect.equals(mContentRect)) {
-            mContentBaseRect.set(rect);
-            mContentRect.set(rect);
-            init();
+        if (!rect.equals(mContentBaseRect)) {
+            // mContentBaseRect.set(rect);
+            // mContentRect.set(rect);
+            init(mViewWidth, mViewHeight, rect);
         }
     }
 
-    private void init() {
-        if (mContentRect.width() <= 0 || mContentRect.height() <= 0 ||
-                mViewWidth <= 0 || mViewHeight <= 0) return;
+    private void init(float viewWidth, float viewHeight, RectF rect) {
+        float oldWidth = mViewWidth;
+        float oldHeight = mViewHeight;
+        RectF oldRect = mContentRect;
+        RectF oldBaseRect = mContentBaseRect;
+        mViewWidth = viewWidth;
+        mViewHeight = viewHeight;
+        mContentBaseRect.set(rect);
+        mContentRect.set(rect);
 
-        // TODO: better behavior if was already initialized.
-        if (true) {
+        if (rect.width() <= 0 || rect.height() <= 0 || viewWidth <= 0 || viewHeight <= 0) return;
+        Log.e(TAG, "init: viewWdith=" + viewWidth + ", viewHeight=" + viewHeight +
+                ", rectWidth=" + rect.width() + ", rectHeight=" + rect.height());
+
+        if (mInitialized) {
+            // Content dimensions changed.
+            setMode(NONE);
+
+            // Base zoom makes no sense anymore. We must recompute it.
+            // We must also compute a new zoom value so that real zoom (that is, the matrix scale)
+            // is kept the same as before. (So, no matrix updates here).
+            Log.e(TAG, "init: was initialized. Trying to keep real zoom to " + getRealZoom());
+            Log.e(TAG, "init: keepRealZoom: oldBaseZoom=" + mBaseZoom + ", oldZoom=" + mZoom);
+            float realZoom = getRealZoom();
+            mBaseZoom = computeBaseZoom();
+            mZoom = realZoom / mBaseZoom;
+            Log.e(TAG, "init: keepRealZoom: newBaseZoom=" + mBaseZoom + ", newZoom=" + mZoom);
+
+            // Now sync the content rect with the current matrix since we are trying to keep it.
+            // This is to have consistent values for other calls here.
+            mMatrix.mapRect(mContentRect, mContentBaseRect);
+
+            // If the new zoom value is invalid, though, we must bring it to the valid place.
+            // This is a possible matrix update.
+            float newZoom = ensureScaleBounds(mZoom, false);
+            Log.e(TAG, "init: ensureScaleBounds: we need a correction of =" + (newZoom - mZoom));
+            if (newZoom != mZoom) moveTo(newZoom, 0, 0, false, false);
+
+            // If there was any, pan should be kept. I think there's nothing to do here:
+            // If the matrix is kept, and real zoom is kept, then also the real pan is kept.
+            // I am not 100% sure of this though.
+            ensureCurrentTranslationBounds(false);
+            dispatchOnMatrix();
+
+        } else {
+            // First time. Apply base zoom, dispatch first event and return.
             // Auto scale to center-inside.
-            float scaleX = mViewWidth / mContentRect.width();
-            float scaleY = mViewHeight / mContentRect.height();
-            float scale = Math.min(scaleX, scaleY);
-            mMatrix.setScale(scale, scale);
+            mBaseZoom = computeBaseZoom();
+            mMatrix.setScale(mBaseZoom, mBaseZoom);
             mMatrix.mapRect(mContentRect, mContentBaseRect);
             mZoom = 1f;
-            mBaseZoom = scale;
+
+            Log.e(TAG, "init: was not initialized. Setting baseZoom=" + mBaseZoom + ", zoom=" + mZoom);
 
             ensureCurrentTranslationBounds(false);
             dispatchOnMatrix();
+            mInitialized = true;
         }
-        mInitialized = true;
+    }
+
+    /**
+     * Clears the current state, and stops dispatching matrix events
+     * until the view is laid out again and {@link #setContentSize(RectF)}
+     * is called.
+     */
+    public void clear() {
+        mViewHeight = 0;
+        mViewWidth = 0;
+        mZoom = 1;
+        mBaseZoom = 0;
+        mContentRect = new RectF();
+        mContentBaseRect = new RectF();
+        mMatrix = new Matrix();
+        mInitialized = false;
+    }
+
+    private float computeBaseZoom() {
+        float scaleX = mViewWidth / mContentRect.width();
+        float scaleY = mViewHeight / mContentRect.height();
+        Log.e("computeBaseZoom", "scaleX=" + scaleX + " scaleY=" + scaleY);
+        return Math.min(scaleX, scaleY);
     }
 
     //endregion
@@ -247,6 +326,10 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     private void dispatchOnMatrix() {
         if (mListener != null) mListener.onUpdate(this, getMatrix());
+    }
+
+    private void dispatchOnIdle() {
+        if (mListener != null) mListener.onIdle(this);
     }
 
     private float ensureScaleBounds(float value, boolean allowOverPinch) {
@@ -458,12 +541,32 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     //region Position APIs
 
     /**
+     * A low level API that can animate both zoom and pan at the same time.
+     * Zoom might not be the actual matrix scale, see {@link #getZoom()} and {@link #getRealZoom()}.
+     * The coordinates are referred to the content size passed in {@link #setContentSize(RectF)}
+     * so they do not depend on current zoom.
+     *
+     * @param zoom the desired zoom value
+     * @param x the desired left coordinate
+     * @param y the desired top coordinate
+     * @param animate whether to animate the transition
+     */
+    public void moveTo(float zoom, float x, float y, boolean animate) {
+        if (!mInitialized) return;
+        if (animate) {
+            animateTo(zoom, x - getPanX(), y - getPanY(), false, false);
+        } else {
+            moveTo(zoom, x - getPanX(), y - getPanY(), false, false);
+        }
+    }
+
+    /**
      * Pans the content until the top-left coordinates match the given x-y
      * values. These are referred to the content size passed in {@link #setContentSize(RectF)},
      * so they do not depend on current zoom.
      *
-     * @param x the desired top coordinate
-     * @param y the desired left coordinate
+     * @param x the desired left coordinate
+     * @param y the desired top coordinate
      * @param animate whether to animate the transition
      */
     public void panTo(float x, float y, boolean animate) {
@@ -517,6 +620,16 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      */
     public void zoomBy(float zoomFactor, boolean animate) {
         zoomTo(mZoom * zoomFactor, animate);
+    }
+
+    /**
+     * Animates the actual matrix zoom to the given value.
+     *
+     * @param realZoom the new real zoom value
+     * @param animate whether to animate the transition
+     */
+    public void realZoomTo(float realZoom, boolean animate) {
+        zoomTo(realZoom / mBaseZoom, animate);
     }
 
     /**

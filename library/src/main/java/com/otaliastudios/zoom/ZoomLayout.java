@@ -92,7 +92,9 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener {
             child.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
                 @Override
                 public void onGlobalLayout() {
-                    mChildRect.set(0, 0, child.getWidth(), child.getHeight());
+                    mChildRect.set(0, 0,
+                            child.getWidth(),
+                            child.getHeight());
                     mEngine.setContentSize(mChildRect);
                 }
             });
@@ -134,6 +136,10 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener {
             // child.getMatrix().getValues(mMatrixValues);
             // Log.e(TAG, "values 2:" + Arrays.toString(mMatrixValues));
         }
+    }
+
+    @Override
+    public void onIdle(ZoomEngine engine) {
     }
 
     @Override
