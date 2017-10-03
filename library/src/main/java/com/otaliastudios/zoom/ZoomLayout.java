@@ -61,8 +61,8 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener {
         mEngine = new ZoomEngine(context, this, this);
         mEngine.setOverScrollable(overScrollable);
         mEngine.setOverPinchable(overPinchable);
-        if (minZoom > -1) mEngine.setMinZoom(minZoom);
-        if (maxZoom > -1) mEngine.setMaxZoom(maxZoom);
+        if (minZoom > -1) mEngine.setMinZoom(minZoom, ZoomEngine.TYPE_ZOOM);
+        if (maxZoom > -1) mEngine.setMaxZoom(maxZoom, ZoomEngine.TYPE_ZOOM);
         setHasClickableChildren(hasChildren);
     }
 

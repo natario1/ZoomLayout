@@ -70,8 +70,32 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     private static final int FLINGING = 4;
 
     @Retention(RetentionPolicy.SOURCE)
-    @IntDef({ NONE, SCROLLING, PINCHING, ANIMATING, FLINGING})
+    @IntDef({NONE, SCROLLING, PINCHING, ANIMATING, FLINGING})
     private @interface Mode {}
+
+    /**
+     * Flag for zoom constraints and settings.
+     * With TYPE_ZOOM the constraint is measured over the zoom in {@link #getZoom()}.
+     * This is not the actual matrix scale value.
+     *
+     * @see #getZoom()
+     * @see #getRealZoom()
+     */
+    public static final int TYPE_ZOOM = 0;
+
+    /**
+     * Flag for zoom constraints and settings.
+     * With TYPE_REAL_ZOOM the constraint is measured over the zoom in {@link #getRealZoom()},
+     * which is the actual scale you get in the matrix.
+     *
+     * @see #getZoom()
+     * @see #getRealZoom()
+     */
+    public static final int TYPE_REAL_ZOOM = 1;
+
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef({TYPE_ZOOM, TYPE_REAL_ZOOM})
+    public @interface ZoomType {}
 
     private View mView;
     private Listener mListener;
@@ -84,7 +108,9 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     private RectF mContentRect = new RectF();
     private RectF mContentBaseRect = new RectF();
     private float mMinZoom = 0.8f;
+    private int mMinZoomMode = TYPE_ZOOM;
     private float mMaxZoom = 2.5f;
+    private int mMaxZoomMode = TYPE_ZOOM;
     private float mZoom = 1f; // Not necessarily equal to the matrix scale.
     private float mBaseZoom; // mZoom * mBaseZoom matches the matrix scale.
     private boolean mOverScrollable = true;
@@ -197,7 +223,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     }
 
     private float getCurrentOverPinch() {
-        return 0.1f * (mMaxZoom - mMinZoom);
+        return 0.1f * (resolveZoom(mMaxZoom, mMaxZoomMode) - resolveZoom(mMinZoom, mMinZoomMode));
     }
 
     //endregion
@@ -333,8 +359,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     }
 
     private float ensureScaleBounds(float value, boolean allowOverPinch) {
-        float minZoom = mMinZoom;
-        float maxZoom = mMaxZoom;
+        float minZoom = resolveZoom(mMinZoom, mMinZoomMode);
+        float maxZoom = resolveZoom(mMaxZoom, mMaxZoomMode);
         if (allowOverPinch && mOverPinchable) {
             minZoom -= getCurrentOverPinch();
             maxZoom += getCurrentOverPinch();
@@ -382,6 +408,14 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         if (desired < min) desired = min;
         if (desired > max) desired = max;
         return desired - value;
+    }
+
+    private float resolveZoom(float zoom, @ZoomType int mode) {
+        switch (mode) {
+            case TYPE_ZOOM: return zoom;
+            case TYPE_REAL_ZOOM: return zoom / mBaseZoom;
+        }
+        return -1;
     }
 
     //endregion
@@ -487,8 +521,10 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             if (mOverPinchable) {
                 // We might have over pinched. Animate back to reasonable value.
                 float zoom = 0f;
-                if (getZoom() < mMinZoom) zoom = mMinZoom;
-                if (getZoom() > mMaxZoom) zoom = mMaxZoom;
+                float maxZoom = resolveZoom(mMaxZoom, mMaxZoomMode);
+                float minZoom = resolveZoom(mMinZoom, mMinZoomMode);
+                if (getZoom() < minZoom) zoom = minZoom;
+                if (getZoom() > maxZoom) zoom = maxZoom;
                 if (zoom > 0) {
                     animateTo(zoom, 0, 0, false, true);
                     return;
@@ -640,15 +676,19 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      *
      * @see #getZoom()
      * @see #getRealZoom()
+     * @see #TYPE_ZOOM
+     * @see #TYPE_REAL_ZOOM
      * @param maxZoom the max zoom
+     * @param type the constraint mode
      */
-    public void setMaxZoom(float maxZoom) {
-        if (maxZoom < 1 || maxZoom < mMinZoom) {
+    public void setMaxZoom(float maxZoom, @ZoomType int type) {
+        if (maxZoom < 1 || resolveZoom(maxZoom, type) < resolveZoom(mMinZoom, mMinZoomMode)) {
             throw new IllegalArgumentException("Max zoom should be >= 1 and >= min zoom.");
         }
         mMaxZoom = maxZoom;
-        if (mZoom > maxZoom) {
-            zoomTo(maxZoom, true);
+        mMaxZoomMode = type;
+        if (mZoom > resolveZoom(maxZoom, type)) {
+            zoomTo(resolveZoom(maxZoom, type), true);
         }
     }
 
@@ -661,14 +701,16 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @see #getZoom()
      * @see #getRealZoom()
      * @param minZoom the min zoom
+     * @param type the constraint mode
      */
-    public void setMinZoom(float minZoom) {
-        if (minZoom > mMaxZoom) {
+    public void setMinZoom(float minZoom, @ZoomType int type) {
+        if (resolveZoom(minZoom, type) > resolveZoom(mMaxZoom, type)) {
             throw new IllegalArgumentException("Min zoom should be < max zoom.");
         }
         mMinZoom = minZoom;
-        if (mZoom <= minZoom) {
-            zoomTo(minZoom, true);
+        mMinZoomMode = type;
+        if (mZoom <= resolveZoom(minZoom, type)) {
+            zoomTo(resolveZoom(minZoom, type), true);
         }
     }
 
