@@ -80,8 +80,8 @@ public class ColorGridDrawable extends Drawable {
 
     private static int getColor(int row, int col) {
         if (COLOR_CACHE[row][col] == 0) {
-            final int r = 150 + R.nextInt(100);
-            final int g = 150 + R.nextInt(100);
+            final int r = 140 + R.nextInt(100);
+            final int g = 140 + R.nextInt(100);
             final int b = 50 + R.nextInt(100);
             COLOR_CACHE[row][col] = Color.rgb(r, g, b);
         }

@@ -7,12 +7,14 @@ import android.widget.Button;
 
 import com.otaliastudios.zoom.ZoomImageView;
 import com.otaliastudios.zoom.ZoomLayout;
+import com.otaliastudios.zoom.ZoomLogger;
 
 
 public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ZoomLogger.setLogLevel(ZoomLogger.LEVEL_INFO);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 

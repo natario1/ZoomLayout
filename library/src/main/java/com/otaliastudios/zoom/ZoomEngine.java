@@ -5,7 +5,6 @@ import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.os.Build;
 import android.support.annotation.IntDef;
-import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -36,7 +35,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     private static final String TAG = ZoomEngine.class.getSimpleName();
     private static final Interpolator INTERPOLATOR = new AccelerateDecelerateInterpolator();
-    private static final int ANIMATION_DURATION = 200;
+    private static final int ANIMATION_DURATION = 280;
+    private static final ZoomLogger LOG = ZoomLogger.create(TAG);
 
     /**
      * An interface to listen for updates in the inner matrix. This will be called
@@ -49,10 +49,18 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
          * but is not guaranteed to be stable. For a long lasting value it is recommended
          * to make a copy of it using {@link Matrix#set(Matrix)}.
          *
-         * @param helper the helper hosting the matrix
+         * @param engine the engine hosting the matrix
          * @param matrix a matrix with the given updates
          */
-        void onUpdate(ZoomEngine helper, Matrix matrix);
+        void onUpdate(ZoomEngine engine, Matrix matrix);
+
+        /**
+         * Notifies that the engine is in an idle state. This means that (most probably)
+         * running animations have completed and there are no touch actions in place.
+         *
+         * @param engine this engine
+         */
+        void onIdle(ZoomEngine engine);
     }
 
     private static final int NONE = 0;
@@ -62,8 +70,32 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     private static final int FLINGING = 4;
 
     @Retention(RetentionPolicy.SOURCE)
-    @IntDef({ NONE, SCROLLING, PINCHING, ANIMATING, FLINGING})
+    @IntDef({NONE, SCROLLING, PINCHING, ANIMATING, FLINGING})
     private @interface Mode {}
+
+    /**
+     * Flag for zoom constraints and settings.
+     * With TYPE_ZOOM the constraint is measured over the zoom in {@link #getZoom()}.
+     * This is not the actual matrix scale value.
+     *
+     * @see #getZoom()
+     * @see #getRealZoom()
+     */
+    public static final int TYPE_ZOOM = 0;
+
+    /**
+     * Flag for zoom constraints and settings.
+     * With TYPE_REAL_ZOOM the constraint is measured over the zoom in {@link #getRealZoom()},
+     * which is the actual scale you get in the matrix.
+     *
+     * @see #getZoom()
+     * @see #getRealZoom()
+     */
+    public static final int TYPE_REAL_ZOOM = 1;
+
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef({TYPE_ZOOM, TYPE_REAL_ZOOM})
+    public @interface ZoomType {}
 
     private View mView;
     private Listener mListener;
@@ -76,11 +108,14 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     private RectF mContentRect = new RectF();
     private RectF mContentBaseRect = new RectF();
     private float mMinZoom = 0.8f;
+    private int mMinZoomMode = TYPE_ZOOM;
     private float mMaxZoom = 2.5f;
+    private int mMaxZoomMode = TYPE_ZOOM;
     private float mZoom = 1f; // Not necessarily equal to the matrix scale.
     private float mBaseZoom; // mZoom * mBaseZoom matches the matrix scale.
     private boolean mOverScrollable = true;
     private boolean mOverPinchable = true;
+    private boolean mClearAnimation;
     private OverScroller mFlingScroller;
     private int[] mTemp = new int[3];
 
@@ -129,16 +164,10 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     // Returns true if we should go to that mode.
     private boolean setMode(@Mode int mode) {
-        // Log.e(TAG, "setMode: " + ms(mode));
+        LOG.v("trySetMode:", ms(mode));
         if (!mInitialized) return false;
         if (mode == mMode) return true;
         int oldMode = mMode;
-
-        switch (oldMode) {
-            case FLINGING:
-                mFlingScroller.forceFinished(true);
-                break;
-        }
 
         switch (mode) {
             case SCROLLING:
@@ -150,7 +179,22 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             case PINCHING:
                 if (oldMode == ANIMATING) return false;
                 break;
+            case NONE:
+                dispatchOnIdle();
+                break;
         }
+
+        // Now that it succeeded, do some cleanup.
+        switch (oldMode) {
+            case FLINGING:
+                mFlingScroller.forceFinished(true);
+                break;
+            case ANIMATING:
+                mClearAnimation = true;
+                break;
+        }
+
+        LOG.i("setMode:", ms(mode));
         mMode = mode;
         return true;
     }
@@ -186,7 +230,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     }
 
     private float getCurrentOverPinch() {
-        return 0.1f * (mMaxZoom - mMinZoom);
+        return 0.1f * (resolveZoom(mMaxZoom, mMaxZoomMode) - resolveZoom(mMinZoom, mMinZoomMode));
     }
 
     //endregion
@@ -195,13 +239,11 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     @Override
     public void onGlobalLayout() {
-        int width = mView.getWidth(); // - mView.getPaddingLeft() - mView.getPaddingRight();
-        int height = mView.getHeight(); // - mView.getPaddingTop() - mView.getPaddingBottom();
+        int width = mView.getWidth();
+        int height = mView.getHeight();
         if (width <= 0 || height <= 0) return;
         if (width != mViewWidth || height != mViewHeight) {
-            mViewWidth = width;
-            mViewHeight = height;
-            init();
+            init(width, height, mContentBaseRect);
         }
     }
 
@@ -213,32 +255,88 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      */
     public void setContentSize(RectF rect) {
         if (rect.width() <= 0 || rect.height() <= 0) return;
-        if (!rect.equals(mContentRect)) {
-            mContentBaseRect.set(rect);
-            mContentRect.set(rect);
-            init();
+        if (!rect.equals(mContentBaseRect)) {
+            init(mViewWidth, mViewHeight, rect);
         }
     }
 
-    private void init() {
-        if (mContentRect.width() <= 0 || mContentRect.height() <= 0 ||
-                mViewWidth <= 0 || mViewHeight <= 0) return;
+    private void init(float viewWidth, float viewHeight, RectF rect) {
+        mViewWidth = viewWidth;
+        mViewHeight = viewHeight;
+        mContentBaseRect.set(rect);
+        mContentRect.set(rect);
 
-        // TODO: better behavior if was already initialized.
-        if (true) {
+        if (rect.width() <= 0 || rect.height() <= 0 || viewWidth <= 0 || viewHeight <= 0) return;
+        LOG.i("init:", "viewWdith:", viewWidth, "viewHeight:", viewHeight,
+                "rectWidth:", rect.width(), "rectHeight:", rect.height());
+
+        if (mInitialized) {
+            // Content dimensions changed.
+            setMode(NONE);
+
+            // Base zoom makes no sense anymore. We must recompute it.
+            // We must also compute a new zoom value so that real zoom (that is, the matrix scale)
+            // is kept the same as before. (So, no matrix updates here).
+            LOG.i("init:", "was initialized. Trying to keep real zoom to", getRealZoom());
+            LOG.i("init:", "keepRealZoom: oldBaseZoom:", mBaseZoom, "oldZoom:" + mZoom);
+            float realZoom = getRealZoom();
+            mBaseZoom = computeBaseZoom();
+            mZoom = realZoom / mBaseZoom;
+            LOG.i("init:", "keepRealZoom: newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
+
+            // Now sync the content rect with the current matrix since we are trying to keep it.
+            // This is to have consistent values for other calls here.
+            mMatrix.mapRect(mContentRect, mContentBaseRect);
+
+            // If the new zoom value is invalid, though, we must bring it to the valid place.
+            // This is a possible matrix update.
+            float newZoom = ensureScaleBounds(mZoom, false);
+            LOG.i("init:", "ensureScaleBounds:", "we need a correction of", (newZoom - mZoom));
+            if (newZoom != mZoom) moveTo(newZoom, 0, 0, false, false);
+
+            // If there was any, pan should be kept. I think there's nothing to do here:
+            // If the matrix is kept, and real zoom is kept, then also the real pan is kept.
+            // I am not 100% sure of this though.
+            ensureCurrentTranslationBounds(false);
+            dispatchOnMatrix();
+
+        } else {
+            // First time. Apply base zoom, dispatch first event and return.
             // Auto scale to center-inside.
-            float scaleX = mViewWidth / mContentRect.width();
-            float scaleY = mViewHeight / mContentRect.height();
-            float scale = Math.min(scaleX, scaleY);
-            mMatrix.setScale(scale, scale);
+            mBaseZoom = computeBaseZoom();
+            mMatrix.setScale(mBaseZoom, mBaseZoom);
             mMatrix.mapRect(mContentRect, mContentBaseRect);
             mZoom = 1f;
-            mBaseZoom = scale;
+
+            LOG.i("init:", "was not initialized.", "Setting baseZoom:", mBaseZoom, "zoom:", mZoom);
 
             ensureCurrentTranslationBounds(false);
             dispatchOnMatrix();
+            mInitialized = true;
         }
-        mInitialized = true;
+    }
+
+    /**
+     * Clears the current state, and stops dispatching matrix events
+     * until the view is laid out again and {@link #setContentSize(RectF)}
+     * is called.
+     */
+    public void clear() {
+        mViewHeight = 0;
+        mViewWidth = 0;
+        mZoom = 1;
+        mBaseZoom = 0;
+        mContentRect = new RectF();
+        mContentBaseRect = new RectF();
+        mMatrix = new Matrix();
+        mInitialized = false;
+    }
+
+    private float computeBaseZoom() {
+        float scaleX = mViewWidth / mContentRect.width();
+        float scaleY = mViewHeight / mContentRect.height();
+        LOG.v("computeBaseZoom", "scaleX:", scaleX, "scaleY:", scaleY);
+        return Math.min(scaleX, scaleY);
     }
 
     //endregion
@@ -249,9 +347,13 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         if (mListener != null) mListener.onUpdate(this, getMatrix());
     }
 
+    private void dispatchOnIdle() {
+        if (mListener != null) mListener.onIdle(this);
+    }
+
     private float ensureScaleBounds(float value, boolean allowOverPinch) {
-        float minZoom = mMinZoom;
-        float maxZoom = mMaxZoom;
+        float minZoom = resolveZoom(mMinZoom, mMinZoomMode);
+        float maxZoom = resolveZoom(mMaxZoom, mMaxZoomMode);
         if (allowOverPinch && mOverPinchable) {
             minZoom -= getCurrentOverPinch();
             maxZoom += getCurrentOverPinch();
@@ -273,7 +375,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     // Checks against the translation value to ensure it is inside our acceptable bounds.
     // If allowOverScroll, overScroll value might be considered to allow "invalid" value.
     private float ensureTranslationBounds(float delta, boolean width, boolean allowOverScroll) {
-        float value = width ? getRealPanX() : getRealPanY();
+        float value = width ? getScaledPanX() : getScaledPanY();
         float viewSize = width ? mViewWidth : mViewHeight;
         float contentSize = width ? mContentRect.width() : mContentRect.height();
         return getTranslationCorrection(value + delta, viewSize, contentSize, allowOverScroll);
@@ -299,6 +401,14 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         if (desired < min) desired = min;
         if (desired > max) desired = max;
         return desired - value;
+    }
+
+    private float resolveZoom(float zoom, @ZoomType int mode) {
+        switch (mode) {
+            case TYPE_ZOOM: return zoom;
+            case TYPE_REAL_ZOOM: return zoom / mBaseZoom;
+        }
+        return -1;
     }
 
     //endregion
@@ -333,35 +443,36 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     }
 
     private int processTouchEvent(MotionEvent event) {
-        Log.e(TAG, "processTouchEvent: " + "start.");
+        LOG.v("processTouchEvent:", "start.");
         if (mMode == ANIMATING) return TOUCH_STEAL;
 
         boolean result = mScaleDetector.onTouchEvent(event);
-        Log.e(TAG, "processTouchEvent: " + "scaleResult: " + result);
+        LOG.v("processTouchEvent:", "scaleResult:", result);
 
         // Pinch detector always returns true. If we actually started a pinch,
         // Don't pass to fling detector.
         if (mMode != PINCHING) {
             result = result | mFlingDragDetector.onTouchEvent(event);
-            Log.e(TAG, "processTouchEvent: " + "flingResult: " + result);
+            LOG.v("processTouchEvent:", "flingResult:", result);
         }
 
         // Detect scroll ends, this appears to be the only way.
         if (mMode == SCROLLING) {
             int a = event.getActionMasked();
             if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL) {
+                LOG.i("processTouchEvent:", "up event while scrolling, dispatching onScrollEnd.");
                 onScrollEnd();
             }
         }
 
         if (result && mMode != NONE) {
-            Log.e(TAG, "processTouchEvent: " + "returning: " + "TOUCH_STEAL");
+            LOG.v("processTouchEvent:", "returning: TOUCH_STEAL");
             return TOUCH_STEAL;
         } else if (result) {
-            Log.e(TAG, "processTouchEvent: " + "returning: " + "TOUCH_LISTEN");
+            LOG.v("processTouchEvent:", "returning: TOUCH_LISTEN");
             return TOUCH_LISTEN;
         } else {
-            Log.e(TAG, "processTouchEvent: " + "returning: " + "TOUCH_NO");
+            LOG.v("processTouchEvent:", "returning: TOUCH_NO");
             setMode(NONE);
             return TOUCH_NO;
         }
@@ -381,7 +492,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                 float desiredDeltaTop = -(detector.getFocusY() - mViewHeight / 2f);
 
                 // Reduce the pan strength.
-                Log.e(TAG, "onScale: deltaLeft1: " + desiredDeltaLeft + " deltaTop1: " + desiredDeltaTop);
+                LOG.v("onScale:", "deltaLeft:", desiredDeltaLeft, "deltaTop1:", desiredDeltaTop);
                 desiredDeltaLeft /= 4;
                 desiredDeltaTop /= 4;
 
@@ -404,8 +515,10 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             if (mOverPinchable) {
                 // We might have over pinched. Animate back to reasonable value.
                 float zoom = 0f;
-                if (getZoom() < mMinZoom) zoom = mMinZoom;
-                if (getZoom() > mMaxZoom) zoom = mMaxZoom;
+                float maxZoom = resolveZoom(mMaxZoom, mMaxZoomMode);
+                float minZoom = resolveZoom(mMinZoom, mMinZoomMode);
+                if (getZoom() < minZoom) zoom = minZoom;
+                if (getZoom() > maxZoom) zoom = maxZoom;
                 if (zoom > 0) {
                     animateTo(zoom, 0, 0, false, true);
                     return;
@@ -458,12 +571,32 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     //region Position APIs
 
     /**
+     * A low level API that can animate both zoom and pan at the same time.
+     * Zoom might not be the actual matrix scale, see {@link #getZoom()} and {@link #getRealZoom()}.
+     * The coordinates are referred to the content size passed in {@link #setContentSize(RectF)}
+     * so they do not depend on current zoom.
+     *
+     * @param zoom the desired zoom value
+     * @param x the desired left coordinate
+     * @param y the desired top coordinate
+     * @param animate whether to animate the transition
+     */
+    public void moveTo(float zoom, float x, float y, boolean animate) {
+        if (!mInitialized) return;
+        if (animate) {
+            animateTo(zoom, x - getPanX(), y - getPanY(), false, false);
+        } else {
+            moveTo(zoom, x - getPanX(), y - getPanY(), false, false);
+        }
+    }
+
+    /**
      * Pans the content until the top-left coordinates match the given x-y
      * values. These are referred to the content size passed in {@link #setContentSize(RectF)},
      * so they do not depend on current zoom.
      *
-     * @param x the desired top coordinate
-     * @param y the desired left coordinate
+     * @param x the desired left coordinate
+     * @param y the desired top coordinate
      * @param animate whether to animate the transition
      */
     public void panTo(float x, float y, boolean animate) {
@@ -520,42 +653,56 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     }
 
     /**
+     * Animates the actual matrix zoom to the given value.
+     *
+     * @param realZoom the new real zoom value
+     * @param animate whether to animate the transition
+     */
+    public void realZoomTo(float realZoom, boolean animate) {
+        zoomTo(realZoom / mBaseZoom, animate);
+    }
+
+    /**
      * Which is the max zoom that should be allowed.
-     * Should be greater than (or equal to) 1 and anyway greater than (or equal to) min zoom.
      * If {@link #setOverPinchable(boolean)} is set to true, this can be over-pinched
      * for a brief time.
      *
      * @see #getZoom()
      * @see #getRealZoom()
+     * @see #TYPE_ZOOM
+     * @see #TYPE_REAL_ZOOM
      * @param maxZoom the max zoom
+     * @param type the constraint mode
      */
-    public void setMaxZoom(float maxZoom) {
-        if (maxZoom < 1 || maxZoom < mMinZoom) {
-            throw new IllegalArgumentException("Max zoom should be >= 1 and >= min zoom.");
+    public void setMaxZoom(float maxZoom, @ZoomType int type) {
+        if (maxZoom < 0) {
+            throw new IllegalArgumentException("Max zoom should be >= 0.");
         }
         mMaxZoom = maxZoom;
-        if (mZoom > maxZoom) {
-            zoomTo(maxZoom, true);
+        mMaxZoomMode = type;
+        if (mZoom > resolveZoom(maxZoom, type)) {
+            zoomTo(resolveZoom(maxZoom, type), true);
         }
     }
 
     /**
      * Which is the min zoom that should be allowed.
-     * Should be smaller than (or equal to) the current max zoom.
      * If {@link #setOverPinchable(boolean)} is set to true, this can be over-pinched
      * for a brief time.
      *
      * @see #getZoom()
      * @see #getRealZoom()
      * @param minZoom the min zoom
+     * @param type the constraint mode
      */
-    public void setMinZoom(float minZoom) {
-        if (minZoom > mMaxZoom) {
-            throw new IllegalArgumentException("Min zoom should be < max zoom.");
+    public void setMinZoom(float minZoom, @ZoomType int type) {
+        if (minZoom < 0) {
+            throw new IllegalArgumentException("Min zoom should be >= 0");
         }
         mMinZoom = minZoom;
-        if (mZoom <= minZoom) {
-            zoomTo(minZoom, true);
+        mMinZoomMode = type;
+        if (mZoom <= resolveZoom(minZoom, type)) {
+            zoomTo(resolveZoom(minZoom, type), true);
         }
     }
 
@@ -595,7 +742,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @return the current horizontal pan
      */
     public float getPanX() {
-        return getRealPanX() / getRealZoom();
+        return getScaledPanX() / getRealZoom();
     }
 
     /**
@@ -606,14 +753,14 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @return the current vertical pan
      */
     public float getPanY() {
-        return getRealPanY() / getRealZoom();
+        return getScaledPanY() / getRealZoom();
     }
 
-    private float getRealPanX() {
+    private float getScaledPanX() {
         return mContentRect.left;
     }
 
-    private float getRealPanY() {
+    private float getScaledPanY() {
         return mContentRect.top;
     }
 
@@ -621,32 +768,37 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                            final boolean allowOverScroll, final boolean allowOverPinch) {
         newZoom = ensureScaleBounds(newZoom, allowOverScroll);
         if (setMode(ANIMATING)) {
+            mClearAnimation = false;
             final long startTime = System.currentTimeMillis();
             final float startZoom = mZoom;
             final float endZoom = newZoom;
-            final float startX = getRealPanX();
-            final float startY = getRealPanY();
+            final float startX = getPanX(); // getScaledPanX();
+            final float startY = getPanY(); // getScaledPanY();
             final float endX = startX + deltaX;
             final float endY = startY + deltaY;
+            LOG.i("animateTo:", "starting.", "startX:", startX, "endX:", endX, "startY:", startY, "endY:", endY);
+            LOG.i("animateTo:", "starting.", "startZoom:", startZoom, "endZoom:", endZoom);
             mView.post(new Runnable() {
                 @Override
                 public void run() {
+                    if (mClearAnimation) return;
                     float time = interpolateAnimationTime(startTime);
+                    LOG.v("animateTo:", "animationStep:", time);
                     float zoom = startZoom + time * (endZoom - startZoom);
                     float x = startX + time * (endX - startX);
                     float y = startY + time * (endY - startY);
-                    moveTo(zoom, x - getRealPanX(), y - getRealPanY(), allowOverScroll, allowOverPinch);
-                    if (time < 1f) {
-                        mView.postOnAnimation(this);
-                    } else {
+                    // moveTo(zoom, x - getScaledPanX(), y - getScaledPanY(), allowOverScroll, allowOverPinch);
+                    moveTo(zoom, x - getPanX(), y - getPanY(), allowOverScroll, allowOverPinch);
+                    if (time >= 1f) {
                         setMode(NONE);
+                    } else {
+                        mView.postOnAnimation(this);
                     }
                 }
             });
         }
     }
 
-    // TODO: if scale AND delta, the center scale will invalidate deltas?
     private void moveTo(float newZoom, float deltaX, float deltaY, boolean allowOverScroll, boolean allowOverPinch) {
         // Translation
         mMatrix.postTranslate(deltaX, deltaY);
@@ -677,7 +829,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     // Since axes are shifted (pans are negative), min values are related to bottom-right,
     // while max values are related to top-left.
     private boolean computeScrollerValues(boolean width) {
-        int currentPan = (int) (width ? getRealPanX() : getRealPanY());
+        int currentPan = (int) (width ? getScaledPanX() : getScaledPanY());
         int viewDim = (int) (width ? mViewWidth : mViewHeight);
         int contentDim = (int) (width ? mContentRect.width() : mContentRect.height());
         int fix = (int) ensureTranslationBounds(0, width, false);
@@ -716,8 +868,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         if (!go) return false;
 
         int overScroll = mOverScrollable ? getCurrentOverScroll() : 0;
-        // Log.e(TAG, "flingX: min:" + minX + " max:" + maxX + " start:" + startX + " overscroll:" + overScroll);
-        // Log.e(TAG, "flingY: min:" + minY + " max:" + maxY + " start:" + startY + " overscroll:" + overScroll);
+        LOG.i("startFling", "flingX:", "min:", minX, "max:", maxX, "start:", startX, "overScroll:", overScroll);
+        LOG.i("startFling", "flingY:", "min:", minY, "max:", maxY, "start:", startY, "overScroll:", overScroll);
         mFlingScroller.fling(startX, startY, velocityX, velocityY,
                 minX, maxX, minY, maxY,
                 overScroll, overScroll);
@@ -731,7 +883,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                     final int newPanX = mFlingScroller.getCurrX();
                     final int newPanY = mFlingScroller.getCurrY();
                     // OverScroller will eventually go back to our bounds.
-                    moveTo(getZoom(), newPanX - getRealPanX(), newPanY - getRealPanY(), true, false);
+                    moveTo(getZoom(), newPanX - getScaledPanX(), newPanY - getScaledPanY(), true, false);
                     mView.postOnAnimation(this);
                 }
             }

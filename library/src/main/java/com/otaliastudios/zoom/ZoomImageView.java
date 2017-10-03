@@ -3,8 +3,6 @@ package com.otaliastudios.zoom;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
@@ -14,10 +12,6 @@ import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
 
 
@@ -56,8 +50,8 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener {
         mEngine = new ZoomEngine(context, this, this);
         mEngine.setOverScrollable(overScrollable);
         mEngine.setOverPinchable(overPinchable);
-        if (minZoom > -1) mEngine.setMinZoom(minZoom);
-        if (maxZoom > -1) mEngine.setMaxZoom(maxZoom);
+        if (minZoom > -1) mEngine.setMinZoom(minZoom, ZoomEngine.TYPE_ZOOM);
+        if (maxZoom > -1) mEngine.setMaxZoom(maxZoom, ZoomEngine.TYPE_ZOOM);
 
         setImageMatrix(mMatrix);
         setScaleType(ScaleType.MATRIX);
@@ -81,7 +75,6 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener {
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        Log.e(TAG, "onTouchEvent.");
         return mEngine.onTouchEvent(ev) || super.onTouchEvent(ev);
     }
 
@@ -89,6 +82,10 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener {
     public void onUpdate(ZoomEngine helper, Matrix matrix) {
         mMatrix.set(matrix);
         setImageMatrix(mMatrix);
+    }
+
+    @Override
+    public void onIdle(ZoomEngine engine) {
     }
 
     //endregion
