@@ -782,8 +782,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             final long startTime = System.currentTimeMillis();
             final float startZoom = mZoom;
             final float endZoom = newZoom;
-            final float startX = getRealPanX();
-            final float startY = getRealPanY();
+            final float startX = getPanX(); // getRealPanX();
+            final float startY = getPanY(); // getRealPanY();
             final float endX = startX + deltaX;
             final float endY = startY + deltaY;
             Log.e(TAG, "animateTo endX=" + endX);
@@ -795,7 +795,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                     float zoom = startZoom + time * (endZoom - startZoom);
                     float x = startX + time * (endX - startX);
                     float y = startY + time * (endY - startY);
-                    moveTo(zoom, x - getRealPanX(), y - getRealPanY(), allowOverScroll, allowOverPinch);
+                    // moveTo(zoom, x - getRealPanX(), y - getRealPanY(), allowOverScroll, allowOverPinch);
+                    moveTo(zoom, x - getPanX(), y - getPanY(), allowOverScroll, allowOverPinch);
                     if (time >= 1f) {
                         setMode(NONE);
                     } else {
