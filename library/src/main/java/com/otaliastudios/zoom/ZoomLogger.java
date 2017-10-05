@@ -39,7 +39,7 @@ public final class ZoomLogger {
         mTag = tag;
     }
 
-    public void v(String message) {
+    void v(String message) {
         if (should(LEVEL_VERBOSE)) {
             Log.v(mTag, message);
             lastMessage = message;
@@ -47,7 +47,7 @@ public final class ZoomLogger {
         }
     }
 
-    public void i(String message) {
+    void i(String message) {
         if (should(LEVEL_INFO)) {
             Log.i(mTag, message);
             lastMessage = message;
@@ -55,7 +55,7 @@ public final class ZoomLogger {
         }
     }
 
-    public void w(String message) {
+    void w(String message) {
         if (should(LEVEL_WARNING)) {
             Log.w(mTag, message);
             lastMessage = message;
@@ -63,7 +63,7 @@ public final class ZoomLogger {
         }
     }
 
-    public void e(String message) {
+    void e(String message) {
         if (should(LEVEL_ERROR)) {
             Log.w(mTag, message);
             lastMessage = message;
@@ -86,19 +86,19 @@ public final class ZoomLogger {
         return message.trim();
     }
 
-    public void v(Object... data) {
+    void v(Object... data) {
         i(string(LEVEL_VERBOSE, data));
     }
 
-    public void i(Object... data) {
+    void i(Object... data) {
         i(string(LEVEL_INFO, data));
     }
 
-    public void w(Object... data) {
+    void w(Object... data) {
         w(string(LEVEL_WARNING, data));
     }
 
-    public void e(Object... data) {
+    void e(Object... data) {
         e(string(LEVEL_ERROR, data));
     }
 }
