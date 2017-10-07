@@ -292,12 +292,12 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             // Base zoom makes no sense anymore. We must recompute it.
             // We must also compute a new zoom value so that real zoom (that is, the matrix scale)
             // is kept the same as before. (So, no matrix updates here).
-            LOG.i("init:", "was initialized. Trying to keep real zoom to", getRealZoom());
-            LOG.i("init:", "keepRealZoom: oldBaseZoom:", mBaseZoom, "oldZoom:" + mZoom);
+            LOG.i("init:", "wasAlready:", "Trying to keep real zoom to", getRealZoom());
+            LOG.i("init:", "wasAlready:", "oldBaseZoom:", mBaseZoom, "oldZoom:" + mZoom);
             @RealZoom float realZoom = getRealZoom();
             mBaseZoom = computeBaseZoom();
             mZoom = realZoom / mBaseZoom;
-            LOG.i("init:", "keepRealZoom: newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
+            LOG.i("init:", "wasAlready: newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
 
             // Now sync the content rect with the current matrix since we are trying to keep it.
             // This is to have consistent values for other calls here.
@@ -306,7 +306,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             // If the new zoom value is invalid, though, we must bring it to the valid place.
             // This is a possible matrix update.
             @Zoom float newZoom = ensureScaleBounds(mZoom, false);
-            LOG.i("init:", "ensureScaleBounds:", "we need a correction of", (newZoom - mZoom));
+            LOG.i("init:", "wasAlready:", "scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
             if (newZoom != mZoom) applyZoom(newZoom, false);
 
             // If there was any, pan should be kept. I think there's nothing to do here:
@@ -322,8 +322,14 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             mMatrix.setScale(mBaseZoom, mBaseZoom);
             mMatrix.mapRect(mContentRect, mContentBaseRect);
             mZoom = 1f;
+            LOG.i("init:", "fromScratch:", "newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
 
-            LOG.i("init:", "was not initialized.", "Setting baseZoom:", mBaseZoom, "zoom:", mZoom);
+            @Zoom float newZoom = ensureScaleBounds(mZoom, false);
+            LOG.i("init:", "fromScratch:", "scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
+            if (newZoom != mZoom) {
+                // Zoom only would zoom in the center of the content. Keep it left.
+                applyZoomAndAbsolutePan(newZoom, 0, 0, false);
+            }
 
             ensureCurrentTranslationBounds(false);
             dispatchOnMatrix();
@@ -938,7 +944,6 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * Applies the given zoom value, meant as a {@link Zoom} value
      * (so not a {@link RealZoom}).
      * The zoom is applied so that the center point is kept in its place
-     * TODO: probably
      *
      * @param newZoom the new zoom value
      * @param allowOverPinch whether to overpinch
