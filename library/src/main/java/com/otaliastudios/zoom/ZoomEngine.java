@@ -591,8 +591,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                 // Allow overScroll. Will be reset in onScrollEnd().
                 distanceX = -distanceX;
                 distanceY = -distanceY;
-                applyZoomAndAbsolutePan(getZoom(), getPanX() + distanceX,
-                        getPanY() + distanceY, true);
+                applyScaledPan(distanceX, distanceY, true);
+                // applyZoomAndAbsolutePan(getZoom(), getPanX() + distanceX, getPanY() + distanceY, true);
                 return true;
             }
             return false;
@@ -962,7 +962,6 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * Absolute panning is achieved through {@link Matrix#preTranslate(float, float)},
      * which works in the original coordinate system.
      *
-     * TODO: probably
      * @param newZoom the new zoom value
      * @param x the final left absolute pan
      * @param y the final top absolute pan
@@ -1059,7 +1058,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         return fix != 0;
     }
 
-    private boolean startFling(@AbsolutePan int velocityX, @AbsolutePan int velocityY) {
+    private boolean startFling(@ScaledPan int velocityX, @ScaledPan int velocityY) {
         if (!setState(FLINGING)) return false;
 
         // Using actual pan values for the scroller.
@@ -1078,11 +1077,11 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         if (!go) return false;
 
         @ScaledPan int overScroll = mOverScrollable ? getCurrentOverScroll() : 0;
+        LOG.i("startFling", "velocityX:", velocityX, "velocityY:", velocityY);
         LOG.i("startFling", "flingX:", "min:", minX, "max:", maxX, "start:", startX, "overScroll:", overScroll);
         LOG.i("startFling", "flingY:", "min:", minY, "max:", maxY, "start:", startY, "overScroll:", overScroll);
         mFlingScroller.fling(startX, startY,
-                (int) resolvePan(velocityX),
-                (int) resolvePan(velocityY),
+                velocityX, velocityY,
                 minX, maxX, minY, maxY,
                 overScroll, overScroll);
 
