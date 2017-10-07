@@ -525,7 +525,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                     // We want to interpret this as a scaled value, to work with the *actual* zoom.
                     @ScaledPan float scaledFocusX = -detector.getFocusX();
                     @ScaledPan float scaledFocusY = -detector.getFocusY();
-                    LOG.e("onScale:", "Setting focus.", "scaledFocusX:", scaledFocusX, "scaledFocusY:", scaledFocusY);
+                    LOG.i("onScale:", "Setting focus.", "detectorFocusX:", scaledFocusX, "detectorFocusX:", scaledFocusY);
 
                     // Account for current pan.
                     scaledFocusX += getScaledPanX();
@@ -534,8 +534,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                     // Transform to an absolute, scale-independent value.
                     mAbsTargetX = unresolvePan(scaledFocusX);
                     mAbsTargetY = unresolvePan(scaledFocusY);
-                    LOG.e("onScale:", "Setting focus.", "absTargetX:", mAbsTargetX, "absTargetY:", mAbsTargetY);
-
+                    LOG.i("onScale:", "Setting focus.", "absTargetX:", mAbsTargetX, "absTargetY:", mAbsTargetY);
                 }
 
                 // Having both overPinch and overScroll is hard to manage, there are lots of bugs if we do.
@@ -591,9 +590,9 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             if (setState(SCROLLING)) {
                 // Allow overScroll. Will be reset in onScrollEnd().
                 distanceX = -distanceX;
-                distanceY = -distanceX;
-                // Fixed
-                applyZoomAndAbsolutePan(getZoom(), getPanX() + distanceX, getPanY() + distanceY, true, false);
+                distanceY = -distanceY;
+                applyZoomAndAbsolutePan(getZoom(), getPanX() + distanceX,
+                        getPanY() + distanceY, true);
                 return true;
             }
             return false;
@@ -631,11 +630,9 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     public void moveTo(@Zoom float zoom, @AbsolutePan float x, @AbsolutePan float y, boolean animate) {
         if (!mInitialized) return;
         if (animate) {
-            // Fixed
-            animateZoomAndAbsolutePan(zoom, x, y, false, false);
+            animateZoomAndAbsolutePan(zoom, x, y, false);
         } else {
-            // Fixed
-            applyZoomAndAbsolutePan(zoom, x, y, false, false);
+            applyZoomAndAbsolutePan(zoom, x, y, false);
         }
     }
 
@@ -667,11 +664,9 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     public void panBy(@AbsolutePan float dx, @AbsolutePan float dy, boolean animate) {
         if (!mInitialized) return;
         if (animate) {
-            // Fixed
-            animateZoomAndAbsolutePan(mZoom, getPanX() + dx, getPanY() + dy, false, false);
+            animateZoomAndAbsolutePan(mZoom, getPanX() + dx, getPanY() + dy, false);
         } else {
-            // Fixed
-            applyZoomAndAbsolutePan(mZoom, getPanX() + dx, getPanY() + dy, false, false);
+            applyZoomAndAbsolutePan(mZoom, getPanX() + dx, getPanY() + dy, false);
         }
     }
 
@@ -824,6 +819,13 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     //region Apply values
 
+    /**
+     * Calls {@link #applyZoom(float, boolean)} repeatedly
+     * until the final zoom is reached, interpolating.
+     *
+     * @param newZoom the new zoom
+     * @param allowOverPinch whether overpinching is allowed
+     */
     private void animateZoom(@Zoom float newZoom, final boolean allowOverPinch) {
         newZoom = ensureScaleBounds(newZoom, allowOverPinch);
         if (setState(ANIMATING)) {
@@ -849,10 +851,18 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         }
     }
 
-    // Fixed
+    /**
+     * Calls {@link #applyZoomAndAbsolutePan(float, float, float, boolean)} repeatedly
+     * until the final position is reached, interpolating.
+     *
+     * @param newZoom new zoom
+     * @param x final abs pan
+     * @param y final abs pan
+     * @param allowOverScroll whether to overscroll
+     */
     private void animateZoomAndAbsolutePan(@Zoom float newZoom,
                                            @AbsolutePan final float x, @AbsolutePan final float y,
-                                           final boolean allowOverScroll, final boolean allowOverPinch) {
+                                           final boolean allowOverScroll) {
         newZoom = ensureScaleBounds(newZoom, allowOverScroll);
         if (setState(ANIMATING)) {
             mClearAnimation = false;
@@ -872,8 +882,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                     @Zoom float zoom = startZoom + time * (endZoom - startZoom);
                     @AbsolutePan float targetX = startX + time * (x - startX);
                     @AbsolutePan float targetY = startY + time * (y - startY);
-                    // Fixed
-                    applyZoomAndAbsolutePan(zoom, targetX, targetY, allowOverScroll, allowOverPinch);
+                    applyZoomAndAbsolutePan(zoom, targetX, targetY, allowOverScroll);
                     if (time >= 1f) {
                         setState(NONE);
                     } else {
@@ -884,6 +893,14 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         }
     }
 
+    /**
+     * Calls {@link #animateScaledPan(float, float, boolean)} repeatedly
+     * until the final delta is applied, interpolating.
+     *
+     * @param deltaX a scaled delta
+     * @param deltaY a scaled delta
+     * @param allowOverScroll whether to overscroll
+     */
     private void animateScaledPan(@ScaledPan float deltaX, @ScaledPan float deltaY,
                                   final boolean allowOverScroll) {
         if (setState(ANIMATING)) {
@@ -917,8 +934,16 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         return INTERPOLATOR.getInterpolation(time);
     }
 
+    /**
+     * Applies the given zoom value, meant as a {@link Zoom} value
+     * (so not a {@link RealZoom}).
+     * The zoom is applied so that the center point is kept in its place
+     * TODO: probably
+     *
+     * @param newZoom the new zoom value
+     * @param allowOverPinch whether to overpinch
+     */
     private void applyZoom(@Zoom float newZoom, boolean allowOverPinch) {
-        // TODO: maybe the scale point is -this?
         newZoom = ensureScaleBounds(newZoom, allowOverPinch);
         float scaleFactor = newZoom / mZoom;
         mMatrix.postScale(scaleFactor, scaleFactor,
@@ -929,13 +954,23 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         dispatchOnMatrix();
     }
 
-    // Fixed
+    /**
+     * Applies both zoom and absolute pan. This is like specifying a position.
+     * The semantics of this are that after the position is applied, the zoom corresponds
+     * to the given value, getPanX() returns x, getPanY() returns y.
+     *
+     * Absolute panning is achieved through {@link Matrix#preTranslate(float, float)},
+     * which works in the original coordinate system.
+     *
+     * TODO: probably
+     * @param newZoom the new zoom value
+     * @param x the final left absolute pan
+     * @param y the final top absolute pan
+     * @param allowOverScroll whether to overscroll
+     */
     private void applyZoomAndAbsolutePan(@Zoom float newZoom,
                                          @AbsolutePan float x, @AbsolutePan float y,
-                                         boolean allowOverScroll, boolean allowOverPinch) {
-        // TODO: ensure that final panX is actually x.
-        // TODO: ensure that final panY is actually y. This is the semantics of this method.
-
+                                         boolean allowOverScroll) {
         // Translation
         @AbsolutePan float deltaX = x - getPanX();
         @AbsolutePan float deltaY = y - getPanY();
@@ -943,7 +978,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         mMatrix.mapRect(mContentRect, mContentBaseRect);
 
         // Scale
-        newZoom = ensureScaleBounds(newZoom, allowOverPinch);
+        newZoom = ensureScaleBounds(newZoom, false);
         float scaleFactor = newZoom / mZoom;
         // mMatrix.postScale(scaleFactor, scaleFactor, mViewWidth / 2f, mViewHeight / 2f);
         // mMatrix.postScale(scaleFactor, scaleFactor, mViewWidth / 2f, mViewHeight / 2f);
@@ -955,6 +990,16 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         dispatchOnMatrix();
     }
 
+    /**
+     * Applies the given scaled translation.
+     *
+     * Scaled translation are applied through {@link Matrix#postTranslate(float, float)},
+     * which acts on the actual dimension of the rect.
+     *
+     * @param deltaX the x translation
+     * @param deltaY the y translation
+     * @param allowOverScroll whether to overScroll
+     */
     private void applyScaledPan(@ScaledPan float deltaX, @ScaledPan float deltaY, boolean allowOverScroll) {
         mMatrix.postTranslate(deltaX, deltaY);
         mMatrix.mapRect(mContentRect, mContentBaseRect);
@@ -962,6 +1007,16 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         dispatchOnMatrix();
     }
 
+    /**
+     * Helper for pinch gestures. In these cases what we know is the detector focus,
+     * and we can use it in {@link Matrix#postScale(float, float, float, float)} to avoid
+     * buggy translations.
+     *
+     * @param newZoom the new zoom
+     * @param targetX the target X in abs value
+     * @param targetY the target Y in abs value
+     * @param allowOverPinch whether to overPinch
+     */
     private void applyPinch(@Zoom float newZoom, @AbsolutePan float targetX, @AbsolutePan float targetY,
                             boolean allowOverPinch) {
         // This is the point we want to keep immuted by the scale action.
