@@ -916,8 +916,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         newZoom = ensureScaleBounds(newZoom, allowOverPinch);
         float scaleFactor = newZoom / mZoom;
         // mMatrix.postScale(scaleFactor, scaleFactor, mViewWidth / 2f, mViewHeight / 2f);
-        // mMatrix.postScale(scaleFactor, scaleFactor, mContentRect.left, mContentRect.top);
-        mMatrix.postScale(scaleFactor, scaleFactor, mContentRect.width(), mContentRect.height());
+        mMatrix.postScale(scaleFactor, scaleFactor, mContentRect.left, mContentRect.top);
+        // mMatrix.postScale(scaleFactor, scaleFactor, mContentRect.width(), mContentRect.height());
         mMatrix.mapRect(mContentRect, mContentBaseRect);
         mZoom = newZoom;
 
