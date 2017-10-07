@@ -33,6 +33,7 @@ import android.widget.FrameLayout;
 public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener {
 
     private final static String TAG = ZoomLayout.class.getSimpleName();
+    private final static ZoomLogger LOG = ZoomLogger.create(TAG);
 
     private ZoomEngine mEngine;
     private Matrix mMatrix = new Matrix();
@@ -174,12 +175,13 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener {
      * @param hasClickableChildren whether we have clickable children
      */
     public void setHasClickableChildren(boolean hasClickableChildren) {
+        LOG.i("setHasClickableChildren:", "old:", mHasClickableChildren, "new:", hasClickableChildren);
         if (mHasClickableChildren && !hasClickableChildren) {
             // Revert any transformation that was applied to our child.
             if (getChildCount() > 0) {
                 View child = getChildAt(0);
-                child.setScaleX(0);
-                child.setScaleY(0);
+                child.setScaleX(1);
+                child.setScaleY(1);
                 child.setTranslationX(0);
                 child.setTranslationY(0);
             }
