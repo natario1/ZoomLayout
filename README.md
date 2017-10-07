@@ -10,7 +10,7 @@ This library provides flexible utilities to control and animate zoom and transla
 programmatically or through touch events. Try the demo app.
 
 ```groovy
-compile 'com.otaliastudios:zoomlayout:1.0.1'
+compile 'com.otaliastudios:zoomlayout:1.0.2'
 ```
 
 <p>

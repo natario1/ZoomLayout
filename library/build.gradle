@@ -5,7 +5,7 @@ apply plugin: 'com.jfrog.bintray'
 // Required by bintray
 // archivesBaseName is required if artifactId is different from gradle module name
 // or you can add baseName to each archive task (sources, javadoc, aar)
-version = '1.0.1'
+version = '1.0.2'
 group = 'com.otaliastudios'
 archivesBaseName = 'zoomlayout'
 
