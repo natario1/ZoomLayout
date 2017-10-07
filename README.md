@@ -6,8 +6,8 @@
 
 # ZoomLayout & ZoomEngine
 
-This library provides flexible utilities to control and animate zoom and translation of Views and much more - either
-programmatically or through touch events. Try the demo app.
+Flexible utilities to control and animate zoom and translation of Views and much more - either
+programmatically or through touch events.
 
 ```groovy
 compile 'com.otaliastudios:zoomlayout:1.0.3'
@@ -17,6 +17,8 @@ compile 'com.otaliastudios:zoomlayout:1.0.3'
   <img src="art/preview_hierarchy.gif" width="250" vspace="20" hspace="5">
   <img src="art/preview_bitmap.gif" width="250" vspace="20" hspace="5">
 </p>
+
+*Want to see `ZoomLayout` in action? Try the demo app or take a look at [ViewPrinter](https://github.com/natario1/ViewPrinter), a printing library heavily based on this.*
 
 ## Features
 
