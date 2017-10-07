@@ -6,6 +6,14 @@
         <attr name="overPinchable" format="boolean"/>
         <attr name="minZoom" format="float"/>
         <attr name="maxZoom" format="float"/>
+        <attr name="minZoomType" format="enum">
+            <enum name="zoom" value="0"/>
+            <enum name="realZoom" value="1"/>
+        </attr>
+        <attr name="maxZoomType" format="enum">
+            <enum name="zoom" value="0"/>
+            <enum name="realZoom" value="1"/>
+        </attr>
     </declare-styleable>
 
 </resources>

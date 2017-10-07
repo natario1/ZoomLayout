@@ -56,13 +56,17 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener {
         boolean hasChildren = a.getBoolean(R.styleable.ZoomEngine_hasClickableChildren, false);
         float minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, -1);
         float maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, -1);
+        @ZoomEngine.ZoomType int minZoomMode = a.getInteger(
+                R.styleable.ZoomEngine_minZoomType, ZoomEngine.TYPE_ZOOM);
+        @ZoomEngine.ZoomType int maxZoomMode = a.getInteger(
+                R.styleable.ZoomEngine_maxZoomType, ZoomEngine.TYPE_ZOOM);
         a.recycle();
 
         mEngine = new ZoomEngine(context, this, this);
         mEngine.setOverScrollable(overScrollable);
         mEngine.setOverPinchable(overPinchable);
-        if (minZoom > -1) mEngine.setMinZoom(minZoom, ZoomEngine.TYPE_ZOOM);
-        if (maxZoom > -1) mEngine.setMaxZoom(maxZoom, ZoomEngine.TYPE_ZOOM);
+        if (minZoom > -1) mEngine.setMinZoom(minZoom, minZoomMode);
+        if (maxZoom > -1) mEngine.setMaxZoom(maxZoom, maxZoomMode);
         setHasClickableChildren(hasChildren);
     }
 

@@ -41,7 +41,9 @@ A container for view hierarchies that can be panned or zoomed.
     app:overScrollable="true"
     app:overPinchable="true"
     app:minZoom="0.7f"
+    app:minZoomType="zoom"
     app:maxZoom="3f"
+    app:maxZoomType="zoom"
     app:hasClickableChildren="false">
 
     <!-- Content here. -->
@@ -73,7 +75,9 @@ An `ImageView` implementation to control pan and zoom over its Drawable or Bitma
     app:overScrollable="true"
     app:overPinchable="true"
     app:minZoom="0.7f"
-    app:maxZoom="3f"/>
+    app:minZoomType="zoom"
+    app:maxZoom="3f"
+    app:maxZoomType="zoom"/>
 ```
 
 There is nothing surprising going on. Just call `setImageDrawable()` and you are done.
