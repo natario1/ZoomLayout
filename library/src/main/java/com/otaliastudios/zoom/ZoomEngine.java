@@ -307,7 +307,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             // This is a possible matrix update.
             @Zoom float newZoom = ensureScaleBounds(mZoom, false);
             LOG.i("init:", "ensureScaleBounds:", "we need a correction of", (newZoom - mZoom));
-            if (newZoom != mZoom) moveTo(newZoom, 0, 0, false, false);
+            if (newZoom != mZoom) applyZoomAndAbsolutePan(newZoom, 0, 0, false, false);
 
             // If there was any, pan should be kept. I think there's nothing to do here:
             // If the matrix is kept, and real zoom is kept, then also the real pan is kept.
@@ -521,9 +521,6 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         @Override
         public boolean onScale(ScaleGestureDetector detector) {
             if (setState(PINCHING)) {
-                float factor = detector.getScaleFactor();
-                float newZoom = mZoom * factor;
-
                 if (mAbsTargetX == 0 || mAbsTargetY == 0) {
                     // We want to interpret this as a scaled value, to work with the *actual* zoom.
                     @ScaledPan float scaledFocusX = -detector.getFocusX();
@@ -542,7 +539,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                 int log = mRandom.nextInt(90);
 
                 // Current scaled center
-                @ScaledPan float currCenterX = (-mViewWidth / 2f) + getScaledPanX();
+                /* @ScaledPan float currCenterX = (-mViewWidth / 2f) + getScaledPanX();
                 @ScaledPan float currCenterY = (-mViewHeight / 2f) + getScaledPanY();
                 LOG.v("onScale:", log, "currCenterX:", currCenterX, "currCenterY:", currCenterY);
 
@@ -554,10 +551,21 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                 // Transform to deltas
                 @ScaledPan float deltaX = targetCenterX - currCenterX;
                 @ScaledPan float deltaY = targetCenterY - currCenterY;
+                LOG.w("onScale:", log, "deltaX:", deltaX, "deltaY:", deltaY); */
+
+                // Current scaled center
+                @AbsolutePan float absCurrCenterX = unresolvePan((-mViewWidth / 2f) + getScaledPanX());
+                @AbsolutePan float absCurrCenterY = unresolvePan((-mViewHeight / 2f) + getScaledPanY());
+
+                // Transform to deltas
+                @AbsolutePan float deltaX = mAbsTargetX - absCurrCenterX;
+                @AbsolutePan float deltaY = mAbsTargetY - absCurrCenterY;
                 LOG.w("onScale:", log, "deltaX:", deltaX, "deltaY:", deltaY);
 
                 // Having both overPinch and overScroll is hard to manage, there are lots of bugs if we do.
-                moveTo(newZoom, deltaX, deltaY, false, true);
+                float factor = detector.getScaleFactor();
+                float newZoom = mZoom * factor;
+                applyZoomAndAbsolutePan(newZoom, deltaX, deltaY, false, true);
                 return true;
             }
             return false;
@@ -576,7 +584,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                 if (getZoom() < minZoom) zoom = minZoom;
                 if (getZoom() > maxZoom) zoom = maxZoom;
                 if (zoom > 0) {
-                    animateTo(zoom, 0, 0, false, true);
+                    animateZoomAndAbsolutePan(zoom, 0, 0, false, true);
                     return;
                 }
             }
@@ -603,7 +611,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                                 @AbsolutePan float distanceX, @AbsolutePan float distanceY) {
             if (setState(SCROLLING)) {
                 // Allow overScroll. Will be reset in onScrollEnd().
-                moveTo(getZoom(), -resolvePan(distanceX), -resolvePan(distanceY), true, false);
+                applyZoomAndAbsolutePan(getZoom(), -distanceX, -distanceY, true, false);
                 return true;
             }
             return false;
@@ -616,7 +624,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             @ScaledPan float fixX = ensureTranslationBounds(0, true, false);
             @ScaledPan float fixY = ensureTranslationBounds(0, false, false);
             if (fixX != 0 || fixY != 0) {
-                animateTo(getZoom(), fixX, fixY, true, false);
+                animateScaledPan(fixX, fixY, true);
                 return;
             }
         }
@@ -641,9 +649,9 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     public void moveTo(@Zoom float zoom, @AbsolutePan float x, @AbsolutePan float y, boolean animate) {
         if (!mInitialized) return;
         if (animate) {
-            animateTo(zoom, resolvePan(x - getPanX()), resolvePan(y - getPanY()), false, false);
+            animateZoomAndAbsolutePan(zoom, x - getPanX(), y - getPanY(), false, false);
         } else {
-            moveTo(zoom, resolvePan(x - getPanX()), resolvePan(y - getPanY()), false, false);
+            applyZoomAndAbsolutePan(zoom, x - getPanX(), y - getPanY(), false, false);
         }
     }
 
@@ -675,9 +683,9 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     public void panBy(@AbsolutePan float dx, @AbsolutePan float dy, boolean animate) {
         if (!mInitialized) return;
         if (animate) {
-            animateTo(mZoom, resolvePan(dx), resolvePan(dy), false, false);
+            animateZoomAndAbsolutePan(mZoom, dx, dy, false, false);
         } else {
-            moveTo(mZoom, resolvePan(dx), resolvePan(dy), false, false);
+            applyZoomAndAbsolutePan(mZoom, dx, dy, false, false);
         }
     }
 
@@ -691,9 +699,9 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     public void zoomTo(@Zoom float zoom, boolean animate) {
         if (!mInitialized) return;
         if (animate) {
-            animateTo(zoom, 0, 0, false, false);
+            animateZoomAndAbsolutePan(zoom, 0, 0, false, false);
         } else {
-            moveTo(zoom, 0, 0, false, false);
+            applyZoom(zoom, false);
         }
     }
 
@@ -826,30 +834,35 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         return mContentRect.top;
     }
 
-    private void animateTo(@Zoom float newZoom, @ScaledPan final float deltaX, @ScaledPan float deltaY,
-                           final boolean allowOverScroll, final boolean allowOverPinch) {
+    //endregion
+
+    //region Apply values
+
+    private void animateZoomAndAbsolutePan(@Zoom float newZoom,
+                                           @AbsolutePan final float deltaX, @AbsolutePan float deltaY,
+                                           final boolean allowOverScroll, final boolean allowOverPinch) {
         newZoom = ensureScaleBounds(newZoom, allowOverScroll);
         if (setState(ANIMATING)) {
             mClearAnimation = false;
             final long startTime = System.currentTimeMillis();
             @Zoom final float startZoom = mZoom;
             @Zoom final float endZoom = newZoom;
-            @ScaledPan final float startX = getScaledPanX();
-            @ScaledPan final float startY = getScaledPanY();
-            @ScaledPan final float endX = startX + deltaX;
-            @ScaledPan final float endY = startY + deltaY;
-            LOG.i("animateTo:", "starting.", "startX:", startX, "endX:", endX, "startY:", startY, "endY:", endY);
-            LOG.i("animateTo:", "starting.", "startZoom:", startZoom, "endZoom:", endZoom);
+            @AbsolutePan final float startX = getPanX();
+            @AbsolutePan final float startY = getPanY();
+            @AbsolutePan final float endX = startX + deltaX;
+            @AbsolutePan final float endY = startY + deltaY;
+            LOG.i("animateZoomAndAbsolutePan:", "starting.", "startX:", startX, "endX:", endX, "startY:", startY, "endY:", endY);
+            LOG.i("animateZoomAndAbsolutePan:", "starting.", "startZoom:", startZoom, "endZoom:", endZoom);
             mView.post(new Runnable() {
                 @Override
                 public void run() {
                     if (mClearAnimation) return;
-                    float time = interpolateAnimationTime(startTime);
-                    LOG.v("animateTo:", "animationStep:", time);
+                    float time = interpolateAnimationTime(System.currentTimeMillis() - startTime);
+                    LOG.v("animateZoomAndAbsolutePan:", "animationStep:", time);
                     @Zoom float zoom = startZoom + time * (endZoom - startZoom);
-                    @ScaledPan float x = startX + time * (endX - startX);
-                    @ScaledPan float y = startY + time * (endY - startY);
-                    moveTo(zoom, x - getScaledPanX(), y - getScaledPanY(), allowOverScroll, allowOverPinch);
+                    @AbsolutePan float x = startX + time * (endX - startX);
+                    @AbsolutePan float y = startY + time * (endY - startY);
+                    applyZoomAndAbsolutePan(zoom, x - getPanX(), y - getPanY(), allowOverScroll, allowOverPinch);
                     if (time >= 1f) {
                         setState(NONE);
                     } else {
@@ -860,28 +873,68 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         }
     }
 
-    private void moveTo(@Zoom float newZoom, @ScaledPan float deltaX, @ScaledPan float deltaY,
-                        boolean allowOverScroll, boolean allowOverPinch) {
+    private void animateScaledPan(@ScaledPan float deltaX, @ScaledPan float deltaY,
+                                  final boolean allowOverScroll) {
+        if (setState(ANIMATING)) {
+            mClearAnimation = false;
+            final long startTime = System.currentTimeMillis();
+            @ScaledPan final float startX = getScaledPanX();
+            @ScaledPan final float startY = getScaledPanY();
+            @ScaledPan final float endX = startX + deltaX;
+            @ScaledPan final float endY = startY + deltaY;
+            mView.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (mClearAnimation) return;
+                    float time = interpolateAnimationTime(System.currentTimeMillis() - startTime);
+                    LOG.v("animateScaledPan:", "animationStep:", time);
+                    @ScaledPan float x = startX + time * (endX - startX);
+                    @ScaledPan float y = startY + time * (endY - startY);
+                    applyScaledPan(x - getScaledPanX(), y - getScaledPanY(), allowOverScroll);
+                    if (time >= 1f) {
+                        setState(NONE);
+                    } else {
+                        mView.postOnAnimation(this);
+                    }
+                }
+            });
+        }
+    }
 
+    private void applyZoom(@Zoom float newZoom, boolean allowOverPinch) {
+        applyZoomAndAbsolutePan(newZoom, 0, 0, false, allowOverPinch);
+    }
+
+    private void applyZoomAndAbsolutePan(@Zoom float newZoom,
+                                         @AbsolutePan float deltaX, @AbsolutePan float deltaY,
+                                         boolean allowOverScroll, boolean allowOverPinch) {
         // Translation
-        mMatrix.postTranslate(deltaX, deltaY);
+        mMatrix.preTranslate(deltaX, deltaY);
         mMatrix.mapRect(mContentRect, mContentBaseRect);
 
         // Scale
         newZoom = ensureScaleBounds(newZoom, allowOverPinch);
         float scaleFactor = newZoom / mZoom;
-        mMatrix.postScale(scaleFactor, scaleFactor, mViewWidth / 2f, mViewHeight / 2f);
+        // mMatrix.postScale(scaleFactor, scaleFactor, mViewWidth / 2f, mViewHeight / 2f);
+        // mMatrix.postScale(scaleFactor, scaleFactor, mContentRect.left, mContentRect.top);
+        mMatrix.postScale(scaleFactor, scaleFactor, mContentRect.width(), mContentRect.height());
+        mMatrix.mapRect(mContentRect, mContentBaseRect);
         mZoom = newZoom;
 
         ensureCurrentTranslationBounds(allowOverScroll);
         dispatchOnMatrix();
     }
 
-    private float interpolateAnimationTime(long startTime) {
-        float time = ((float) (System.currentTimeMillis() - startTime)) / (float) ANIMATION_DURATION;
-        time = Math.min(1f, time);
-        time = INTERPOLATOR.getInterpolation(time);
-        return time;
+    private void applyScaledPan(@ScaledPan float deltaX, @ScaledPan float deltaY, boolean allowOverScroll) {
+        mMatrix.postTranslate(deltaX, deltaY);
+        mMatrix.mapRect(mContentRect, mContentBaseRect);
+        ensureCurrentTranslationBounds(allowOverScroll);
+        dispatchOnMatrix();
+    }
+
+    private float interpolateAnimationTime(long delta) {
+        float time = Math.min(1, (float) delta / (float) ANIMATION_DURATION);
+        return INTERPOLATOR.getInterpolation(time);
     }
 
     //endregion
@@ -948,7 +1001,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                     @ScaledPan final int newPanX = mFlingScroller.getCurrX();
                     @ScaledPan final int newPanY = mFlingScroller.getCurrY();
                     // OverScroller will eventually go back to our bounds.
-                    moveTo(getZoom(), newPanX - getScaledPanX(), newPanY - getScaledPanY(), true, false);
+                    applyScaledPan(newPanX - getScaledPanX(), newPanY - getScaledPanY(), true);
                     mView.postOnAnimation(this);
                 }
             }
