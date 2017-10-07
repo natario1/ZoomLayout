@@ -121,24 +121,28 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener {
     @Override
     public void onUpdate(ZoomEngine helper, Matrix matrix) {
         mMatrix.set(matrix);
-        if (mHasClickableChildren && getChildCount() > 0) {
-            View child = getChildAt(0);
+        if (mHasClickableChildren) {
+            if (getChildCount() > 0) {
+                View child = getChildAt(0);
 
-            // child.getMatrix().getValues(mMatrixValues);
-            // Log.e(TAG, "values 0:" + Arrays.toString(mMatrixValues));
-            // mMatrix.getValues(mMatrixValues);
-            // Log.e(TAG, "values 1:" + Arrays.toString(mMatrixValues));
+                // child.getMatrix().getValues(mMatrixValues);
+                // Log.e(TAG, "values 0:" + Arrays.toString(mMatrixValues));
+                // mMatrix.getValues(mMatrixValues);
+                // Log.e(TAG, "values 1:" + Arrays.toString(mMatrixValues));
 
-            mMatrix.getValues(mMatrixValues);
-            child.setPivotX(0);
-            child.setPivotY(0);
-            child.setTranslationX(mMatrixValues[Matrix.MTRANS_X]);
-            child.setTranslationY(mMatrixValues[Matrix.MTRANS_Y]);
-            child.setScaleX(mMatrixValues[Matrix.MSCALE_X]);
-            child.setScaleY(mMatrixValues[Matrix.MSCALE_Y]);
+                mMatrix.getValues(mMatrixValues);
+                child.setPivotX(0);
+                child.setPivotY(0);
+                child.setTranslationX(mMatrixValues[Matrix.MTRANS_X]);
+                child.setTranslationY(mMatrixValues[Matrix.MTRANS_Y]);
+                child.setScaleX(mMatrixValues[Matrix.MSCALE_X]);
+                child.setScaleY(mMatrixValues[Matrix.MSCALE_Y]);
 
-            // child.getMatrix().getValues(mMatrixValues);
-            // Log.e(TAG, "values 2:" + Arrays.toString(mMatrixValues));
+                // child.getMatrix().getValues(mMatrixValues);
+                // Log.e(TAG, "values 2:" + Arrays.toString(mMatrixValues));
+            }
+        } else {
+            invalidate();
         }
     }
 
