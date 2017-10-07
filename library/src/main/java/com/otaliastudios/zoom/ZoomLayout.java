@@ -110,12 +110,12 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener {
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        return mEngine.onInterceptTouchEvent(ev) || super.onInterceptTouchEvent(ev);
+        return mEngine.onInterceptTouchEvent(ev) || (mHasClickableChildren && super.onInterceptTouchEvent(ev));
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        return mEngine.onTouchEvent(ev) || super.onTouchEvent(ev);
+        return mEngine.onTouchEvent(ev) || (mHasClickableChildren && super.onTouchEvent(ev));
     }
 
     @Override
