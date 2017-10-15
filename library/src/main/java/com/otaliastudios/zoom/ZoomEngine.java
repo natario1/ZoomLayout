@@ -982,7 +982,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         newZoom = ensureScaleBounds(newZoom, allowOverPinch);
         float scaleFactor = newZoom / mZoom;
         mMatrix.postScale(scaleFactor, scaleFactor,
-                mContentRect.width() / 2f, mContentRect.height() / 2f);
+                mViewWidth / 2f, mViewHeight / 2f);
         mMatrix.mapRect(mContentRect, mContentBaseRect);
         mZoom = newZoom;
         ensureCurrentTranslationBounds(false);
@@ -1014,9 +1014,11 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         // Scale
         newZoom = ensureScaleBounds(newZoom, false);
         float scaleFactor = newZoom / mZoom;
-        // mMatrix.postScale(scaleFactor, scaleFactor, mViewWidth / 2f, mViewHeight / 2f);
-        // mMatrix.postScale(scaleFactor, scaleFactor, mViewWidth / 2f, mViewHeight / 2f);
-        mMatrix.postScale(scaleFactor, scaleFactor, mContentRect.left, mContentRect.top);
+        // TODO: This used to work but I am not sure about it.
+        // mMatrix.postScale(scaleFactor, scaleFactor, getScaledPanX(), getScaledPanY());
+        // It keeps the pivot point at the scaled values 0, 0 (see applyPinch).
+        // I think we should keep the current top, left.. Let's try:
+        mMatrix.postScale(scaleFactor, scaleFactor, 0, 0);
         mMatrix.mapRect(mContentRect, mContentBaseRect);
         mZoom = newZoom;
 
@@ -1053,12 +1055,19 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      */
     private void applyPinch(@Zoom float newZoom, @AbsolutePan float targetX, @AbsolutePan float targetY,
                             boolean allowOverPinch) {
-        // This is the point we want to keep immuted by the scale action.
+        // The pivotX and pivotY options of postScale refer (obviously!) to the visible
+        // portion of the screen, since the (0,0) point is remapped to be in top-left of the view.
+        // The right coordinates to use are the view coordinates.
+        // This means we should use scaled coordinates, but remove the current pan.
+
         @ScaledPan float scaledX = resolvePan(targetX);
         @ScaledPan float scaledY = resolvePan(targetY);
         newZoom = ensureScaleBounds(newZoom, allowOverPinch);
         float scaleFactor = newZoom / mZoom;
-        mMatrix.postScale(scaleFactor, scaleFactor, -scaledX, -scaledY);
+        mMatrix.postScale(scaleFactor, scaleFactor,
+                getScaledPanX() - scaledX,
+                getScaledPanY() - scaledY);
+
         mMatrix.mapRect(mContentRect, mContentBaseRect);
         mZoom = newZoom;
         ensureCurrentTranslationBounds(false);
