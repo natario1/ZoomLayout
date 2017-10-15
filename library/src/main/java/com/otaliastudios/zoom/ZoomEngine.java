@@ -126,7 +126,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     private int mMaxZoomMode = TYPE_ZOOM;
     @Zoom private float mZoom = 1f; // Not necessarily equal to the matrix scale.
     private float mBaseZoom; // mZoom * mBaseZoom matches the matrix scale.
-    private boolean mOverScrollable = true;
+    private boolean mOverScrollHorizontal = true;
+    private boolean mOverScrollVertical = true;
     private boolean mOverPinchable = true;
     private boolean mClearAnimation;
     private OverScroller mFlingScroller;
@@ -215,14 +216,39 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     //region Overscroll
 
     /**
+     * Controls whether the content should be over-scrollable horizontally.
+     * If it is, drag and fling horizontal events can scroll the content outside the safe area,
+     * then return to safe values.
+     *
+     * @param overScroll whether to allow horizontal over scrolling
+     */
+    public void setOverScrollHorizontal(boolean overScroll) {
+        mOverScrollHorizontal = overScroll;
+    }
+
+    /**
+     * Controls whether the content should be over-scrollable vertically.
+     * If it is, drag and fling vertical events can scroll the content outside the safe area,
+     * then return to safe values.
+     *
+     * @param overScroll whether to allow vertical over scrolling
+     */
+    public void setOverScrollVertical(boolean overScroll) {
+        mOverScrollVertical = overScroll;
+    }
+
+    /**
      * Controls whether the content should be overScrollable.
      * If it is, drag and fling events can scroll the content outside the safe area,
      * then return to safe values.
      *
+     * @deprecated use {@link #setOverScrollHorizontal(boolean)} and {@link #setOverScrollVertical(boolean)} instead
      * @param overScrollable whether to allow over scrolling
      */
+    @Deprecated
     public void setOverScrollable(boolean overScrollable) {
-        mOverScrollable = overScrollable;
+        setOverScrollHorizontal(overScrollable);
+        setOverScrollVertical(overScrollable);
     }
 
     /**
@@ -397,16 +423,20 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     // Checks against the translation value to ensure it is inside our acceptable bounds.
     // If allowOverScroll, overScroll value might be considered to allow "invalid" value.
     @ScaledPan
-    private float ensureTranslationBounds(@ScaledPan float delta, boolean width, boolean allowOverScroll) {
-        @ScaledPan float value = width ? getScaledPanX() : getScaledPanY();
-        float viewSize = width ? mViewWidth : mViewHeight;
-        @ScaledPan float contentSize = width ? mContentRect.width() : mContentRect.height();
-        return getTranslationCorrection(value + delta, viewSize, contentSize, allowOverScroll);
+    private float ensureTranslationBounds(@ScaledPan float delta, boolean horizontal, boolean allowOverScroll) {
+        @ScaledPan float value = horizontal ? getScaledPanX() : getScaledPanY();
+        float viewSize = horizontal ? mViewWidth : mViewHeight;
+        @ScaledPan float contentSize = horizontal ? mContentRect.width() : mContentRect.height();
+
+        boolean overScrollable = horizontal ? mOverScrollHorizontal : mOverScrollVertical;
+        @ScaledPan float overScroll = (overScrollable && allowOverScroll) ? getCurrentOverScroll() : 0;
+        return getTranslationCorrection(value + delta, viewSize, contentSize, overScroll);
     }
 
     @ScaledPan
-    private float getTranslationCorrection(@ScaledPan float value, float viewSize, @ScaledPan float contentSize, boolean allowOverScroll) {
-        @ScaledPan int tolerance = (allowOverScroll && mOverScrollable) ? getCurrentOverScroll() : 0;
+    private float getTranslationCorrection(@ScaledPan float value, float viewSize,
+                                           @ScaledPan float contentSize, @ScaledPan float overScroll) {
+        @ScaledPan int tolerance = (int) overScroll;
         float min, max;
         if (contentSize <= viewSize) {
             // If contentSize <= viewSize, we want to stay centered.
@@ -606,7 +636,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     }
 
     private void onScrollEnd() {
-        if (mOverScrollable) {
+        if (mOverScrollHorizontal || mOverScrollVertical) {
             // We might have over scrolled. Animate back to reasonable value.
             @ScaledPan float fixX = ensureTranslationBounds(0, true, false);
             @ScaledPan float fixY = ensureTranslationBounds(0, false, false);
@@ -1042,11 +1072,11 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     // Puts min, start and max values in the mTemp array.
     // Since axes are shifted (pans are negative), min values are related to bottom-right,
     // while max values are related to top-left.
-    private boolean computeScrollerValues(boolean width) {
-        @ScaledPan int currentPan = (int) (width ? getScaledPanX() : getScaledPanY());
-        int viewDim = (int) (width ? mViewWidth : mViewHeight);
-        @ScaledPan int contentDim = (int) (width ? mContentRect.width() : mContentRect.height());
-        int fix = (int) ensureTranslationBounds(0, width, false);
+    private boolean computeScrollerValues(boolean horizontal) {
+        @ScaledPan int currentPan = (int) (horizontal ? getScaledPanX() : getScaledPanY());
+        int viewDim = (int) (horizontal ? mViewWidth : mViewHeight);
+        @ScaledPan int contentDim = (int) (horizontal ? mContentRect.width() : mContentRect.height());
+        int fix = (int) ensureTranslationBounds(0, horizontal, false);
         if (viewDim >= contentDim) {
             // Content is smaller, we are showing some boundary.
             // We can't move in any direction (but we can overScroll).
@@ -1078,17 +1108,18 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         @ScaledPan int startY = mTemp[1];
         @ScaledPan int maxY = mTemp[2];
 
-        boolean go = overScrolled || mOverScrollable || minX < maxX || minY < maxY;
+        boolean go = overScrolled || mOverScrollHorizontal || mOverScrollVertical || minX < maxX || minY < maxY;
         if (!go) return false;
 
-        @ScaledPan int overScroll = mOverScrollable ? getCurrentOverScroll() : 0;
+        @ScaledPan int overScrollX = mOverScrollHorizontal ? getCurrentOverScroll() : 0;
+        @ScaledPan int overScrollY = mOverScrollVertical ? getCurrentOverScroll() : 0;
         LOG.i("startFling", "velocityX:", velocityX, "velocityY:", velocityY);
-        LOG.i("startFling", "flingX:", "min:", minX, "max:", maxX, "start:", startX, "overScroll:", overScroll);
-        LOG.i("startFling", "flingY:", "min:", minY, "max:", maxY, "start:", startY, "overScroll:", overScroll);
+        LOG.i("startFling", "flingX:", "min:", minX, "max:", maxX, "start:", startX, "overScroll:", overScrollY);
+        LOG.i("startFling", "flingY:", "min:", minY, "max:", maxY, "start:", startY, "overScroll:", overScrollX);
         mFlingScroller.fling(startX, startY,
                 velocityX, velocityY,
                 minX, maxX, minY, maxY,
-                overScroll, overScroll);
+                overScrollX, overScrollY);
 
         mView.post(new Runnable() {
             @Override
