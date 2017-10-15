@@ -3,6 +3,8 @@
     <declare-styleable name="ZoomEngine">
         <attr name="hasClickableChildren" format="boolean"/>
         <attr name="overScrollable" format="boolean"/>
+        <attr name="overScrollHorizontal" format="boolean"/>
+        <attr name="overScrollVertical" format="boolean"/>
         <attr name="overPinchable" format="boolean"/>
         <attr name="minZoom" format="float"/>
         <attr name="maxZoom" format="float"/>

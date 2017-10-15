@@ -40,7 +40,8 @@ A container for view hierarchies that can be panned or zoomed.
 <com.otaliastudios.zoom.ZoomLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    app:overScrollable="true"
+    app:overScrollHorizontal="true"
+    app:overScrollVertical="true"
     app:overPinchable="true"
     app:minZoom="0.7f"
     app:minZoomType="zoom"
@@ -66,6 +67,15 @@ So it can be as big as you want.
 
 You can access all the [internal APIs](#zoomengine) using `zoomLayout.getEngine()`.
 
+```java
+zoomLayout.getEngine().panTo(x, y, true);
+zoomLayout.getEngine().panBy(deltaX, deltaY, true);
+zoomLayout.getEngine().zoomTo(zoom, true);
+zoomLayout.getEngine().zoomBy(factor, true);
+zoomLayout.getEngine().realZoomTo(realZoom, true);
+zoomLayout.getEngine().moveTo(zoom, x, y, true);
+```
+
 ## ZoomImageView
 
 An `ImageView` implementation to control pan and zoom over its Drawable or Bitmap.
@@ -74,7 +84,8 @@ An `ImageView` implementation to control pan and zoom over its Drawable or Bitma
 <com.otaliastudios.zoom.ZoomImageView
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    app:overScrollable="true"
+    app:overScrollHorizontal="true"
+    app:overScrollVertical="true"
     app:overPinchable="true"
     app:minZoom="0.7f"
     app:minZoomType="zoom"
@@ -96,6 +107,15 @@ a natural implementations of the zoom engine. It is fast, lightweight and simple
 ### APIs
 
 You can access all the [internal APIs](#zoomengine) using `zoomImageView.getEngine()`.
+
+```java
+zoomImageView.getEngine().panTo(x, y, true);
+zoomImageView.getEngine().panBy(deltaX, deltaY, true);
+zoomImageView.getEngine().zoomTo(zoom, true);
+zoomImageView.getEngine().zoomBy(factor, true);
+zoomImageView.getEngine().realZoomTo(realZoom, true);
+zoomImageView.getEngine().moveTo(zoom, x, y, true);
+```
 
 ## ZoomEngine
 
@@ -154,7 +174,8 @@ In any case the current scale is not considered, so your system won't change if 
 |---|-----------|-------------|
 |`getPanX()`|Returns the current horizontal pan.|`-`|
 |`getPanY()`|Returns the current vertical pan.|`-`|
-|`setOverScrollable(boolean)`|If true, the content will be allowed to pan outside its bounds, then return to its position.|`true`|
+|`setOverScrollHorizontal(boolean)`|If true, the content will be allowed to pan outside its horizontal bounds, then return to its position.|`true`|
+|`setOverScrollVertical(boolean)`|If true, the content will be allowed to pan outside its vertical bounds, then return to its position.|`true`|
 |`panTo(float, float, boolean)`|Pans to the given values, animating if needed.|`-`|
 |`panBy(float, float, boolean)`|Applies the given deltas to the current pan, animating if needed.|`-`|
 

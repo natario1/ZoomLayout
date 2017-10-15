@@ -40,7 +40,15 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener {
         super(context, attrs, defStyleAttr);
 
         TypedArray a = context.getTheme().obtainStyledAttributes(attrs, R.styleable.ZoomEngine, defStyleAttr, 0);
-        boolean overScrollable = a.getBoolean(R.styleable.ZoomEngine_overScrollable, true);
+        // Support deprecated overScrollable
+        boolean overScrollHorizontal, overScrollVertical;
+        if (a.hasValue(R.styleable.ZoomEngine_overScrollable)) {
+            overScrollHorizontal = a.getBoolean(R.styleable.ZoomEngine_overScrollable, true);
+            overScrollVertical = a.getBoolean(R.styleable.ZoomEngine_overScrollable, true);
+        } else {
+            overScrollHorizontal = a.getBoolean(R.styleable.ZoomEngine_overScrollHorizontal, true);
+            overScrollVertical = a.getBoolean(R.styleable.ZoomEngine_overScrollVertical, true);
+        }
         boolean overPinchable = a.getBoolean(R.styleable.ZoomEngine_overPinchable, true);
         float minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, -1);
         float maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, -1);
@@ -52,7 +60,8 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener {
         a.recycle();
 
         mEngine = new ZoomEngine(context, this, this);
-        mEngine.setOverScrollable(overScrollable);
+        mEngine.setOverScrollHorizontal(overScrollHorizontal);
+        mEngine.setOverScrollVertical(overScrollVertical);
         mEngine.setOverPinchable(overPinchable);
         if (minZoom > -1) mEngine.setMinZoom(minZoom, minZoomMode);
         if (maxZoom > -1) mEngine.setMaxZoom(maxZoom, maxZoomMode);
