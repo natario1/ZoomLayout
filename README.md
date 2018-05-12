@@ -65,15 +65,16 @@ So it can be as big as you want.
 
 ### APIs
 
-You can access all the [internal APIs](#zoomengine) using `zoomLayout.getEngine()`.
+The zoom layout will forward all API calls to the internal engine. See [engine docs](#zoomengine).
+You can also get the backing engine using `zoomLayout.getEngine()`.
 
 ```java
-zoomLayout.getEngine().panTo(x, y, true);
-zoomLayout.getEngine().panBy(deltaX, deltaY, true);
-zoomLayout.getEngine().zoomTo(zoom, true);
-zoomLayout.getEngine().zoomBy(factor, true);
-zoomLayout.getEngine().realZoomTo(realZoom, true);
-zoomLayout.getEngine().moveTo(zoom, x, y, true);
+zoomLayout.panTo(x, y, true); // Shorthand for zoomLayout.getEngine().panTo(x, y, true)
+zoomLayout.panBy(deltaX, deltaY, true);
+zoomLayout.zoomTo(zoom, true);
+zoomLayout.zoomBy(factor, true);
+zoomLayout.realZoomTo(realZoom, true);
+zoomLayout.moveTo(zoom, x, y, true);
 ```
 
 ## ZoomImageView
@@ -106,15 +107,16 @@ a natural implementations of the zoom engine. It is fast, lightweight and simple
     
 ### APIs
 
-You can access all the [internal APIs](#zoomengine) using `zoomImageView.getEngine()`.
+The zoom image view will forward all API calls to the internal engine. See [engine docs](#zoomengine).
+You can also get the backing engine using `zoomImageView.getEngine()`.
 
 ```java
-zoomImageView.getEngine().panTo(x, y, true);
-zoomImageView.getEngine().panBy(deltaX, deltaY, true);
-zoomImageView.getEngine().zoomTo(zoom, true);
-zoomImageView.getEngine().zoomBy(factor, true);
-zoomImageView.getEngine().realZoomTo(realZoom, true);
-zoomImageView.getEngine().moveTo(zoom, x, y, true);
+zoomImageView.panTo(x, y, true); // Shorthand for zoomImageView.getEngine().panTo(x, y, true)
+zoomImageView.panBy(deltaX, deltaY, true);
+zoomImageView.zoomTo(zoom, true);
+zoomImageView.zoomBy(factor, true);
+zoomImageView.realZoomTo(realZoom, true);
+zoomImageView.moveTo(zoom, x, y, true);
 ```
 
 ## ZoomEngine
@@ -157,6 +159,8 @@ will make more sense than the other - e. g., in a PDF viewer, you might want to 
 |`realZoomTo(float, boolean)`|Moves the real zoom to the given value, animating if needed.|`-`|
 |`zoomTo(float, boolean)`|Moves the zoom to the given value, animating if needed.|`-`|
 |`zoomBy(float, boolean)`|Applies the given factor to the current zoom, animating if needed. OK for both types.|`-`|
+|`zoomIn()`|Applies a small, animated zoom-in.|`-`|
+|`zoomOut()`|Applies a small, animated zoom-out.|`-`|
 
 The `moveTo(float, float, float, boolean)` API will let you animate both zoom and [pan](#pan) at the same time.
 
