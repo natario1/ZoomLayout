@@ -1118,7 +1118,10 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         @ScaledPan int maxY = mTemp[2];
 
         boolean go = overScrolled || mOverScrollHorizontal || mOverScrollVertical || minX < maxX || minY < maxY;
-        if (!go) return false;
+        if (!go) {
+            setState(NONE);
+            return false;
+        }
 
         @ScaledPan int overScrollX = mOverScrollHorizontal ? getCurrentOverScroll() : 0;
         @ScaledPan int overScrollY = mOverScrollVertical ? getCurrentOverScroll() : 0;
