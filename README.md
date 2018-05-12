@@ -10,7 +10,7 @@ Flexible utilities to control and animate zoom and translation of Views and much
 programmatically or through touch events.
 
 ```groovy
-compile 'com.otaliastudios:zoomlayout:1.1.0'
+compile 'com.otaliastudios:zoomlayout:1.1.1'
 ```
 
 <p>
@@ -43,9 +43,9 @@ A container for view hierarchies that can be panned or zoomed.
     app:overScrollHorizontal="true"
     app:overScrollVertical="true"
     app:overPinchable="true"
-    app:minZoom="0.7f"
+    app:minZoom="0.7"
     app:minZoomType="zoom"
-    app:maxZoom="3f"
+    app:maxZoom="3.0"
     app:maxZoomType="zoom"
     app:hasClickableChildren="false">
 
@@ -87,9 +87,9 @@ An `ImageView` implementation to control pan and zoom over its Drawable or Bitma
     app:overScrollHorizontal="true"
     app:overScrollVertical="true"
     app:overPinchable="true"
-    app:minZoom="0.7f"
+    app:minZoom="0.7"
     app:minZoomType="zoom"
-    app:maxZoom="3f"
+    app:maxZoom="3.0"
     app:maxZoomType="zoom"/>
 ```
 
