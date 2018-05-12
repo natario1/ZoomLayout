@@ -21,6 +21,7 @@ allprojects {
 }
 
 ext {
+    // Updating? Update travis.yml.
     compileSdkVersion = 27
     buildToolsVersion = "27.0.3"
     supportLibVersion = '27.1.0'
