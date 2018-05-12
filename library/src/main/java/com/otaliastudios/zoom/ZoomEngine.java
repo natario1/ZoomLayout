@@ -32,7 +32,7 @@ import java.util.Random;
  * This class will try to keep the content centered. It also starts with a "center inside" policy
  * that will apply a base zoom to the content, so that it fits inside the view container.
  */
-public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener/*, View.OnTouchListener*/ {
+public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener, ZoomApi {
 
     private static final String TAG = ZoomEngine.class.getSimpleName();
     private static final Interpolator INTERPOLATOR = new AccelerateDecelerateInterpolator();
@@ -73,42 +73,6 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     @Retention(RetentionPolicy.SOURCE)
     @IntDef({NONE, SCROLLING, PINCHING, ANIMATING, FLINGING})
     private @interface State {}
-
-    @Retention(RetentionPolicy.SOURCE)
-    private @interface RealZoom {}
-
-    @Retention(RetentionPolicy.SOURCE)
-    private @interface Zoom {}
-
-    @Retention(RetentionPolicy.SOURCE)
-    private @interface AbsolutePan {}
-
-    @Retention(RetentionPolicy.SOURCE)
-    private @interface ScaledPan {}
-
-    /**
-     * Flag for zoom constraints and settings.
-     * With TYPE_ZOOM the constraint is measured over the zoom in {@link #getZoom()}.
-     * This is not the actual matrix scale value.
-     *
-     * @see #getZoom()
-     * @see #getRealZoom()
-     */
-    public static final int TYPE_ZOOM = 0;
-
-    /**
-     * Flag for zoom constraints and settings.
-     * With TYPE_REAL_ZOOM the constraint is measured over the zoom in {@link #getRealZoom()},
-     * which is the actual scale you get in the matrix.
-     *
-     * @see #getZoom()
-     * @see #getRealZoom()
-     */
-    public static final int TYPE_REAL_ZOOM = 1;
-
-    @Retention(RetentionPolicy.SOURCE)
-    @IntDef({TYPE_ZOOM, TYPE_REAL_ZOOM})
-    public @interface ZoomType {}
 
     private View mView;
     private Listener mListener;
@@ -222,6 +186,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      *
      * @param overScroll whether to allow horizontal over scrolling
      */
+    @Override
     public void setOverScrollHorizontal(boolean overScroll) {
         mOverScrollHorizontal = overScroll;
     }
@@ -233,22 +198,9 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      *
      * @param overScroll whether to allow vertical over scrolling
      */
+    @Override
     public void setOverScrollVertical(boolean overScroll) {
         mOverScrollVertical = overScroll;
-    }
-
-    /**
-     * Controls whether the content should be overScrollable.
-     * If it is, drag and fling events can scroll the content outside the safe area,
-     * then return to safe values.
-     *
-     * @deprecated use {@link #setOverScrollHorizontal(boolean)} and {@link #setOverScrollVertical(boolean)} instead
-     * @param overScrollable whether to allow over scrolling
-     */
-    @Deprecated
-    public void setOverScrollable(boolean overScrollable) {
-        setOverScrollHorizontal(overScrollable);
-        setOverScrollVertical(overScrollable);
     }
 
     /**
@@ -258,6 +210,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      *
      * @param overPinchable whether to allow over pinching
      */
+    @Override
     public void setOverPinchable(boolean overPinchable) {
         mOverPinchable = overPinchable;
     }
@@ -663,6 +616,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @param y the desired top coordinate
      * @param animate whether to animate the transition
      */
+    @Override
     public void moveTo(@Zoom float zoom, @AbsolutePan float x, @AbsolutePan float y, boolean animate) {
         if (!mInitialized) return;
         if (animate) {
@@ -681,6 +635,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @param y the desired top coordinate
      * @param animate whether to animate the transition
      */
+    @Override
     public void panTo(@AbsolutePan float x, @AbsolutePan float y, boolean animate) {
         panBy(x - getPanX(), y - getPanY(), animate);
     }
@@ -697,6 +652,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @param dy the desired delta y
      * @param animate whether to animate the transition
      */
+    @Override
     public void panBy(@AbsolutePan float dx, @AbsolutePan float dy, boolean animate) {
         if (!mInitialized) return;
         if (animate) {
@@ -713,6 +669,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @param zoom the new scale value
      * @param animate whether to animate the transition
      */
+    @Override
     public void zoomTo(@Zoom float zoom, boolean animate) {
         if (!mInitialized) return;
         if (animate) {
@@ -728,9 +685,29 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @param zoomFactor a multiplicative factor
      * @param animate whether to animate the transition
      */
+    @Override
     public void zoomBy(float zoomFactor, boolean animate) {
         @Zoom float newZoom = mZoom * zoomFactor;
         zoomTo(newZoom, animate);
+    }
+
+
+    /**
+     * Applies a small, animated zoom-in.
+     * Shorthand for {@link #zoomBy(float, boolean)} with factor 1.3.
+     */
+    @Override
+    public void zoomIn() {
+        zoomBy(1.3F, true);
+    }
+
+    /**
+     * Applies a small, animated zoom-out.
+     * Shorthand for {@link #zoomBy(float, boolean)} with factor 0.7.
+     */
+    @Override
+    public void zoomOut() {
+        zoomBy(0.7F, true);
     }
 
     /**
@@ -739,6 +716,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @param realZoom the new real zoom value
      * @param animate whether to animate the transition
      */
+    @Override
     public void realZoomTo(float realZoom, boolean animate) {
         zoomTo(resolveZoom(realZoom, TYPE_REAL_ZOOM), animate);
     }
@@ -755,6 +733,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @param maxZoom the max zoom
      * @param type the constraint mode
      */
+    @Override
     public void setMaxZoom(float maxZoom, @ZoomType int type) {
         if (maxZoom < 0) {
             throw new IllegalArgumentException("Max zoom should be >= 0.");
@@ -776,6 +755,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @param minZoom the min zoom
      * @param type the constraint mode
      */
+    @Override
     public void setMinZoom(float minZoom, @ZoomType int type) {
         if (minZoom < 0) {
             throw new IllegalArgumentException("Min zoom should be >= 0");
@@ -799,6 +779,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @see #getRealZoom()
      * @return the current zoom
      */
+    @Override
     @Zoom
     public float getZoom() {
         return mZoom;
@@ -812,6 +793,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      *
      * @return the real zoom
      */
+    @Override
     @RealZoom
     public float getRealZoom() {
         return mZoom * mBaseZoom;
@@ -824,6 +806,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      *
      * @return the current horizontal pan
      */
+    @Override
     @AbsolutePan
     public float getPanX() {
         return getScaledPanX() / getRealZoom();
@@ -836,6 +819,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      *
      * @return the current vertical pan
      */
+    @Override
     @AbsolutePan
     public float getPanY() {
         return getScaledPanY() / getRealZoom();
