@@ -2,7 +2,6 @@
 <resources>
     <declare-styleable name="ZoomEngine">
         <attr name="hasClickableChildren" format="boolean"/>
-        <attr name="overScrollable" format="boolean"/>
         <attr name="overScrollHorizontal" format="boolean"/>
         <attr name="overScrollVertical" format="boolean"/>
         <attr name="overPinchable" format="boolean"/>
@@ -15,6 +14,20 @@
         <attr name="maxZoomType" format="enum">
             <enum name="zoom" value="0"/>
             <enum name="realZoom" value="1"/>
+        </attr>
+        <attr name="transformation" format="enum">
+            <enum name="centerInside" value="0"/>
+            <enum name="centerCrop" value="1"/>
+            <enum name="none" value="2"/>
+        </attr>
+        <attr name="transformationGravity">
+            <flag name="top" value="0x30" />
+            <flag name="bottom" value="0x50" />
+            <flag name="left" value="0x03" />
+            <flag name="right" value="0x05" />
+            <flag name="center_vertical" value="0x10" />
+            <flag name="center_horizontal" value="0x01" />
+            <flag name="center" value="0x11" />
         </attr>
     </declare-styleable>
 

@@ -10,6 +10,7 @@ import android.support.annotation.AttrRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.widget.ImageView;
 
@@ -40,31 +41,24 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
         super(context, attrs, defStyleAttr);
 
         TypedArray a = context.getTheme().obtainStyledAttributes(attrs, R.styleable.ZoomEngine, defStyleAttr, 0);
-        // Support deprecated overScrollable
-        boolean overScrollHorizontal, overScrollVertical;
-        if (a.hasValue(R.styleable.ZoomEngine_overScrollable)) {
-            overScrollHorizontal = a.getBoolean(R.styleable.ZoomEngine_overScrollable, true);
-            overScrollVertical = a.getBoolean(R.styleable.ZoomEngine_overScrollable, true);
-        } else {
-            overScrollHorizontal = a.getBoolean(R.styleable.ZoomEngine_overScrollHorizontal, true);
-            overScrollVertical = a.getBoolean(R.styleable.ZoomEngine_overScrollVertical, true);
-        }
+        boolean overScrollHorizontal = a.getBoolean(R.styleable.ZoomEngine_overScrollHorizontal, true);
+        boolean overScrollVertical = a.getBoolean(R.styleable.ZoomEngine_overScrollVertical, true);
         boolean overPinchable = a.getBoolean(R.styleable.ZoomEngine_overPinchable, true);
         float minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, -1);
         float maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, -1);
-        @ZoomEngine.ZoomType int minZoomMode = a.getInteger(
-                R.styleable.ZoomEngine_minZoomType, ZoomEngine.TYPE_ZOOM);
-        @ZoomEngine.ZoomType int maxZoomMode = a.getInteger(
-                R.styleable.ZoomEngine_maxZoomType, ZoomEngine.TYPE_ZOOM);
-
+        @ZoomType int minZoomMode = a.getInteger(R.styleable.ZoomEngine_minZoomType, TYPE_ZOOM);
+        @ZoomType int maxZoomMode = a.getInteger(R.styleable.ZoomEngine_maxZoomType, TYPE_ZOOM);
+        int transformation = a.getInteger(R.styleable.ZoomEngine_transformation, TRANSFORMATION_CENTER_INSIDE);
+        int transformationGravity = a.getInt(R.styleable.ZoomEngine_transformationGravity, Gravity.CENTER);
         a.recycle();
 
         mEngine = new ZoomEngine(context, this, this);
-        mEngine.setOverScrollHorizontal(overScrollHorizontal);
-        mEngine.setOverScrollVertical(overScrollVertical);
-        mEngine.setOverPinchable(overPinchable);
-        if (minZoom > -1) mEngine.setMinZoom(minZoom, minZoomMode);
-        if (maxZoom > -1) mEngine.setMaxZoom(maxZoom, maxZoomMode);
+        setTransformation(transformation, transformationGravity);
+        setOverScrollHorizontal(overScrollHorizontal);
+        setOverScrollVertical(overScrollVertical);
+        setOverPinchable(overPinchable);
+        if (minZoom > -1) setMinZoom(minZoom, minZoomMode);
+        if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode);
 
         setImageMatrix(mMatrix);
         setScaleType(ScaleType.MATRIX);
@@ -153,6 +147,19 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     @Override
     public void setOverPinchable(boolean overPinchable) {
         getEngine().setOverPinchable(overPinchable);
+    }
+
+    /**
+     * Sets the base transformation to be applied to the content.
+     * Defaults to {@link #TRANSFORMATION_CENTER_INSIDE} with {@link Gravity#CENTER},
+     * which means that the content will be zoomed so that it fits completely inside the container.
+     *
+     * @param transformation the transformation type
+     * @param gravity        the transformation gravity. Might be ignored for some transformations
+     */
+    @Override
+    public void setTransformation(int transformation, int gravity) {
+        getEngine().setTransformation(transformation, gravity);
     }
 
     /**

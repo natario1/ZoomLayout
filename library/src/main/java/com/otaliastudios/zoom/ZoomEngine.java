@@ -6,6 +6,7 @@ import android.graphics.RectF;
 import android.os.Build;
 import android.support.annotation.IntDef;
 import android.view.GestureDetector;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -29,8 +30,11 @@ import java.util.Random;
  * - Notify the helper of the content size, using {@link #setContentSize(RectF)}
  * - Pass touch events to {@link #onInterceptTouchEvent(MotionEvent)} and {@link #onTouchEvent(MotionEvent)}
  *
- * This class will try to keep the content centered. It also starts with a "center inside" policy
- * that will apply a base zoom to the content, so that it fits inside the view container.
+ * This class will apply a base transformation to the content, see {@link #setTransformation(int, int)},
+ * so that it is laid out initially as we wish.
+ *
+ * When the scaling makes the content smaller than our viewport, the engine will always try
+ * to keep the content centered.
  */
 public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener, ZoomApi {
 
@@ -90,6 +94,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     private int mMaxZoomMode = TYPE_ZOOM;
     @Zoom private float mZoom = 1f; // Not necessarily equal to the matrix scale.
     private float mBaseZoom; // mZoom * mBaseZoom matches the matrix scale.
+    private int mTransformation = TRANSFORMATION_CENTER_INSIDE;
+    private int mTransformationGravity = Gravity.CENTER;
     private boolean mOverScrollHorizontal = true;
     private boolean mOverScrollVertical = true;
     private boolean mOverPinchable = true;
@@ -231,6 +237,20 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     //region Initialize
 
+    /**
+     * Sets the base transformation to be applied to the content.
+     * Defaults to {@link #TRANSFORMATION_CENTER_INSIDE} with {@link Gravity#CENTER},
+     * which means that the content will be zoomed so that it fits completely inside the container.
+     *
+     * @param transformation the transformation type
+     * @param gravity        the transformation gravity. Might be ignored for some transformations
+     */
+    @Override
+    public void setTransformation(int transformation, int gravity) {
+        mTransformation = transformation;
+        mTransformationGravity = gravity;
+    }
+
     @Override
     public void onGlobalLayout() {
         int width = mView.getWidth();
@@ -296,7 +316,6 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
         } else {
             // First time. Apply base zoom, dispatch first event and return.
-            // Auto scale to center-inside.
             mBaseZoom = computeBaseZoom();
             mMatrix.setScale(mBaseZoom, mBaseZoom);
             mMatrix.mapRect(mContentRect, mContentBaseRect);
@@ -305,10 +324,13 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
             @Zoom float newZoom = ensureScaleBounds(mZoom, false);
             LOG.i("init:", "fromScratch:", "scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
-            if (newZoom != mZoom) {
-                // Zoom only would zoom in the center of the content. Keep it left.
-                applyZoomAndAbsolutePan(newZoom, 0, 0, false);
-            }
+            if (newZoom != mZoom) applyZoom(newZoom, false);
+
+            // pan based on transformation gravity.
+            @ScaledPan float[] newPan = computeBasePan();
+            @ScaledPan float deltaX = newPan[0] - getScaledPanX();
+            @ScaledPan float deltaY = newPan[1] - getScaledPanY();
+            if (deltaX != 0 || deltaY != 0) applyScaledPan(deltaX, deltaY, false);
 
             ensureCurrentTranslationBounds(false);
             dispatchOnMatrix();
@@ -333,10 +355,47 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     }
 
     private float computeBaseZoom() {
-        float scaleX = mViewWidth / mContentRect.width();
-        float scaleY = mViewHeight / mContentRect.height();
-        LOG.v("computeBaseZoom", "scaleX:", scaleX, "scaleY:", scaleY);
-        return Math.min(scaleX, scaleY);
+        switch (mTransformation) {
+            case TRANSFORMATION_CENTER_INSIDE: {
+                float scaleX = mViewWidth / mContentRect.width();
+                float scaleY = mViewHeight / mContentRect.height();
+                LOG.v("computeBaseZoom", "centerInside", "scaleX:", scaleX, "scaleY:", scaleY);
+                return Math.min(scaleX, scaleY);
+            }
+            case TRANSFORMATION_CENTER_CROP: {
+                float scaleX = mViewWidth / mContentRect.width();
+                float scaleY = mViewHeight / mContentRect.height();
+                LOG.v("computeBaseZoom", "centerCrop", "scaleX:", scaleX, "scaleY:", scaleY);
+                return Math.max(scaleX, scaleY);
+            }
+            case TRANSFORMATION_NONE:
+            default:
+                return 1f;
+        }
+    }
+
+    @ScaledPan
+    private float[] computeBasePan() {
+        float[] result = new float[]{0f, 0f};
+        float extraWidth = mContentRect.width() - mViewWidth;
+        float extraHeight = mContentRect.height() - mViewHeight;
+        if (extraWidth > 0) {
+            // Honour the horizontal gravity indication.
+            switch (mTransformationGravity & Gravity.HORIZONTAL_GRAVITY_MASK) {
+                case Gravity.LEFT: result[0] = 0; break;
+                case Gravity.CENTER_HORIZONTAL: result[0] = -0.5F * extraWidth; break;
+                case Gravity.RIGHT: result[0] = -extraWidth; break;
+            }
+        }
+        if (extraHeight > 0) {
+            // Honour the vertical gravity indication.
+            switch (mTransformationGravity & Gravity.VERTICAL_GRAVITY_MASK) {
+                case Gravity.TOP: result[1] = 0; break;
+                case Gravity.CENTER_VERTICAL: result[1] = -0.5F * extraHeight; break;
+                case Gravity.BOTTOM: result[1] = -extraHeight; break;
+            }
+        }
+        return result;
     }
 
     //endregion
@@ -772,7 +831,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * {@link #zoomTo(float, boolean)} or {@link #zoomBy(float, boolean)}.
      *
      * This can be different than the actual scale you get in the matrix, because at startup
-     * we apply a base zoom to respect the "center inside" policy.
+     * we apply a base transformation, see {@link #setTransformation(int, int)}.
      * All zoom calls, including min zoom and max zoom, refer to this axis, where zoom is set to 1
      * right after the initial transformation.
      *
@@ -786,10 +845,10 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     }
 
     /**
-     * Gets the current zoom value, including the base zoom that was eventually applied when
-     * initializing to respect the "center inside" policy. This will match the scaleX - scaleY
-     * values you get into the {@link Matrix}, and is the actual scale value of the content
-     * from its original size.
+     * Gets the current zoom value, including the base zoom that was eventually applied during
+     * the starting transformation, see {@link #setTransformation(int, int)}.
+     * This value will match the scaleX - scaleY values you get into the {@link Matrix},
+     * and is the actual scale value of the content from its original size.
      *
      * @return the real zoom
      */

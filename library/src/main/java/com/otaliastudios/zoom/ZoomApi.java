@@ -43,7 +43,7 @@ public interface ZoomApi {
      * @see #getZoom()
      * @see #getRealZoom()
      */
-    public static final int TYPE_ZOOM = 0;
+    int TYPE_ZOOM = 0;
 
     /**
      * Flag for zoom constraints and settings.
@@ -53,11 +53,35 @@ public interface ZoomApi {
      * @see #getZoom()
      * @see #getRealZoom()
      */
-    public static final int TYPE_REAL_ZOOM = 1;
+    int TYPE_REAL_ZOOM = 1;
 
     @Retention(RetentionPolicy.SOURCE)
     @IntDef({TYPE_ZOOM, TYPE_REAL_ZOOM})
-    public @interface ZoomType {}
+    @interface ZoomType {}
+
+    /**
+     * Constant for {@link #setTransformation(int, int)}.
+     * The content will be zoomed so that it fits completely inside the container.
+     */
+    int TRANSFORMATION_CENTER_INSIDE = 0;
+
+    /**
+     * Constant for {@link #setTransformation(int, int)}.
+     * The content will be zoomed so that its smaller side fits exactly inside the container.
+     * The larger side will be partially cropped.
+     */
+    int TRANSFORMATION_CENTER_CROP = 1;
+
+    /**
+     * Constant for {@link #setTransformation(int, int)}.
+     * No transformation will be applied, which means that both {@link #getZoom()} and
+     * {@link #getRealZoom()} will return the same value.
+     */
+    int TRANSFORMATION_NONE = 2;
+
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef({TRANSFORMATION_CENTER_INSIDE, TRANSFORMATION_CENTER_CROP, TRANSFORMATION_NONE})
+    @interface Transformation {}
 
     /**
      * Controls whether the content should be over-scrollable horizontally.
@@ -85,6 +109,16 @@ public interface ZoomApi {
      * @param overPinchable whether to allow over pinching
      */
     void setOverPinchable(boolean overPinchable);
+
+    /**
+     * Sets the base transformation to be applied to the content.
+     * Defaults to {@link #TRANSFORMATION_CENTER_INSIDE} with {@link android.view.Gravity#CENTER},
+     * which means that the content will be zoomed so that it fits completely inside the container.
+     *
+     * @param transformation the transformation type
+     * @param gravity the transformation gravity. Might be ignored for some transformations
+     */
+    void setTransformation(@Transformation int transformation, int gravity);
 
     /**
      * A low level API that can animate both zoom and pan at the same time.

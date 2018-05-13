@@ -10,7 +10,7 @@ Flexible utilities to control and animate zoom and translation of Views and much
 programmatically or through touch events.
 
 ```groovy
-compile 'com.otaliastudios:zoomlayout:1.1.1'
+compile 'com.otaliastudios:zoomlayout:1.2.0'
 ```
 
 <p>
@@ -134,19 +134,43 @@ There is no strict limit over what you can do with a `Matrix`,
 
 ### Zoom
 
-The engine currently applies, by default, a "center inside" policy when it is initialized.
-This means that the content (whatever it is) is scaled down (or up) to fit the parent view bounds,
-without cropping.
+#### Transformations
 
-This base zoom makes the difference between **zoom** and **realZoom**. Table should be descriptive enough:
+When the engine becomes aware of the content size, it will apply a base transformation to the content
+that can be controlled through `setTransformation(int, int)` or `app:transformation` and `app:transformationGravity`.
+It is applied only once, and defines the starting viewport over our content.
+
+|Transformation|Description|
+|`centerInside`|The content is scaled down or up so that it fits completely inside the view bounds.|
+|`centerCrop`|The content is scaled down or up so that its smaller side fits exactly inside the view bounds. The larger side will be cropped.|
+|`none`|No transformation is applied.|
+
+If, after applying the transformation (and any minZoom / maxZoom constraint), the content is partially
+cropped along some dimension, the engine will also apply a translation according to the given transformation gravity.
+
+|Transformation Gravity|Description|
+|`top`|If the content is taller than the view, translate it so that we see the top part.|
+|`bottom`|If the content is taller than the view, translate it so that we see the bottom part.|
+|`left`|If the content is wider than the view, translate it so that we see the left part.|
+|`right`|If the content is wider than the view, translate it so that we see the right part.|
+
+#### Zoom Types
+
+The base transformation makes the difference between **zoom** and **realZoom**. Since we have silently applied
+a base zoom to the content, we must introduce two separate types:
 
 |Zoom type|Value|Description|
 |---------|-----|-----------|
-|Zoom|`ZoomEngine.TYPE_ZOOM`|The scale value after the initial, center-inside base zoom was applied. `zoom == 1` means that the content fits the screen perfectly.|
-|Real zoom|`ZoomEngine.TYPE_REAL_ZOOM`|The actual scale value, including the initial base zoom. `realZoom == 1` means that the 1 inch of the content fits 1 inch of the screen.|
+|Zoom|`TYPE_ZOOM`|The scale value after the initial transformation. `zoom == 1` means that the content was untouched after the transformation.|
+|Real zoom|`TYPE_REAL_ZOOM`|The actual scale value, including the initial transformation. `realZoom == 1` means that the 1 inch of the content fits 1 inch of the screen.|
+
+To make things clearer, when transformation is `none`, the zoom and the real zoom will be identical.
+The distinction is very useful when it comes to imposing min and max constraints to our zoom value.
+
+#### APIs
 
 Some of the zoom APIs will let you pass an integer (either `TYPE_ZOOM` or `TYPE_REAL_ZOOM`)
-to define the zoom you are referencing to. Depending on the context, imposing restrictions on one type
+to define the zoom type you are referencing to. Depending on the context, imposing restrictions on one type
 will make more sense than the other - e. g., in a PDF viewer, you might want to cap real zoom at `1`.
 
 |API|Description|Default value|
