@@ -20,7 +20,7 @@ import java.util.Random;
 
 public class ColorGridView extends GridLayout {
 
-    private final static int ROWS = 20;
+    private final static int ROWS = 50;
     private final static int COLS = 20;
     private final static Random R = new Random();
 

@@ -6,6 +6,7 @@ import android.graphics.RectF;
 import android.os.Build;
 import android.support.annotation.IntDef;
 import android.view.GestureDetector;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -90,6 +91,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     private int mMaxZoomMode = TYPE_ZOOM;
     @Zoom private float mZoom = 1f; // Not necessarily equal to the matrix scale.
     private float mBaseZoom; // mZoom * mBaseZoom matches the matrix scale.
+    private int mTransformation = TRANSFORMATION_CENTER_INSIDE;
+    private int mTransformationGravity = Gravity.CENTER;
     private boolean mOverScrollHorizontal = true;
     private boolean mOverScrollVertical = true;
     private boolean mOverPinchable = true;
@@ -231,6 +234,20 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     //region Initialize
 
+    /**
+     * Sets the base transformation to be applied to the content.
+     * Defaults to {@link #TRANSFORMATION_CENTER_INSIDE} with {@link Gravity#CENTER},
+     * which means that the content will be zoomed so that it fits completely inside the container.
+     *
+     * @param transformation the transformation type
+     * @param gravity        the transformation gravity. Might be ignored for some transformations
+     */
+    @Override
+    public void setTransformation(int transformation, int gravity) {
+        mTransformation = transformation;
+        mTransformationGravity = gravity;
+    }
+
     @Override
     public void onGlobalLayout() {
         int width = mView.getWidth();
@@ -296,7 +313,6 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
         } else {
             // First time. Apply base zoom, dispatch first event and return.
-            // Auto scale to center-inside.
             mBaseZoom = computeBaseZoom();
             mMatrix.setScale(mBaseZoom, mBaseZoom);
             mMatrix.mapRect(mContentRect, mContentBaseRect);
@@ -305,10 +321,13 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
             @Zoom float newZoom = ensureScaleBounds(mZoom, false);
             LOG.i("init:", "fromScratch:", "scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
-            if (newZoom != mZoom) {
-                // Zoom only would zoom in the center of the content. Keep it left.
-                applyZoomAndAbsolutePan(newZoom, 0, 0, false);
-            }
+            if (newZoom != mZoom) applyZoom(newZoom, false);
+
+            // pan based on transformation gravity.
+            @ScaledPan float[] newPan = computeBasePan();
+            @ScaledPan float deltaX = newPan[0] - getScaledPanX();
+            @ScaledPan float deltaY = newPan[1] - getScaledPanY();
+            if (deltaX != 0 || deltaY != 0) applyScaledPan(deltaX, deltaY, false);
 
             ensureCurrentTranslationBounds(false);
             dispatchOnMatrix();
@@ -333,10 +352,47 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     }
 
     private float computeBaseZoom() {
-        float scaleX = mViewWidth / mContentRect.width();
-        float scaleY = mViewHeight / mContentRect.height();
-        LOG.v("computeBaseZoom", "scaleX:", scaleX, "scaleY:", scaleY);
-        return Math.min(scaleX, scaleY);
+        switch (mTransformation) {
+            case TRANSFORMATION_CENTER_INSIDE: {
+                float scaleX = mViewWidth / mContentRect.width();
+                float scaleY = mViewHeight / mContentRect.height();
+                LOG.v("computeBaseZoom", "centerInside", "scaleX:", scaleX, "scaleY:", scaleY);
+                return Math.min(scaleX, scaleY);
+            }
+            case TRANSFORMATION_CENTER_CROP: {
+                float scaleX = mViewWidth / mContentRect.width();
+                float scaleY = mViewHeight / mContentRect.height();
+                LOG.v("computeBaseZoom", "centerCrop", "scaleX:", scaleX, "scaleY:", scaleY);
+                return Math.max(scaleX, scaleY);
+            }
+            case TRANSFORMATION_NONE:
+            default:
+                return 1f;
+        }
+    }
+
+    @ScaledPan
+    private float[] computeBasePan() {
+        float[] result = new float[]{0f, 0f};
+        float extraWidth = mContentRect.width() - mViewWidth;
+        float extraHeight = mContentRect.height() - mViewHeight;
+        if (extraWidth > 0) {
+            // Honour the horizontal gravity indication.
+            switch (mTransformationGravity & Gravity.HORIZONTAL_GRAVITY_MASK) {
+                case Gravity.LEFT: result[0] = 0; break;
+                case Gravity.CENTER_HORIZONTAL: result[0] = -0.5F * extraWidth; break;
+                case Gravity.RIGHT: result[0] = -extraWidth; break;
+            }
+        }
+        if (extraHeight > 0) {
+            // Honour the vertical gravity indication.
+            switch (mTransformationGravity & Gravity.VERTICAL_GRAVITY_MASK) {
+                case Gravity.TOP: result[1] = 0; break;
+                case Gravity.CENTER_VERTICAL: result[1] = -0.5F * extraHeight; break;
+                case Gravity.BOTTOM: result[1] = -extraHeight; break;
+            }
+        }
+        return result;
     }
 
     //endregion
