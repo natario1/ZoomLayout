@@ -30,8 +30,11 @@ import java.util.Random;
  * - Notify the helper of the content size, using {@link #setContentSize(RectF)}
  * - Pass touch events to {@link #onInterceptTouchEvent(MotionEvent)} and {@link #onTouchEvent(MotionEvent)}
  *
- * This class will try to keep the content centered. It also starts with a "center inside" policy
- * that will apply a base zoom to the content, so that it fits inside the view container.
+ * This class will apply a base transformation to the content, see {@link #setTransformation(int, int)},
+ * so that it is laid out initially as we wish.
+ *
+ * When the scaling makes the content smaller than our viewport, the engine will always try
+ * to keep the content centered.
  */
 public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener, ZoomApi {
 
@@ -828,7 +831,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * {@link #zoomTo(float, boolean)} or {@link #zoomBy(float, boolean)}.
      *
      * This can be different than the actual scale you get in the matrix, because at startup
-     * we apply a base zoom to respect the "center inside" policy.
+     * we apply a base transformation, see {@link #setTransformation(int, int)}.
      * All zoom calls, including min zoom and max zoom, refer to this axis, where zoom is set to 1
      * right after the initial transformation.
      *
@@ -842,10 +845,10 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     }
 
     /**
-     * Gets the current zoom value, including the base zoom that was eventually applied when
-     * initializing to respect the "center inside" policy. This will match the scaleX - scaleY
-     * values you get into the {@link Matrix}, and is the actual scale value of the content
-     * from its original size.
+     * Gets the current zoom value, including the base zoom that was eventually applied during
+     * the starting transformation, see {@link #setTransformation(int, int)}.
+     * This value will match the scaleX - scaleY values you get into the {@link Matrix},
+     * and is the actual scale value of the content from its original size.
      *
      * @return the real zoom
      */
