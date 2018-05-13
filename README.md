@@ -10,7 +10,7 @@ Flexible utilities to control and animate zoom and translation of Views and much
 programmatically or through touch events.
 
 ```groovy
-compile 'com.otaliastudios:zoomlayout:1.1.1'
+compile 'com.otaliastudios:zoomlayout:1.2.0'
 ```
 
 <p>
