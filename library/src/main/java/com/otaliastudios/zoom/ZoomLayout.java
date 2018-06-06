@@ -9,6 +9,7 @@ import android.support.annotation.AttrRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -21,13 +22,13 @@ import android.widget.FrameLayout;
  * Uses {@link ZoomEngine} to allow zooming and pan events onto a view hierarchy.
  * The hierarchy must be contained in a single view, added to this layout
  * (like what you do with a ScrollView).
- *
+ * <p>
  * If the hierarchy has clickable children that should react to touch events, you are
  * required to call {@link #setHasClickableChildren(boolean)} or use the attribute.
  * This is off by default because it is more expensive in terms of performance.
- *
+ * <p>
  * Currently padding to this view / margins to the child view are NOT supported.
- *
+ * <p>
  * TODO: support padding (from inside ZoomEngine that gets the view)
  * TODO: support layout_margin (here)
  */
@@ -148,8 +149,50 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
                 // Log.e(TAG, "values 2:" + Arrays.toString(mMatrixValues));
             }
         } else {
+//            invalidate();
+        }
+
+        if (!awakenScrollBars()) {
             invalidate();
         }
+    }
+
+    @Override
+    protected int computeHorizontalScrollExtent() {
+        return (int) (mChildRect.width() / mEngine.getZoom());
+    }
+
+    @Override
+    protected int computeHorizontalScrollOffset() {
+        int i = (int) (-1 * mEngine.getPanX() * mEngine.getZoom());
+
+//        Log.v(TAG, "Horizontal Offset: " + i);
+        return i;
+    }
+
+    @Override
+    protected int computeHorizontalScrollRange() {
+        return (int) mChildRect.width();
+    }
+
+    @Override
+    protected int computeVerticalScrollExtent() {
+        int i = (int) (mChildRect.height() / mEngine.getZoom());
+
+        Log.v(TAG, "Vertical Scroll Extent: " + i);
+        return i;
+    }
+
+    @Override
+    protected int computeVerticalScrollOffset() {
+        int i = (int) (-1 * mEngine.getPanY() * mEngine.getZoom());
+//        Log.v(TAG, "Vertical Offset: " + i);
+        return i;
+    }
+
+    @Override
+    protected int computeVerticalScrollRange() {
+        return (int) mChildRect.height();
     }
 
     @Override
@@ -158,6 +201,9 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
 
     @Override
     protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+        // TODO: is there a better way to call this?
+        onDrawScrollBars(canvas);
+
         if (!mHasClickableChildren) {
             int save = canvas.save();
             canvas.setMatrix(mMatrix);
@@ -205,6 +251,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
 
     /**
      * Gets the backing {@link ZoomEngine} so you can access its APIs.
+     *
      * @return the backing engine
      */
     public ZoomEngine getEngine() {
