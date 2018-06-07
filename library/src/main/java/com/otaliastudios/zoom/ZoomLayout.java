@@ -149,7 +149,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
                 // Log.e(TAG, "values 2:" + Arrays.toString(mMatrixValues));
             }
         } else {
-//            invalidate();
+            invalidate();
         }
 
         if (!awakenScrollBars()) {
@@ -197,17 +197,20 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
 
     @Override
     protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
-        onDrawScrollBars(canvas);
+        boolean result;
 
         if (!mHasClickableChildren) {
             int save = canvas.save();
             canvas.setMatrix(mMatrix);
-            boolean result = super.drawChild(canvas, child, drawingTime);
+            result = super.drawChild(canvas, child, drawingTime);
             canvas.restoreToCount(save);
-            return result;
         } else {
-            return super.drawChild(canvas, child, drawingTime);
+            result = super.drawChild(canvas, child, drawingTime);
         }
+
+        onDrawScrollBars(canvas);
+
+        return result;
     }
 
     //endregion
