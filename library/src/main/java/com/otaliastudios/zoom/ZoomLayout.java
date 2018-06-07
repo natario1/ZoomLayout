@@ -9,7 +9,6 @@ import android.support.annotation.AttrRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -164,10 +163,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
 
     @Override
     protected int computeHorizontalScrollOffset() {
-        int i = (int) (-1 * mEngine.getPanX() * mEngine.getZoom());
-
-//        Log.v(TAG, "Horizontal Offset: " + i);
-        return i;
+        return (int) (-1 * mEngine.getPanX());
     }
 
     @Override
@@ -177,17 +173,12 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
 
     @Override
     protected int computeVerticalScrollExtent() {
-        int i = (int) (mChildRect.height() / mEngine.getZoom());
-
-        Log.v(TAG, "Vertical Scroll Extent: " + i);
-        return i;
+        return (int) (mChildRect.height() / mEngine.getZoom());
     }
 
     @Override
     protected int computeVerticalScrollOffset() {
-        int i = (int) (-1 * mEngine.getPanY() * mEngine.getZoom());
-//        Log.v(TAG, "Vertical Offset: " + i);
-        return i;
+        return (int) (-1 * mEngine.getPanY());
     }
 
     @Override
