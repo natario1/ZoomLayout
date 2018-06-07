@@ -17,7 +17,7 @@ import android.widget.ImageView;
 
 /**
  * Uses {@link ZoomEngine} to allow zooming and pan events to the inner drawable.
- *
+ * <p>
  * TODO: support padding (from inside ZoomEngine that gets the view)
  */
 @SuppressLint("AppCompatCustomView")
@@ -43,6 +43,8 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
         TypedArray a = context.getTheme().obtainStyledAttributes(attrs, R.styleable.ZoomEngine, defStyleAttr, 0);
         boolean overScrollHorizontal = a.getBoolean(R.styleable.ZoomEngine_overScrollHorizontal, true);
         boolean overScrollVertical = a.getBoolean(R.styleable.ZoomEngine_overScrollVertical, true);
+        boolean horizontalPanEnabled = a.getBoolean(R.styleable.ZoomEngine_horizontalPanEnabled, true);
+        boolean verticalPanEnabled = a.getBoolean(R.styleable.ZoomEngine_verticalPanEnabled, true);
         boolean overPinchable = a.getBoolean(R.styleable.ZoomEngine_overPinchable, true);
         boolean zoomEnabled = a.getBoolean(R.styleable.ZoomEngine_zoomEnabled, true);
         float minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, -1);
@@ -57,6 +59,8 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
         setTransformation(transformation, transformationGravity);
         setOverScrollHorizontal(overScrollHorizontal);
         setOverScrollVertical(overScrollVertical);
+        setHorizontalPanEnabled(horizontalPanEnabled);
+        setVerticalPanEnabled(verticalPanEnabled);
         setOverPinchable(overPinchable);
         setZoomEnabled(zoomEnabled);
         if (minZoom > -1) setMinZoom(minZoom, minZoomMode);
@@ -104,6 +108,7 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
 
     /**
      * Gets the backing {@link ZoomEngine} so you can access its APIs.
+     *
      * @return the backing engine
      */
     public ZoomEngine getEngine() {
@@ -137,6 +142,26 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     @Override
     public void setOverScrollVertical(boolean overScroll) {
         getEngine().setOverScrollVertical(overScroll);
+    }
+
+    /**
+     * Controls whether horizontal panning is enabled.
+     *
+     * @param enabled true enables horizontal panning, false disables it
+     */
+    @Override
+    public void setHorizontalPanEnabled(boolean enabled) {
+        getEngine().setHorizontalPanEnabled(enabled);
+    }
+
+    /**
+     * Controls whether vertical panning is enabled.
+     *
+     * @param enabled true enables vertical panning, false disables it
+     */
+    @Override
+    public void setVerticalPanEnabled(boolean enabled) {
+        getEngine().setVerticalPanEnabled(enabled);
     }
 
     /**

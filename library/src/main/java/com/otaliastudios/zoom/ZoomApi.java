@@ -97,6 +97,20 @@ public interface ZoomApi {
     void setOverScrollVertical(boolean overScroll);
 
     /**
+     * Controls whether horizontal panning is enabled.
+     *
+     * @param enabled true enables horizontal panning, false disables it
+     */
+    void setHorizontalPanEnabled(boolean enabled);
+
+    /**
+     * Controls whether vertical panning is enabled.
+     *
+     * @param enabled true enables vertical panning, false disables it
+     */
+    void setVerticalPanEnabled(boolean enabled);
+
+    /**
      * Controls whether the content should be overPinchable.
      * If it is, pinch events can change the zoom outside the safe bounds,
      * than return to safe values.
