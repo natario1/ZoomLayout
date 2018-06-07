@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.support.annotation.AttrRes;
@@ -89,6 +90,44 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     public void onUpdate(ZoomEngine helper, Matrix matrix) {
         mMatrix.set(matrix);
         setImageMatrix(mMatrix);
+
+        if (!awakenScrollBars()) {
+            invalidate();
+        }
+    }
+
+    @Override
+    protected int computeHorizontalScrollExtent() {
+        Rect localRect = new Rect();
+        getLocalVisibleRect(localRect);
+        return localRect.width();
+    }
+
+    @Override
+    protected int computeHorizontalScrollOffset() {
+        return (int) (-1 * mEngine.getPanX() * mEngine.getRealZoom());
+    }
+
+    @Override
+    protected int computeHorizontalScrollRange() {
+        return (int) (mDrawableRect.width() * mEngine.getRealZoom());
+    }
+
+    @Override
+    protected int computeVerticalScrollExtent() {
+        Rect localRect = new Rect();
+        getLocalVisibleRect(localRect);
+        return localRect.height();
+    }
+
+    @Override
+    protected int computeVerticalScrollOffset() {
+        return (int) (-1 * mEngine.getPanY() * mEngine.getRealZoom());
+    }
+
+    @Override
+    protected int computeVerticalScrollRange() {
+        return (int) (mDrawableRect.height() * mEngine.getRealZoom());
     }
 
     @Override
