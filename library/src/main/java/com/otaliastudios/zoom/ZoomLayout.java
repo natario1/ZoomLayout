@@ -247,7 +247,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     }
 
     /**
-     * Controls whether horizontal panning is enabled.
+     * Controls whether horizontal panning using gestures is enabled.
      *
      * @param enabled true enables horizontal panning, false disables it
      */
@@ -257,7 +257,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     }
 
     /**
-     * Controls whether vertical panning is enabled.
+     * Controls whether vertical panning using gestures is enabled.
      *
      * @param enabled true enables vertical panning, false disables it
      */

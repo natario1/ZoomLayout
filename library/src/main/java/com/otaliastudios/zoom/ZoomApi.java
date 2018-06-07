@@ -97,14 +97,14 @@ public interface ZoomApi {
     void setOverScrollVertical(boolean overScroll);
 
     /**
-     * Controls whether horizontal panning is enabled.
+     * Controls whether horizontal panning using gestures is enabled.
      *
      * @param enabled true enables horizontal panning, false disables it
      */
     void setHorizontalPanEnabled(boolean enabled);
 
     /**
-     * Controls whether vertical panning is enabled.
+     * Controls whether vertical panning using gestures is enabled.
      *
      * @param enabled true enables vertical panning, false disables it
      */

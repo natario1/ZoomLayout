@@ -220,7 +220,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     }
 
     /**
-     * Controls whether horizontal panning is enabled.
+     * Controls whether horizontal panning using gestures is enabled.
      *
      * @param enabled true enables horizontal panning, false disables it
      */
@@ -230,7 +230,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     }
 
     /**
-     * Controls whether vertical panning is enabled.
+     * Controls whether vertical panning using gestures is enabled.
      *
      * @param enabled true enables vertical panning, false disables it
      */

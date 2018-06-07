@@ -145,7 +145,7 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     }
 
     /**
-     * Controls whether horizontal panning is enabled.
+     * Controls whether horizontal panning using gestures is enabled.
      *
      * @param enabled true enables horizontal panning, false disables it
      */
@@ -155,7 +155,7 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     }
 
     /**
-     * Controls whether vertical panning is enabled.
+     * Controls whether vertical panning using gestures is enabled.
      *
      * @param enabled true enables vertical panning, false disables it
      */
