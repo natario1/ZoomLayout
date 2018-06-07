@@ -21,13 +21,13 @@ import android.widget.FrameLayout;
  * Uses {@link ZoomEngine} to allow zooming and pan events onto a view hierarchy.
  * The hierarchy must be contained in a single view, added to this layout
  * (like what you do with a ScrollView).
- *
+ * <p>
  * If the hierarchy has clickable children that should react to touch events, you are
  * required to call {@link #setHasClickableChildren(boolean)} or use the attribute.
  * This is off by default because it is more expensive in terms of performance.
- *
+ * <p>
  * Currently padding to this view / margins to the child view are NOT supported.
- *
+ * <p>
  * TODO: support padding (from inside ZoomEngine that gets the view)
  * TODO: support layout_margin (here)
  */
@@ -57,6 +57,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         boolean overScrollHorizontal = a.getBoolean(R.styleable.ZoomEngine_overScrollHorizontal, true);
         boolean overScrollVertical = a.getBoolean(R.styleable.ZoomEngine_overScrollVertical, true);
         boolean overPinchable = a.getBoolean(R.styleable.ZoomEngine_overPinchable, true);
+        boolean zoomEnabled = a.getBoolean(R.styleable.ZoomEngine_zoomEnabled, true);
         boolean hasChildren = a.getBoolean(R.styleable.ZoomEngine_hasClickableChildren, false);
         float minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, -1);
         float maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, -1);
@@ -71,6 +72,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         setOverScrollHorizontal(overScrollHorizontal);
         setOverScrollVertical(overScrollVertical);
         setOverPinchable(overPinchable);
+        setZoomEnabled(zoomEnabled);
         if (minZoom > -1) setMinZoom(minZoom, minZoomMode);
         if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode);
         setHasClickableChildren(hasChildren);
@@ -205,6 +207,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
 
     /**
      * Gets the backing {@link ZoomEngine} so you can access its APIs.
+     *
      * @return the backing engine
      */
     public ZoomEngine getEngine() {
@@ -249,6 +252,16 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     @Override
     public void setOverPinchable(boolean overPinchable) {
         getEngine().setOverPinchable(overPinchable);
+    }
+
+    /**
+     * Controls whether zoom using pinch gesture is enabled or not.
+     *
+     * @param enabled true enables zooming, false disables it
+     */
+    @Override
+    public void setZoomEnabled(boolean enabled) {
+        getEngine().setZoomEnabled(enabled);
     }
 
     /**

@@ -1,53 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:orientation="vertical"
-    android:layout_weight="1"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    android:orientation="vertical">
 
     <com.otaliastudios.zoom.ZoomLayout
-        android:layout_weight="1"
         android:id="@+id/zoom_layout"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:hasClickableChildren="true">
+        android:layout_weight="1"
+        app:hasClickableChildren="true"
+        app:zoomEnabled="false">
 
         <com.otaliastudios.zoom.demo.ColorGridView
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content" />
 
     </com.otaliastudios.zoom.ZoomLayout>
 
     <com.otaliastudios.zoom.ZoomImageView
-        android:layout_weight="1"
         android:id="@+id/zoom_image"
-        android:visibility="gone"
         android:layout_width="match_parent"
-        android:layout_height="0dp"/>
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone" />
 
     <LinearLayout
-        android:background="@color/colorAccent"
-        android:orientation="horizontal"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@color/colorAccent"
+        android:orientation="horizontal">
 
         <Button
-            android:text="View hierarchy"
             android:id="@+id/show_zl"
-            android:background="@null"
-            android:layout_weight="0.5"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:layout_weight="0.5"
+            android:background="@null"
+            android:text="View hierarchy" />
 
         <Button
-            android:text="Image"
             android:id="@+id/show_ziv"
-            android:background="@null"
-            android:layout_weight="0.5"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:layout_weight="0.5"
+            android:background="@null"
+            android:text="Image" />
 
     </LinearLayout>
 

@@ -17,7 +17,6 @@ import android.widget.OverScroller;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.Random;
 
 
 /**
@@ -99,6 +98,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     private boolean mOverScrollHorizontal = true;
     private boolean mOverScrollVertical = true;
     private boolean mOverPinchable = true;
+    private boolean mZoomEnabled = true;
     private boolean mClearAnimation;
     private OverScroller mFlingScroller;
     private int[] mTemp = new int[3];
@@ -231,6 +231,16 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     @Zoom
     private float getCurrentOverPinch() {
         return 0.1f * (resolveZoom(mMaxZoom, mMaxZoomMode) - resolveZoom(mMinZoom, mMinZoomMode));
+    }
+
+    /**
+     * Controls whether zoom using pinch gesture is enabled or not.
+     *
+     * @param enabled true enables zooming, false disables it
+     */
+    @Override
+    public void setZoomEnabled(boolean enabled) {
+        mZoomEnabled = enabled;
     }
 
     //endregion
@@ -567,6 +577,10 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
         @Override
         public boolean onScale(ScaleGestureDetector detector) {
+            if (!mZoomEnabled) {
+                return false;
+            }
+
             if (setState(PINCHING)) {
                 float eps = 0.0001f;
                 if (Math.abs(mAbsTargetX) < eps || Math.abs(mAbsTargetY) < eps) {

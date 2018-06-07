@@ -5,6 +5,7 @@
         <attr name="overScrollHorizontal" format="boolean"/>
         <attr name="overScrollVertical" format="boolean"/>
         <attr name="overPinchable" format="boolean"/>
+        <attr name="zoomEnabled" format="boolean" />
         <attr name="minZoom" format="float"/>
         <attr name="maxZoom" format="float"/>
         <attr name="minZoomType" format="enum">

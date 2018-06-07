@@ -44,6 +44,7 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
         boolean overScrollHorizontal = a.getBoolean(R.styleable.ZoomEngine_overScrollHorizontal, true);
         boolean overScrollVertical = a.getBoolean(R.styleable.ZoomEngine_overScrollVertical, true);
         boolean overPinchable = a.getBoolean(R.styleable.ZoomEngine_overPinchable, true);
+        boolean zoomEnabled = a.getBoolean(R.styleable.ZoomEngine_zoomEnabled, true);
         float minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, -1);
         float maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, -1);
         @ZoomType int minZoomMode = a.getInteger(R.styleable.ZoomEngine_minZoomType, TYPE_ZOOM);
@@ -57,6 +58,7 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
         setOverScrollHorizontal(overScrollHorizontal);
         setOverScrollVertical(overScrollVertical);
         setOverPinchable(overPinchable);
+        setZoomEnabled(zoomEnabled);
         if (minZoom > -1) setMinZoom(minZoom, minZoomMode);
         if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode);
 
@@ -147,6 +149,16 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     @Override
     public void setOverPinchable(boolean overPinchable) {
         getEngine().setOverPinchable(overPinchable);
+    }
+
+    /**
+     * Controls whether zoom using pinch gesture is enabled or not.
+     *
+     * @param enabled true enables zooming, false disables it
+     */
+    @Override
+    public void setZoomEnabled(boolean enabled) {
+        getEngine().setZoomEnabled(enabled);
     }
 
     /**
