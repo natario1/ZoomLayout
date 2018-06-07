@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.support.annotation.AttrRes;
 import android.support.annotation.NonNull;
@@ -158,32 +159,36 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
 
     @Override
     protected int computeHorizontalScrollExtent() {
-        return (int) (mChildRect.width() / mEngine.getZoom());
+        Rect localRect = new Rect();
+        getLocalVisibleRect(localRect);
+        return localRect.width();
     }
 
     @Override
     protected int computeHorizontalScrollOffset() {
-        return (int) (-1 * mEngine.getPanX());
+        return (int) (-1 * mEngine.getPanX() * mEngine.getRealZoom());
     }
 
     @Override
     protected int computeHorizontalScrollRange() {
-        return (int) mChildRect.width();
+        return (int) (mChildRect.width() * mEngine.getRealZoom());
     }
 
     @Override
     protected int computeVerticalScrollExtent() {
-        return (int) (mChildRect.height() / mEngine.getZoom());
+        Rect localRect = new Rect();
+        getLocalVisibleRect(localRect);
+        return localRect.height();
     }
 
     @Override
     protected int computeVerticalScrollOffset() {
-        return (int) (-1 * mEngine.getPanY());
+        return (int) (-1 * mEngine.getPanY() * mEngine.getRealZoom());
     }
 
     @Override
     protected int computeVerticalScrollRange() {
-        return (int) mChildRect.height();
+        return (int) (mChildRect.height() * mEngine.getRealZoom());
     }
 
     @Override
@@ -194,6 +199,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
         // TODO: is there a better way to call this?
         onDrawScrollBars(canvas);
+
 
         if (!mHasClickableChildren) {
             int save = canvas.save();
