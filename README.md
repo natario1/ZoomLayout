@@ -210,6 +210,9 @@ In any case the current scale is not considered, so your system won't change if 
 |`getPanY()`|Returns the current vertical pan.|`-`|
 |`setOverScrollHorizontal(boolean)`|If true, the content will be allowed to pan outside its horizontal bounds, then return to its position.|`true`|
 |`setOverScrollVertical(boolean)`|If true, the content will be allowed to pan outside its vertical bounds, then return to its position.|`true`|
+|`setHorizontalPanEnabled(boolean)`|If true, the content will be allowed to pan **horizontally**.|`true`|
+|`setVerticalPanEnabled(boolean)`|If true, the content will be allowed to pan **vertically**.|`true`|
+|`setZoomEnabled(boolean)`|If true, the content will be allowed to zoom in and out.|`true`|
 |`panTo(float, float, boolean)`|Pans to the given values, animating if needed.|`-`|
 |`panBy(float, float, boolean)`|Applies the given deltas to the current pan, animating if needed.|`-`|
 
