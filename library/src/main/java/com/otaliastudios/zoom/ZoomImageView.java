@@ -97,6 +97,10 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     }
 
     @Override
+    public void onIdle(ZoomEngine engine) {
+    }
+
+    @Override
     protected int computeHorizontalScrollExtent() {
         Rect localRect = new Rect();
         getLocalVisibleRect(localRect);
@@ -128,10 +132,6 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     @Override
     protected int computeVerticalScrollRange() {
         return (int) (mDrawableRect.height() * mEngine.getRealZoom());
-    }
-
-    @Override
-    public void onIdle(ZoomEngine engine) {
     }
 
     //endregion

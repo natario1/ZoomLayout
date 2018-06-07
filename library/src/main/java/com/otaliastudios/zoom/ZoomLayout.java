@@ -158,6 +158,10 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     }
 
     @Override
+    public void onIdle(ZoomEngine engine) {
+    }
+
+    @Override
     protected int computeHorizontalScrollExtent() {
         Rect localRect = new Rect();
         getLocalVisibleRect(localRect);
@@ -192,14 +196,8 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     }
 
     @Override
-    public void onIdle(ZoomEngine engine) {
-    }
-
-    @Override
     protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
-        // TODO: is there a better way to call this?
         onDrawScrollBars(canvas);
-
 
         if (!mHasClickableChildren) {
             int save = canvas.save();
