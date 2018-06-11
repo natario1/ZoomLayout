@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.support.annotation.AttrRes;
 import android.support.annotation.NonNull;
@@ -75,6 +74,8 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         if (minZoom > -1) setMinZoom(minZoom, minZoomMode);
         if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode);
         setHasClickableChildren(hasChildren);
+
+        setWillNotDraw(false);
     }
 
     //region Internal
@@ -152,20 +153,11 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
             invalidate();
         }
 
-        if (!awakenScrollBars()) {
-            invalidate();
-        }
+        awakenScrollBars();
     }
 
     @Override
     public void onIdle(ZoomEngine engine) {
-    }
-
-    @Override
-    protected int computeHorizontalScrollExtent() {
-        Rect localRect = new Rect();
-        getLocalVisibleRect(localRect);
-        return localRect.width();
     }
 
     @Override
@@ -176,13 +168,6 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     @Override
     protected int computeHorizontalScrollRange() {
         return (int) (mChildRect.width() * mEngine.getRealZoom());
-    }
-
-    @Override
-    protected int computeVerticalScrollExtent() {
-        Rect localRect = new Rect();
-        getLocalVisibleRect(localRect);
-        return localRect.height();
     }
 
     @Override
@@ -207,8 +192,6 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         } else {
             result = super.drawChild(canvas, child, drawingTime);
         }
-
-        onDrawScrollBars(canvas);
 
         return result;
     }

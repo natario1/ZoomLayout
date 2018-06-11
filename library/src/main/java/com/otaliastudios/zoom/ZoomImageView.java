@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Matrix;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.support.annotation.AttrRes;
@@ -18,7 +17,7 @@ import android.widget.ImageView;
 
 /**
  * Uses {@link ZoomEngine} to allow zooming and pan events to the inner drawable.
- *
+ * <p>
  * TODO: support padding (from inside ZoomEngine that gets the view)
  */
 @SuppressLint("AppCompatCustomView")
@@ -101,13 +100,6 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     }
 
     @Override
-    protected int computeHorizontalScrollExtent() {
-        Rect localRect = new Rect();
-        getLocalVisibleRect(localRect);
-        return localRect.width();
-    }
-
-    @Override
     protected int computeHorizontalScrollOffset() {
         return (int) (-1 * mEngine.getPanX() * mEngine.getRealZoom());
     }
@@ -115,13 +107,6 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     @Override
     protected int computeHorizontalScrollRange() {
         return (int) (mDrawableRect.width() * mEngine.getRealZoom());
-    }
-
-    @Override
-    protected int computeVerticalScrollExtent() {
-        Rect localRect = new Rect();
-        getLocalVisibleRect(localRect);
-        return localRect.height();
     }
 
     @Override
@@ -141,6 +126,7 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
 
     /**
      * Gets the backing {@link ZoomEngine} so you can access its APIs.
+     *
      * @return the backing engine
      */
     public ZoomEngine getEngine() {
