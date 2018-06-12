@@ -56,7 +56,10 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         TypedArray a = context.getTheme().obtainStyledAttributes(attrs, R.styleable.ZoomEngine, defStyleAttr, 0);
         boolean overScrollHorizontal = a.getBoolean(R.styleable.ZoomEngine_overScrollHorizontal, true);
         boolean overScrollVertical = a.getBoolean(R.styleable.ZoomEngine_overScrollVertical, true);
+        boolean horizontalPanEnabled = a.getBoolean(R.styleable.ZoomEngine_horizontalPanEnabled, true);
+        boolean verticalPanEnabled = a.getBoolean(R.styleable.ZoomEngine_verticalPanEnabled, true);
         boolean overPinchable = a.getBoolean(R.styleable.ZoomEngine_overPinchable, true);
+        boolean zoomEnabled = a.getBoolean(R.styleable.ZoomEngine_zoomEnabled, true);
         boolean hasChildren = a.getBoolean(R.styleable.ZoomEngine_hasClickableChildren, false);
         float minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, -1);
         float maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, -1);
@@ -70,7 +73,10 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         setTransformation(transformation, transformationGravity);
         setOverScrollHorizontal(overScrollHorizontal);
         setOverScrollVertical(overScrollVertical);
+        setHorizontalPanEnabled(horizontalPanEnabled);
+        setVerticalPanEnabled(verticalPanEnabled);
         setOverPinchable(overPinchable);
+        setZoomEnabled(zoomEnabled);
         if (minZoom > -1) setMinZoom(minZoom, minZoomMode);
         if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode);
         setHasClickableChildren(hasChildren);
@@ -268,6 +274,26 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     }
 
     /**
+     * Controls whether horizontal panning using gestures is enabled.
+     *
+     * @param enabled true enables horizontal panning, false disables it
+     */
+    @Override
+    public void setHorizontalPanEnabled(boolean enabled) {
+        getEngine().setHorizontalPanEnabled(enabled);
+    }
+
+    /**
+     * Controls whether vertical panning using gestures is enabled.
+     *
+     * @param enabled true enables vertical panning, false disables it
+     */
+    @Override
+    public void setVerticalPanEnabled(boolean enabled) {
+        getEngine().setVerticalPanEnabled(enabled);
+    }
+
+    /**
      * Controls whether the content should be overPinchable.
      * If it is, pinch events can change the zoom outside the safe bounds,
      * than return to safe values.
@@ -277,6 +303,16 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     @Override
     public void setOverPinchable(boolean overPinchable) {
         getEngine().setOverPinchable(overPinchable);
+    }
+
+    /**
+     * Controls whether zoom using pinch gesture is enabled or not.
+     *
+     * @param enabled true enables zooming, false disables it
+     */
+    @Override
+    public void setZoomEnabled(boolean enabled) {
+        getEngine().setZoomEnabled(enabled);
     }
 
     /**
