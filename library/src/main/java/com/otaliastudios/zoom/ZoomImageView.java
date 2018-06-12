@@ -90,9 +90,7 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
         mMatrix.set(matrix);
         setImageMatrix(mMatrix);
 
-        if (!awakenScrollBars()) {
-            invalidate();
-        }
+        awakenScrollBars();
     }
 
     @Override
