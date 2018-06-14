@@ -5,7 +5,7 @@ apply plugin: 'com.jfrog.bintray'
 // Required by bintray
 // archivesBaseName is required if artifactId is different from gradle module name
 // or you can add baseName to each archive task (sources, javadoc, aar)
-version = '1.2.0'
+version = '1.3.0'
 group = 'com.otaliastudios'
 archivesBaseName = 'zoomlayout'
 
@@ -68,35 +68,46 @@ install {
     }
 }
 
-def bintrayUser = System.getenv("BINTRAY_USER")
-def bintrayKey = System.getenv("BINTRAY_KEY")
-if (bintrayKey == null) {
+def bintrayUser
+def bintrayKey
+def hasBintray = false
+if (System.getenv('TRAVIS') == 'true') {
+    if (System.getenv('TRAVIS_SECURE_ENV_VARS') == 'true') {
+        bintrayUser = System.getenv("BINTRAY_USER")
+        bintrayKey = System.getenv("BINTRAY_KEY")
+        hasBintray = true
+    }
+} else {
     Properties props = new Properties()
     props.load(project.rootProject.file('local.properties').newDataInputStream())
     bintrayUser = props.getProperty('bintray.user')
     bintrayKey = props.get('bintray.key')
+    hasBintray = true
 }
 
-bintray {
-    // https://github.com/bintray/gradle-bintray-plugin
-    user = bintrayUser
-    key = bintrayKey
-    configurations = ['archives']
-    pkg {
-        repo = 'android'
-        name = 'ZoomLayout'
-        licenses = ['Apache-2.0']
-        vcsUrl = 'https://github.com/natario1/ZoomLayout.git'
-        publish = true
-        override = true
-        version {
-            name = project.version
-            desc = 'ZoomLayout v. '+project.version
-            released = new Date()
-            vcsTag = 'v'+project.version
+if (hasBintray) {
+    bintray {
+        // https://github.com/bintray/gradle-bintray-plugin
+        user = bintrayUser
+        key = bintrayKey
+        configurations = ['archives']
+        pkg {
+            repo = 'android'
+            name = 'ZoomLayout'
+            licenses = ['Apache-2.0']
+            vcsUrl = 'https://github.com/natario1/ZoomLayout.git'
+            publish = true
+            override = true
+            version {
+                name = project.version
+                desc = 'ZoomLayout v. '+project.version
+                released = new Date()
+                vcsTag = 'v'+project.version
+            }
         }
     }
 }
+
 
 // From official sample https://github.com/bintray/bintray-examples/blob/master/gradle-aar-example/build.gradle
 task sourcesJar(type: Jar) {
