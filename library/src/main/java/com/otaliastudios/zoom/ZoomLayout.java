@@ -80,6 +80,8 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         if (minZoom > -1) setMinZoom(minZoom, minZoomMode);
         if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode);
         setHasClickableChildren(hasChildren);
+
+        setWillNotDraw(false);
     }
 
     //region Internal
@@ -156,6 +158,8 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         } else {
             invalidate();
         }
+
+        awakenScrollBars();
     }
 
     @Override
@@ -163,16 +167,39 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     }
 
     @Override
+    protected int computeHorizontalScrollOffset() {
+        return (int) (-1 * mEngine.getPanX() * mEngine.getRealZoom());
+    }
+
+    @Override
+    protected int computeHorizontalScrollRange() {
+        return (int) (mChildRect.width() * mEngine.getRealZoom());
+    }
+
+    @Override
+    protected int computeVerticalScrollOffset() {
+        return (int) (-1 * mEngine.getPanY() * mEngine.getRealZoom());
+    }
+
+    @Override
+    protected int computeVerticalScrollRange() {
+        return (int) (mChildRect.height() * mEngine.getRealZoom());
+    }
+
+    @Override
     protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+        boolean result;
+
         if (!mHasClickableChildren) {
             int save = canvas.save();
             canvas.setMatrix(mMatrix);
-            boolean result = super.drawChild(canvas, child, drawingTime);
+            result = super.drawChild(canvas, child, drawingTime);
             canvas.restoreToCount(save);
-            return result;
         } else {
-            return super.drawChild(canvas, child, drawingTime);
+            result = super.drawChild(canvas, child, drawingTime);
         }
+
+        return result;
     }
 
     //endregion

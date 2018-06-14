@@ -95,10 +95,32 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     public void onUpdate(ZoomEngine helper, Matrix matrix) {
         mMatrix.set(matrix);
         setImageMatrix(mMatrix);
+
+        awakenScrollBars();
     }
 
     @Override
     public void onIdle(ZoomEngine engine) {
+    }
+
+    @Override
+    protected int computeHorizontalScrollOffset() {
+        return (int) (-1 * mEngine.getPanX() * mEngine.getRealZoom());
+    }
+
+    @Override
+    protected int computeHorizontalScrollRange() {
+        return (int) (mDrawableRect.width() * mEngine.getRealZoom());
+    }
+
+    @Override
+    protected int computeVerticalScrollOffset() {
+        return (int) (-1 * mEngine.getPanY() * mEngine.getRealZoom());
+    }
+
+    @Override
+    protected int computeVerticalScrollRange() {
+        return (int) (mDrawableRect.height() * mEngine.getRealZoom());
     }
 
     //endregion
