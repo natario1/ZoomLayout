@@ -159,7 +159,9 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
             invalidate();
         }
 
-        awakenScrollBars();
+        if ((isHorizontalScrollBarEnabled() || isVerticalScrollBarEnabled()) && !awakenScrollBars()) {
+            invalidate();
+        }
     }
 
     @Override
