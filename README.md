@@ -149,6 +149,7 @@ that can be controlled through `setTransformation(int, int)` or `app:transformat
 It is applied only once, and defines the starting viewport over our content.
 
 |Transformation|Description|
+|--------------|-----------|
 |`centerInside`|The content is scaled down or up so that it fits completely inside the view bounds.|
 |`centerCrop`|The content is scaled down or up so that its smaller side fits exactly inside the view bounds. The larger side will be cropped.|
 |`none`|No transformation is applied.|
@@ -157,6 +158,7 @@ If, after applying the transformation (and any minZoom / maxZoom constraint), th
 cropped along some dimension, the engine will also apply a translation according to the given transformation gravity.
 
 |Transformation Gravity|Description|
+|----------------------|-----------|
 |`top`|If the content is taller than the view, translate it so that we see the top part.|
 |`bottom`|If the content is taller than the view, translate it so that we see the bottom part.|
 |`left`|If the content is wider than the view, translate it so that we see the left part.|
