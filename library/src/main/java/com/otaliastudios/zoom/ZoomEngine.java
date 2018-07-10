@@ -104,6 +104,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     private boolean mVerticalPanEnabled = true;
     private boolean mOverPinchable = true;
     private boolean mZoomEnabled = true;
+    private boolean mFlingEnabled = true;
     private boolean mClearAnimation;
     private OverScroller mFlingScroller;
     private int[] mTemp = new int[3];
@@ -271,6 +272,16 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     @Override
     public void setZoomEnabled(boolean enabled) {
         mZoomEnabled = enabled;
+    }
+
+    /**
+     * Controls whether fling event is enabled or not.
+     *
+     * @param enabled true enables fling movement, false disables it
+     */
+    @Override
+    public void setFlingEnabled(boolean enabled) {
+        mFlingEnabled = enabled;
     }
 
     //endregion
@@ -688,9 +699,13 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-            int vX = (int) (mHorizontalPanEnabled ? velocityX : 0);
-            int vY = (int) (mVerticalPanEnabled ? velocityY : 0);
-            return startFling(vX, vY);
+            if(mFlingEnabled) {
+                int vX = (int) (mHorizontalPanEnabled ? velocityX : 0);
+                int vY = (int) (mVerticalPanEnabled ? velocityY : 0);
+                return startFling(vX, vY);
+            }else{
+                return false;
+            }
         }
 
 

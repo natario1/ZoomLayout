@@ -137,6 +137,13 @@ public interface ZoomApi {
     void setTransformation(@Transformation int transformation, int gravity);
 
     /**
+     * Controls whether fling event is enabled or not.
+     *
+     * @param enabled true enables fling movement, false disables it
+     */
+    void setFlingEnabled(boolean enabled);
+
+    /**
      * A low level API that can animate both zoom and pan at the same time.
      * Zoom might not be the actual matrix scale, see {@link #getZoom()} and {@link #getRealZoom()}.
      * The coordinates are referred to the content size so they do not depend on current zoom.

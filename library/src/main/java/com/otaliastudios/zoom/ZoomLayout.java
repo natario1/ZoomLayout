@@ -318,6 +318,16 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     }
 
     /**
+     * Controls whether fling event is enabled or not.
+     *
+     * @param enabled true enables fling movement, false disables it
+     */
+    @Override
+    public void setFlingEnabled(boolean enabled) {
+        getEngine().setFlingEnabled(enabled);
+    }
+
+    /**
      * Sets the base transformation to be applied to the content.
      * Defaults to {@link #TRANSFORMATION_CENTER_INSIDE} with {@link Gravity#CENTER},
      * which means that the content will be zoomed so that it fits completely inside the container.
