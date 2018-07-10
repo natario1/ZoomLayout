@@ -47,6 +47,7 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
         boolean verticalPanEnabled = a.getBoolean(R.styleable.ZoomEngine_verticalPanEnabled, true);
         boolean overPinchable = a.getBoolean(R.styleable.ZoomEngine_overPinchable, true);
         boolean zoomEnabled = a.getBoolean(R.styleable.ZoomEngine_zoomEnabled, true);
+        boolean flingEnabled = a.getBoolean(R.styleable.ZoomEngine_flingEnabled, true);
         float minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, -1);
         float maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, -1);
         @ZoomType int minZoomMode = a.getInteger(R.styleable.ZoomEngine_minZoomType, TYPE_ZOOM);
@@ -63,6 +64,7 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
         setVerticalPanEnabled(verticalPanEnabled);
         setOverPinchable(overPinchable);
         setZoomEnabled(zoomEnabled);
+        setFlingEnabled(flingEnabled);
         if (minZoom > -1) setMinZoom(minZoom, minZoomMode);
         if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode);
 

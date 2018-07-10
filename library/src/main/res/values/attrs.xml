@@ -6,6 +6,7 @@
         <attr name="overScrollVertical" format="boolean"/>
         <attr name="overPinchable" format="boolean"/>
         <attr name="zoomEnabled" format="boolean" />
+        <attr name="flingEnabled" format="boolean" />
         <attr name="verticalPanEnabled" format="boolean" />
         <attr name="horizontalPanEnabled" format="boolean" />
         <attr name="minZoom" format="float"/>

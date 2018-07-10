@@ -60,6 +60,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         boolean verticalPanEnabled = a.getBoolean(R.styleable.ZoomEngine_verticalPanEnabled, true);
         boolean overPinchable = a.getBoolean(R.styleable.ZoomEngine_overPinchable, true);
         boolean zoomEnabled = a.getBoolean(R.styleable.ZoomEngine_zoomEnabled, true);
+        boolean flingEnabled = a.getBoolean(R.styleable.ZoomEngine_flingEnabled, true);
         boolean hasChildren = a.getBoolean(R.styleable.ZoomEngine_hasClickableChildren, false);
         float minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, -1);
         float maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, -1);
@@ -77,6 +78,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         setVerticalPanEnabled(verticalPanEnabled);
         setOverPinchable(overPinchable);
         setZoomEnabled(zoomEnabled);
+        setFlingEnabled(flingEnabled);
         if (minZoom > -1) setMinZoom(minZoom, minZoomMode);
         if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode);
         setHasClickableChildren(hasChildren);
