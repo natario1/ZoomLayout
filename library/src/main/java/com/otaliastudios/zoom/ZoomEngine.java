@@ -125,7 +125,9 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         mFlingScroller = new OverScroller(context);
         mScaleDetector = new ScaleGestureDetector(context, new PinchListener());
         if (Build.VERSION.SDK_INT >= 19) mScaleDetector.setQuickScaleEnabled(false);
-        mFlingDragDetector = new GestureDetector(context, new FlingScrollListener());
+        GestureDetector gestureDetector = new GestureDetector(context, new FlingScrollListener());
+        gestureDetector.setOnDoubleTapListener(null);
+        mFlingDragDetector = gestureDetector;
         container.getViewTreeObserver().addOnGlobalLayoutListener(this);
     }
 
