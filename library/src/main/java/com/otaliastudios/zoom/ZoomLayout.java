@@ -110,6 +110,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
             child.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
                 @Override
                 public void onGlobalLayout() {
+                    child.getViewTreeObserver().removeOnGlobalLayoutListener(this);
                     mChildRect.set(0, 0,
                             child.getWidth(),
                             child.getHeight());
