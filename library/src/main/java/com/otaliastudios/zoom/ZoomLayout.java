@@ -16,6 +16,8 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 
+import java.lang.ref.WeakReference;
+
 
 /**
  * Uses {@link ZoomEngine} to allow zooming and pan events onto a view hierarchy.
@@ -36,10 +38,12 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     private final static String TAG = ZoomLayout.class.getSimpleName();
     private final static ZoomLogger LOG = ZoomLogger.create(TAG);
 
-    private ZoomEngine mEngine;
+    @NonNull
+    private final ZoomEngine mEngine;
     private Matrix mMatrix = new Matrix();
     private float[] mMatrixValues = new float[9];
-    private RectF mChildRect = new RectF();
+    @NonNull
+    private final RectF mChildRect = new RectF();
     private boolean mHasClickableChildren;
 
     public ZoomLayout(@NonNull Context context) {
@@ -86,6 +90,40 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
 
     //region Internal
 
+    private static final class LayoutListener implements ViewTreeObserver.OnGlobalLayoutListener {
+
+        @NonNull
+        private final WeakReference<ZoomEngine> mEngine;
+        @NonNull
+        private final WeakReference<RectF> mChildRect;
+        @NonNull
+        private final WeakReference<View> mChildView;
+
+        private LayoutListener(@NonNull final ZoomEngine engine, @NonNull final RectF childRect, final View childView) {
+            this.mEngine = new WeakReference<>(engine);
+            this.mChildRect = new WeakReference<>(childRect);
+            this.mChildView = new WeakReference<>(childView);
+        }
+
+        @Override
+        public void onGlobalLayout() {
+
+            final RectF childRect = mChildRect.get();
+            final ZoomEngine engine = mEngine.get();
+            final View childView = mChildView.get();
+
+            if (childRect == null || childView == null || engine == null) {
+                return;
+            }
+
+            childRect.set(0, 0,
+                    childView.getWidth(),
+                    childView.getHeight());
+
+            engine.setContentSize(childRect);
+        }
+    }
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 
@@ -107,15 +145,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     @Override
     public void addView(final View child, int index, ViewGroup.LayoutParams params) {
         if (getChildCount() == 0) {
-            child.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-                @Override
-                public void onGlobalLayout() {
-                    mChildRect.set(0, 0,
-                            child.getWidth(),
-                            child.getHeight());
-                    mEngine.setContentSize(mChildRect);
-                }
-            });
+            child.getViewTreeObserver().addOnGlobalLayoutListener(new LayoutListener(mEngine, mChildRect, child));
             super.addView(child, index, params);
         } else {
             throw new RuntimeException(TAG + " accepts only a single child.");
