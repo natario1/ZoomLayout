@@ -55,7 +55,8 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
         int transformationGravity = a.getInt(R.styleable.ZoomEngine_transformationGravity, Gravity.CENTER);
         a.recycle();
 
-        mEngine = new ZoomEngine(context, this, this);
+        mEngine = new ZoomEngine(context, this);
+        mEngine.addListener(this);
         setTransformation(transformation, transformationGravity);
         setOverScrollHorizontal(overScrollHorizontal);
         setOverScrollVertical(overScrollVertical);

@@ -18,6 +18,7 @@ import android.widget.OverScroller;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.ArrayList;
 
 
 /**
@@ -110,7 +111,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     }
 
     private View mView;
-    private Listener mListener;
+    private ArrayList<Listener> mListeners = new ArrayList<>();
     private Matrix mMatrix = new Matrix();
     private Matrix mOutMatrix = new Matrix();
     @State
@@ -144,15 +145,27 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     /**
      * Constructs an helper instance.
+     * Deprecated: use {@link #addListener(Listener)} to add a listener.
      *
      * @param context   a valid context
      * @param container the view hosting the zoomable content
      * @param listener  a listener for events
      */
+    @Deprecated
     public ZoomEngine(Context context, View container, Listener listener) {
-        mView = container;
-        mListener = listener;
+        this(context, container);
+        addListener(listener);
+    }
 
+    /**
+     * Constructs an helper instance.
+     * Deprecated: use {@link #addListener(Listener)} to add a listener.
+     *
+     * @param context   a valid context
+     * @param container the view hosting the zoomable content
+     */
+    public ZoomEngine(Context context, View container) {
+        mView = container;
         mFlingScroller = new OverScroller(context);
         mScaleDetector = new ScaleGestureDetector(context, new PinchListener());
         if (Build.VERSION.SDK_INT >= 19) mScaleDetector.setQuickScaleEnabled(false);
@@ -160,6 +173,25 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         gestureDetector.setOnDoubleTapListener(null);
         mFlingDragDetector = gestureDetector;
         container.getViewTreeObserver().addOnGlobalLayoutListener(this);
+    }
+
+    /**
+     * Registers a new {@link Listener} to be notified of matrix updates.
+     * @param listener the new listener
+     */
+    @SuppressWarnings("WeakerAccess")
+    public void addListener(@NonNull Listener listener) {
+        if (!mListeners.contains(listener)) {
+            mListeners.add(listener);
+        }
+    }
+
+    /**
+     * Removes a previously registered listener.
+     * @param listener the listener to be removed
+     */
+    public void removeListener(@NonNull Listener listener) {
+        mListeners.remove(listener);
     }
 
     /**
@@ -489,11 +521,16 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     //region Private helpers
 
     private void dispatchOnMatrix() {
-        if (mListener != null) mListener.onUpdate(this, getMatrix());
+        Matrix matrix = getMatrix();
+        for (Listener listener : mListeners) {
+            listener.onUpdate(this, matrix);
+        }
     }
 
     private void dispatchOnIdle() {
-        if (mListener != null) mListener.onIdle(this);
+        for (Listener listener : mListeners) {
+            listener.onIdle(this);
+        }
     }
 
     @Zoom
