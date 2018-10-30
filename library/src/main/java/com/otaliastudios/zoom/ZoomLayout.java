@@ -133,7 +133,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     }
 
     @Override
-    public void onUpdate(ZoomEngine engine, Matrix matrix) {
+    public void onUpdate(@NonNull ZoomEngine engine, @NonNull Matrix matrix) {
         mMatrix.set(matrix);
         if (mHasClickableChildren) {
             if (getChildCount() > 0) {
@@ -156,7 +156,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     }
 
     @Override
-    public void onIdle(ZoomEngine engine) {
+    public void onIdle(@NonNull ZoomEngine engine) {
     }
 
     @Override

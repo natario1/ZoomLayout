@@ -92,7 +92,7 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     }
 
     @Override
-    public void onUpdate(ZoomEngine helper, Matrix matrix) {
+    public void onUpdate(@NonNull ZoomEngine engine, @NonNull Matrix matrix) {
         mMatrix.set(matrix);
         setImageMatrix(mMatrix);
 
@@ -100,7 +100,7 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     }
 
     @Override
-    public void onIdle(ZoomEngine engine) {
+    public void onIdle(@NonNull ZoomEngine engine) {
     }
 
     @Override
