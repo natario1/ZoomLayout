@@ -1,5 +1,6 @@
 package com.otaliastudios.zoom;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Matrix;
 import android.graphics.RectF;
@@ -73,6 +74,7 @@ public final class ZoomEngine implements ZoomApi {
      * A simple implementation of {@link Listener} that will extract the translation
      * and scale values from the output matrix.
      */
+    @SuppressWarnings("unused")
     public abstract static class SimpleListener implements Listener {
 
         private float[] mMatrixValues = new float[9];
@@ -195,6 +197,7 @@ public final class ZoomEngine implements ZoomApi {
      * Removes a previously registered listener.
      * @param listener the listener to be removed
      */
+    @SuppressWarnings("unused")
     public void removeListener(@NonNull Listener listener) {
         mListeners.remove(listener);
     }
@@ -205,6 +208,7 @@ public final class ZoomEngine implements ZoomApi {
      *
      * @return the current matrix.
      */
+    @SuppressWarnings("WeakerAccess")
     @NonNull
     public Matrix getMatrix() {
         mOutMatrix.set(mMatrix);
@@ -228,6 +232,7 @@ public final class ZoomEngine implements ZoomApi {
     }
 
     // Returns true if we should go to that mode.
+    @SuppressLint("SwitchIntDef")
     private boolean setState(@State int mode) {
         LOG.v("trySetState:", ms(mode));
         if (!mInitialized) return false;
@@ -431,7 +436,7 @@ public final class ZoomEngine implements ZoomApi {
      * @param height the container height
      * @param applyTransformation whether to apply the transformation defined by {@link #setTransformation(int, int)}
      */
-    @SuppressWarnings("WeakerAccess")
+    @SuppressWarnings({"WeakerAccess", "unused"})
     public void setContainerSize(float width, float height, boolean applyTransformation) {
         if (width <= 0 || height <= 0) return;
         if (width != mContainerWidth || height != mContainerHeight || applyTransformation) {
@@ -547,6 +552,8 @@ public final class ZoomEngine implements ZoomApi {
         }
     }
 
+    // TODO support START and END correctly.
+    @SuppressLint("RtlHardcoded")
     @ScaledPan
     private float[] computeBasePan() {
         float[] result = new float[]{0f, 0f};
@@ -625,7 +632,7 @@ public final class ZoomEngine implements ZoomApi {
     // Checks against the translation value to ensure it is inside our acceptable bounds.
     // If allowOverScroll, overScroll value might be considered to allow "invalid" value.
     @ScaledPan
-    private float ensureTranslationBounds(@ScaledPan float delta, boolean horizontal, boolean allowOverScroll) {
+    private float ensureTranslationBounds(@SuppressWarnings("SameParameterValue") @ScaledPan float delta, boolean horizontal, boolean allowOverScroll) {
         @ScaledPan float value = horizontal ? getScaledPanX() : getScaledPanY();
         float viewSize = horizontal ? mContainerWidth : mContainerHeight;
         @ScaledPan float contentSize = horizontal ? mTransformedRect.width() : mTransformedRect.height();
@@ -696,6 +703,7 @@ public final class ZoomEngine implements ZoomApi {
      * @param ev the motion event
      * @return whether we want to intercept the event
      */
+    @SuppressWarnings("WeakerAccess")
     public boolean onInterceptTouchEvent(MotionEvent ev) {
         return processTouchEvent(ev) > TOUCH_LISTEN;
     }
@@ -707,6 +715,7 @@ public final class ZoomEngine implements ZoomApi {
      * @param ev the motion event
      * @return whether we want to steal the event
      */
+    @SuppressWarnings("WeakerAccess")
     public boolean onTouchEvent(MotionEvent ev) {
         return processTouchEvent(ev) > TOUCH_NO;
     }
@@ -1142,7 +1151,7 @@ public final class ZoomEngine implements ZoomApi {
      */
     private void animateZoomAndAbsolutePan(@Zoom float newZoom,
                                            @AbsolutePan final float x, @AbsolutePan final float y,
-                                           final boolean allowOverScroll) {
+                                           @SuppressWarnings("SameParameterValue") final boolean allowOverScroll) {
         newZoom = ensureScaleBounds(newZoom, allowOverScroll);
         if (setState(ANIMATING)) {
             mClearAnimation = false;
@@ -1174,7 +1183,7 @@ public final class ZoomEngine implements ZoomApi {
     }
 
     /**
-     * Calls {@link #animateScaledPan(float, float, boolean)} repeatedly
+     * Calls {@link #applyScaledPan(float, float, boolean)} repeatedly
      * until the final delta is applied, interpolating.
      *
      * @param deltaX          a scaled delta
@@ -1182,7 +1191,7 @@ public final class ZoomEngine implements ZoomApi {
      * @param allowOverScroll whether to overscroll
      */
     private void animateScaledPan(@ScaledPan float deltaX, @ScaledPan float deltaY,
-                                  final boolean allowOverScroll) {
+                                  @SuppressWarnings("SameParameterValue") final boolean allowOverScroll) {
         if (setState(ANIMATING)) {
             mClearAnimation = false;
             final long startTime = System.currentTimeMillis();
@@ -1298,7 +1307,7 @@ public final class ZoomEngine implements ZoomApi {
      * @param allowOverPinch whether to overPinch
      */
     private void applyPinch(@Zoom float newZoom, @AbsolutePan float targetX, @AbsolutePan float targetY,
-                            boolean allowOverPinch) {
+                            @SuppressWarnings("SameParameterValue") boolean allowOverPinch) {
         // The pivotX and pivotY options of postScale refer (obviously!) to the visible
         // portion of the screen, since the (0,0) point is remapped to be in top-left of the view.
         // The right coordinates to use are the view coordinates.
@@ -1404,6 +1413,7 @@ public final class ZoomEngine implements ZoomApi {
      *
      * @return the horizontal scroll offset.
      */
+    @SuppressWarnings("WeakerAccess")
     public int computeHorizontalScrollOffset() {
         return (int) (-1 * getPanX() * getRealZoom());
     }
@@ -1414,6 +1424,7 @@ public final class ZoomEngine implements ZoomApi {
      *
      * @return the horizontal scroll range.
      */
+    @SuppressWarnings("WeakerAccess")
     public int computeHorizontalScrollRange() {
         // TODO is this simply mTransformedRect.width? I think so.
         return (int) (mContentRect.width() * getRealZoom());
@@ -1425,6 +1436,7 @@ public final class ZoomEngine implements ZoomApi {
      *
      * @return the vertical scroll offset.
      */
+    @SuppressWarnings("WeakerAccess")
     public int computeVerticalScrollOffset() {
         return (int) (-1 * getPanY() * getRealZoom());
     }
@@ -1435,6 +1447,7 @@ public final class ZoomEngine implements ZoomApi {
      *
      * @return the vertical scroll range.
      */
+    @SuppressWarnings("WeakerAccess")
     public int computeVerticalScrollRange() {
         // TODO is this simply mTransformedRect.height? I think so.
         return (int) (mContentRect.height() * getRealZoom());
