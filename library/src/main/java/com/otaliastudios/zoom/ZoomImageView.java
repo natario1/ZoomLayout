@@ -3,13 +3,15 @@ package com.otaliastudios.zoom;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
-import android.support.annotation.AttrRes;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.AttrRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.widget.ImageView;
@@ -74,17 +76,14 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
 
     @Override
     public void setImageDrawable(@Nullable Drawable drawable) {
-        super.setImageDrawable(drawable);
-        init();
-    }
-
-    private void init() {
-        Drawable drawable = getDrawable();
         if (drawable != null) {
-            mEngine.setContentSize(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
+            mEngine.setContentSize(drawable.getIntrinsicWidth(),
+                    drawable.getIntrinsicHeight());
         }
+        super.setImageDrawable(drawable);
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
         return mEngine.onTouchEvent(ev) || super.onTouchEvent(ev);
@@ -92,14 +91,37 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
 
     @Override
     public void onUpdate(@NonNull ZoomEngine engine, @NonNull Matrix matrix) {
+        // matrix.getValues(mTemp);
+        // Log.e("ZoomEngineDEBUG", "View - Received update, matrix scale = " + mTemp[Matrix.MSCALE_X]);
         mMatrix.set(matrix);
         setImageMatrix(mMatrix);
-
         awakenScrollBars();
     }
 
     @Override
-    public void onIdle(@NonNull ZoomEngine engine) {
+    public void onIdle(@NonNull ZoomEngine engine) { }
+
+    private boolean isInSharedElementTransition() {
+        return getWidth() != getMeasuredWidth() || getHeight() != getMeasuredHeight();
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        /* Log.e("ZoomEngineDEBUG", "View - dispatching container size" +
+                " width: " + getWidth() + ", height:" + getHeight() +
+                " - different?" + isInSharedElementTransition()); */
+        mEngine.setContainerSize(getWidth(), getHeight(), true);
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        if (isInSharedElementTransition()) {
+            // The framework will often change our matrix between onUpdate and onDraw, leaving us with
+            // a bad first frame that makes a noticeable flash. Replace the matrix values with our own.
+            setImageMatrix(mMatrix);
+        }
+        super.onDraw(canvas);
     }
 
     @Override
@@ -394,6 +416,17 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     @Override
     public float getPanY() {
         return getEngine().getPanY();
+    }
+
+    /**
+     * Sets the duration of animations triggered by zoom and pan APIs.
+     * Defaults to {@link ZoomEngine#DEFAULT_ANIMATION_DURATION}.
+     *
+     * @param duration new animation duration
+     */
+    @Override
+    public void setAnimationDuration(long duration) {
+        getEngine().setAnimationDuration(duration);
     }
 
     //endregion

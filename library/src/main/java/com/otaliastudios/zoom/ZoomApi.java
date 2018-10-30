@@ -1,7 +1,7 @@
 package com.otaliastudios.zoom;
 
 import android.graphics.Matrix;
-import android.support.annotation.IntDef;
+import androidx.annotation.IntDef;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -273,4 +273,12 @@ public interface ZoomApi {
      */
     @AbsolutePan
     float getPanY();
+
+    /**
+     * Sets the duration of animations triggered by zoom and pan APIs.
+     * Defaults to {@link ZoomEngine#DEFAULT_ANIMATION_DURATION}.
+     *
+     * @param duration new animation duration
+     */
+    void setAnimationDuration(long duration);
 }

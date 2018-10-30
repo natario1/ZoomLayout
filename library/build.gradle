@@ -29,7 +29,7 @@ android {
 }
 
 dependencies {
-    api "com.android.support:support-annotations:$supportLibVersion"
+    api "androidx.annotation:annotation:$supportLibVersion"
 }
 
 

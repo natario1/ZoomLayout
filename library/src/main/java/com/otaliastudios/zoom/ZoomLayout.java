@@ -5,9 +5,9 @@ import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.RectF;
-import android.support.annotation.AttrRes;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.AttrRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -492,6 +492,17 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     @Override
     public float getPanY() {
         return getEngine().getPanY();
+    }
+
+    /**
+     * Sets the duration of animations triggered by zoom and pan APIs.
+     * Defaults to {@link ZoomEngine#DEFAULT_ANIMATION_DURATION}.
+     *
+     * @param duration new animation duration
+     */
+    @Override
+    public void setAnimationDuration(long duration) {
+        getEngine().setAnimationDuration(duration);
     }
 
     //endregion

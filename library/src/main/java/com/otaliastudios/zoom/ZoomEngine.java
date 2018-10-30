@@ -5,8 +5,8 @@ import android.content.Context;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.os.Build;
-import android.support.annotation.IntDef;
-import android.support.annotation.NonNull;
+import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
 import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -40,16 +40,18 @@ import java.util.ArrayList;
  */
 public final class ZoomEngine implements ZoomApi {
 
-    private static final String TAG = ZoomEngine.class.getSimpleName();
+    public static final long DEFAULT_ANIMATION_DURATION = 280;
+    // TODO Make public, add API. Use androidx.Interpolator?
     private static final Interpolator INTERPOLATOR = new AccelerateDecelerateInterpolator();
-    private static final int ANIMATION_DURATION = 280;
+
+    private static final String TAG = ZoomEngine.class.getSimpleName();
     private static final ZoomLogger LOG = ZoomLogger.create(TAG);
 
     /**
      * An interface to listen for updates in the inner matrix. This will be called
      * typically on animation frames.
      */
-    interface Listener {
+    public interface Listener {
 
         /**
          * Notifies that the inner matrix was updated. The passed matrix can be changed,
@@ -141,6 +143,7 @@ public final class ZoomEngine implements ZoomApi {
     private boolean mClearAnimation;
     private OverScroller mFlingScroller;
     private int[] mTemp = new int[3];
+    private long mAnimationDuration = DEFAULT_ANIMATION_DURATION;
 
     private ScaleGestureDetector mScaleDetector;
     private GestureDetector mFlingDragDetector;
@@ -422,7 +425,7 @@ public final class ZoomEngine implements ZoomApi {
      */
     @SuppressWarnings("WeakerAccess")
     public void setContainerSize(float width, float height) {
-        setContentSize(width, height, false);
+        setContainerSize(width, height, false);
     }
 
     /**
@@ -455,7 +458,7 @@ public final class ZoomEngine implements ZoomApi {
                 || mContainerWidth <= 0
                 || mContainerHeight <= 0) return;
 
-        LOG.i("onSizeChanged:", "containerWidth:", mContainerWidth,
+        LOG.w("onSizeChanged:", "containerWidth:", mContainerWidth,
                 "containerHeight:", mContainerHeight,
                 "contentWidth:", mContentRect.width(),
                 "contentHeight:", mContentRect.height());
@@ -464,15 +467,16 @@ public final class ZoomEngine implements ZoomApi {
         // if we don't want to apply it, we must do extra computations to keep the appearance unchanged.
         setState(NONE);
         boolean apply = !mInitialized || applyTransformation;
+        LOG.w("onSizeChanged: will apply?", apply, "transformation?", mTransformation);
         if (apply) {
             // First time. Apply base zoom, dispatch first event and return.
             mBaseZoom = computeBaseZoom();
             mMatrix.setScale(mBaseZoom, mBaseZoom);
             mMatrix.mapRect(mTransformedRect, mContentRect);
             mZoom = 1f;
-            LOG.i("onSizeChanged:", "apply:", "newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
+            LOG.i("onSizeChanged: newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
             @Zoom float newZoom = ensureScaleBounds(mZoom, false);
-            LOG.i("onSizeChanged:", "apply:", "scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
+            LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
             if (newZoom != mZoom) applyZoom(newZoom, false);
 
             // pan based on transformation gravity.
@@ -491,12 +495,12 @@ public final class ZoomEngine implements ZoomApi {
             // we must do extra work: recompute the baseZoom (since size changed, it makes no sense)
             // but also compute a new zoom such that the real zoom is kept unchanged.
             // So, this method triggers no Matrix updates.
-            LOG.i("onSizeChanged:", "Trying to keep real zoom to", getRealZoom());
-            LOG.i("onSizeChanged:", "oldBaseZoom:", mBaseZoom, "oldZoom:" + mZoom);
+            LOG.i("onSizeChanged: Trying to keep real zoom to", getRealZoom());
+            LOG.i("onSizeChanged: oldBaseZoom:", mBaseZoom, "oldZoom:" + mZoom);
             @RealZoom float realZoom = getRealZoom();
             mBaseZoom = computeBaseZoom();
             mZoom = realZoom / mBaseZoom;
-            LOG.i("onSizeChanged:", "newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
+            LOG.i("onSizeChanged: newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
 
             // Now sync the content rect with the current matrix since we are trying to keep it.
             // This is to have consistent values for other calls here.
@@ -505,7 +509,7 @@ public final class ZoomEngine implements ZoomApi {
             // If the new zoom value is invalid, though, we must bring it to the valid place.
             // This is a possible matrix update.
             @Zoom float newZoom = ensureScaleBounds(mZoom, false);
-            LOG.i("onSizeChanged:", "wasAlready:", "scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
+            LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
             if (newZoom != mZoom) applyZoom(newZoom, false);
 
             // If there was any, pan should be kept. I think there's nothing to do here:
@@ -1218,8 +1222,13 @@ public final class ZoomEngine implements ZoomApi {
         }
     }
 
+    @Override
+    public void setAnimationDuration(long duration) {
+        mAnimationDuration = duration;
+    }
+
     private float interpolateAnimationTime(long delta) {
-        float time = Math.min(1, (float) delta / (float) ANIMATION_DURATION);
+        float time = Math.min(1, (float) delta / (float) mAnimationDuration);
         return INTERPOLATOR.getInterpolation(time);
     }
 
