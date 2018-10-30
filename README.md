@@ -146,7 +146,7 @@ There is no strict limit over what you can do with a `Matrix`,
 
 When the engine becomes aware of the content size, it will apply a base transformation to the content
 that can be controlled through `setTransformation(int, int)` or `app:transformation` and `app:transformationGravity`.
-It is applied only once, and defines the starting viewport over our content.
+By default it is applied only once, and defines the starting viewport over our content.
 
 |Transformation|Description|
 |--------------|-----------|
@@ -164,6 +164,8 @@ cropped along some dimension, the engine will also apply a translation according
 |`left`|If the content is wider than the view, translate it so that we see the left part.|
 |`right`|If the content is wider than the view, translate it so that we see the right part.|
 
+You can always trigger a new transformation to be applied by using the `setContentSize` or `setContainerSize` APIs.
+
 #### Zoom Types
 
 The base transformation makes the difference between **zoom** and **realZoom**. Since we have silently applied
@@ -176,6 +178,9 @@ a base zoom to the content, we must introduce two separate types:
 
 To make things clearer, when transformation is `none`, the zoom and the real zoom will be identical.
 The distinction is very useful when it comes to imposing min and max constraints to our zoom value.
+
+Note that these values will change if the `setContentSize` or `setContainerSize` APIs are used
+with `applyTransformation = true`.
 
 #### APIs
 
@@ -228,15 +233,19 @@ If you are interested in using the engine directly, I encourage you to take a lo
 or `ZoomImageView` implementations. It is extremely simple. Basically:
 
 - You construct a `ZoomEngine` passing the `View` that acts as a container for your content
-- As soon as you know it (and whenever it changes), you pass the *content* dimensions
+- As soon as you know it (and whenever it changes), you pass the *content* dimensions using `setContentSize(float, float)`
 - As soon as you receive them, you pass touch updates to `onInterceptTouchEvent` or `onTouchEvent`
-- The `ZoomEngine.Listener` is fed with `Matrix` updates
+- Any `ZoomEngine.Listener` subscribed will be passed `Matrix` updates
 
 |API|Description|
 |---|-----------|
-|`setContentSize(RectF)`|Sets the size of the content, whatever it is.|
+|`setContentSize(float, float)`|Sets the size of the content, whatever it is.|
 |`onTouchEvent(MotionEvent)`|Should be called to feed the engine with new events.|
 |`onInterceptTouchEvent(MotionEvent)`|Should be called to feed the engine with new events.|
+|`setContainerSize(float, float)`|Updates the container size. This is generally not needed. The engine will get the container dimensions using a OnGlobalLayout listener. However, in some cases, you might want to trigger this directly.|
+
+The size methods will also accept a boolean indicating whether the engine should re-apply the transformation.
+The transformation is always applied if the engine is in its starting state.
 
 ## Contributions
 
