@@ -67,6 +67,36 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         void onIdle(ZoomEngine engine);
     }
 
+    /**
+     * A simple implementation of {@link Listener} that will extract the translation
+     * and scale values from the output matrix.
+     */
+    public abstract static class SimpleListener implements Listener {
+
+        private float[] mMatrixValues = new float[9];
+
+        @Override
+        public final void onUpdate(ZoomEngine engine, Matrix matrix) {
+            matrix.getValues(mMatrixValues);
+            float panX = mMatrixValues[Matrix.MTRANS_X];
+            float panY = mMatrixValues[Matrix.MTRANS_Y];
+            float scaleX = mMatrixValues[Matrix.MSCALE_X];
+            float scaleY = mMatrixValues[Matrix.MSCALE_Y];
+            float scale = (scaleX + scaleY) / 2F; // These should always be equal.
+            onUpdate(engine, panX, panY, scale);
+        }
+
+        /**
+         * Notifies that the engine has computed new updates for some of the pan or scale values.
+         *
+         * @param engine the engine
+         * @param panX the new horizontal pan value
+         * @param panY the new vertical pan value
+         * @param scale the new scale value
+         */
+        abstract void onUpdate(ZoomEngine engine, float panX, float panY, float scale);
+    }
+
     private static final int NONE = 0;
     private static final int SCROLLING = 1;
     private static final int PINCHING = 2;
