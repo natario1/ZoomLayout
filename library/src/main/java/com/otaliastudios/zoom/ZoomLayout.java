@@ -133,17 +133,11 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     }
 
     @Override
-    public void onUpdate(ZoomEngine helper, Matrix matrix) {
+    public void onUpdate(ZoomEngine engine, Matrix matrix) {
         mMatrix.set(matrix);
         if (mHasClickableChildren) {
             if (getChildCount() > 0) {
                 View child = getChildAt(0);
-
-                // child.getMatrix().getValues(mMatrixValues);
-                // Log.e(TAG, "values 0:" + Arrays.toString(mMatrixValues));
-                // mMatrix.getValues(mMatrixValues);
-                // Log.e(TAG, "values 1:" + Arrays.toString(mMatrixValues));
-
                 mMatrix.getValues(mMatrixValues);
                 child.setPivotX(0);
                 child.setPivotY(0);
@@ -151,9 +145,6 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
                 child.setTranslationY(mMatrixValues[Matrix.MTRANS_Y]);
                 child.setScaleX(mMatrixValues[Matrix.MSCALE_X]);
                 child.setScaleY(mMatrixValues[Matrix.MSCALE_Y]);
-
-                // child.getMatrix().getValues(mMatrixValues);
-                // Log.e(TAG, "values 2:" + Arrays.toString(mMatrixValues));
             }
         } else {
             invalidate();
@@ -170,22 +161,22 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
 
     @Override
     protected int computeHorizontalScrollOffset() {
-        return (int) (-1 * mEngine.getPanX() * mEngine.getRealZoom());
+        return mEngine.computeHorizontalScrollOffset();
     }
 
     @Override
     protected int computeHorizontalScrollRange() {
-        return (int) (mChildRect.width() * mEngine.getRealZoom());
+        return mEngine.computeHorizontalScrollRange();
     }
 
     @Override
     protected int computeVerticalScrollOffset() {
-        return (int) (-1 * mEngine.getPanY() * mEngine.getRealZoom());
+        return mEngine.computeVerticalScrollOffset();
     }
 
     @Override
     protected int computeVerticalScrollRange() {
-        return (int) (mChildRect.height() * mEngine.getRealZoom());
+        return mEngine.computeVerticalScrollRange();
     }
 
     @Override

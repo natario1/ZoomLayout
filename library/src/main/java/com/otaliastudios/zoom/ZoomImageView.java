@@ -105,22 +105,22 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
 
     @Override
     protected int computeHorizontalScrollOffset() {
-        return (int) (-1 * mEngine.getPanX() * mEngine.getRealZoom());
+        return mEngine.computeHorizontalScrollOffset();
     }
 
     @Override
     protected int computeHorizontalScrollRange() {
-        return (int) (mDrawableRect.width() * mEngine.getRealZoom());
+        return mEngine.computeHorizontalScrollRange();
     }
 
     @Override
     protected int computeVerticalScrollOffset() {
-        return (int) (-1 * mEngine.getPanY() * mEngine.getRealZoom());
+        return mEngine.computeVerticalScrollOffset();
     }
 
     @Override
     protected int computeVerticalScrollRange() {
-        return (int) (mDrawableRect.height() * mEngine.getRealZoom());
+        return mEngine.computeVerticalScrollRange();
     }
 
     //endregion

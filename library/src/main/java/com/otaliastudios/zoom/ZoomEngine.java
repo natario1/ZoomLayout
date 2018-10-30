@@ -1289,4 +1289,50 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     }
 
     //endregion
+
+    //region scrollbars helpers
+
+    /**
+     * Helper for implementing {@link View#computeHorizontalScrollOffset()}
+     * in custom views.
+     *
+     * @return the horizontal scroll offset.
+     */
+    public int computeHorizontalScrollOffset() {
+        return (int) (-1 * getPanX() * getRealZoom());
+    }
+
+    /**
+     * Helper for implementing {@link View#computeHorizontalScrollRange()}
+     * in custom views.
+     *
+     * @return the horizontal scroll range.
+     */
+    public int computeHorizontalScrollRange() {
+        // TODO is this simply mContentRect.width? I think so.
+        return (int) (mContentBaseRect.width() * getRealZoom());
+    }
+
+    /**
+     * Helper for implementing {@link View#computeVerticalScrollOffset()}
+     * in custom views.
+     *
+     * @return the vertical scroll offset.
+     */
+    public int computeVerticalScrollOffset() {
+        return (int) (-1 * getPanY() * getRealZoom());
+    }
+
+    /**
+     * Helper for implementing {@link View#computeVerticalScrollRange()}
+     * in custom views.
+     *
+     * @return the vertical scroll range.
+     */
+    public int computeVerticalScrollRange() {
+        // TODO is this simply mContentRect.height? I think so.
+        return (int) (mContentBaseRect.height() * getRealZoom());
+    }
+
+    //endregion
 }
