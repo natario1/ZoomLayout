@@ -5,6 +5,7 @@ import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.os.Build;
 import android.support.annotation.IntDef;
+import android.support.annotation.NonNull;
 import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -56,7 +57,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
          * @param engine the engine hosting the matrix
          * @param matrix a matrix with the given updates
          */
-        void onUpdate(ZoomEngine engine, Matrix matrix);
+        void onUpdate(@NonNull ZoomEngine engine, @NonNull Matrix matrix);
 
         /**
          * Notifies that the engine is in an idle state. This means that (most probably)
@@ -64,7 +65,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
          *
          * @param engine this engine
          */
-        void onIdle(ZoomEngine engine);
+        void onIdle(@NonNull ZoomEngine engine);
     }
 
     /**
@@ -76,7 +77,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         private float[] mMatrixValues = new float[9];
 
         @Override
-        public final void onUpdate(ZoomEngine engine, Matrix matrix) {
+        public final void onUpdate(@NonNull ZoomEngine engine, @NonNull Matrix matrix) {
             matrix.getValues(mMatrixValues);
             float panX = mMatrixValues[Matrix.MTRANS_X];
             float panY = mMatrixValues[Matrix.MTRANS_Y];
@@ -94,7 +95,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
          * @param panY the new vertical pan value
          * @param scale the new scale value
          */
-        abstract void onUpdate(ZoomEngine engine, float panX, float panY, float scale);
+        abstract void onUpdate(@NonNull ZoomEngine engine, float panX, float panY, float scale);
     }
 
     private static final int NONE = 0;
@@ -167,6 +168,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      *
      * @return the current matrix.
      */
+    @NonNull
     public Matrix getMatrix() {
         mOutMatrix.set(mMatrix);
         return mOutMatrix;
