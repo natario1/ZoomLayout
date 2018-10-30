@@ -69,7 +69,8 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         int transformationGravity = a.getInt(R.styleable.ZoomEngine_transformationGravity, Gravity.CENTER);
         a.recycle();
 
-        mEngine = new ZoomEngine(context, this, this);
+        mEngine = new ZoomEngine(context, this);
+        mEngine.addListener(this);
         setTransformation(transformation, transformationGravity);
         setOverScrollHorizontal(overScrollHorizontal);
         setOverScrollVertical(overScrollVertical);
