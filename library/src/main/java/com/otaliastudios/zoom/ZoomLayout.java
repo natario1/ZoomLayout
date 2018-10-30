@@ -39,7 +39,6 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     private ZoomEngine mEngine;
     private Matrix mMatrix = new Matrix();
     private float[] mMatrixValues = new float[9];
-    private RectF mChildRect = new RectF();
     private boolean mHasClickableChildren;
 
     public ZoomLayout(@NonNull Context context) {
@@ -111,10 +110,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
             child.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
                 @Override
                 public void onGlobalLayout() {
-                    mChildRect.set(0, 0,
-                            child.getWidth(),
-                            child.getHeight());
-                    mEngine.setContentSize(mChildRect);
+                    mEngine.setContentSize(child.getWidth(), child.getHeight());
                 }
             });
             super.addView(child, index, params);

@@ -28,7 +28,7 @@ import java.util.ArrayList;
  * <p>
  * Users are required to:
  * - Pass the container view in the constructor
- * - Notify the helper of the content size, using {@link #setContentSize(RectF)}
+ * - Notify the helper of the content size, using {@link #setContentSize(float, float)}
  * - Pass touch events to {@link #onInterceptTouchEvent(MotionEvent)} and {@link #onTouchEvent(MotionEvent)}
  * <p>
  * This class will apply a base transformation to the content, see {@link #setTransformation(int, int)},
@@ -37,7 +37,7 @@ import java.util.ArrayList;
  * When the scaling makes the content smaller than our viewport, the engine will always try
  * to keep the content centered.
  */
-public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener, ZoomApi {
+public final class ZoomEngine implements ZoomApi {
 
     private static final String TAG = ZoomEngine.class.getSimpleName();
     private static final Interpolator INTERPOLATOR = new AccelerateDecelerateInterpolator();
@@ -94,9 +94,9 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
          * @param engine the engine
          * @param panX the new horizontal pan value
          * @param panY the new vertical pan value
-         * @param scale the new scale value
+         * @param zoom the new scale value
          */
-        abstract void onUpdate(@NonNull ZoomEngine engine, float panX, float panY, float scale);
+        abstract void onUpdate(@NonNull ZoomEngine engine, float panX, float panY, float zoom);
     }
 
     private static final int NONE = 0;
@@ -110,17 +110,17 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     private @interface State {
     }
 
-    private View mView;
     private ArrayList<Listener> mListeners = new ArrayList<>();
     private Matrix mMatrix = new Matrix();
     private Matrix mOutMatrix = new Matrix();
     @State
     private int mMode = NONE;
-    private float mViewWidth;
-    private float mViewHeight;
+    private View mContainer;
+    private float mContainerWidth;
+    private float mContainerHeight;
     private boolean mInitialized;
+    private RectF mTransformedRect = new RectF();
     private RectF mContentRect = new RectF();
-    private RectF mContentBaseRect = new RectF();
     private float mMinZoom = 0.8f;
     private int mMinZoomMode = TYPE_ZOOM;
     private float mMaxZoom = 2.5f;
@@ -164,15 +164,20 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @param context   a valid context
      * @param container the view hosting the zoomable content
      */
-    public ZoomEngine(Context context, View container) {
-        mView = container;
+    public ZoomEngine(@NonNull Context context, @NonNull final View container) {
+        mContainer = container;
         mFlingScroller = new OverScroller(context);
         mScaleDetector = new ScaleGestureDetector(context, new PinchListener());
         if (Build.VERSION.SDK_INT >= 19) mScaleDetector.setQuickScaleEnabled(false);
         GestureDetector gestureDetector = new GestureDetector(context, new FlingScrollListener());
         gestureDetector.setOnDoubleTapListener(null);
         mFlingDragDetector = gestureDetector;
-        container.getViewTreeObserver().addOnGlobalLayoutListener(this);
+        container.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                setContainerSize(container.getWidth(), container.getHeight());
+            }
+        });
     }
 
     /**
@@ -319,8 +324,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     @ScaledPan
     private int getCurrentOverScroll() {
-        float overX = (mViewWidth / 20f) * mZoom;
-        float overY = (mViewHeight / 20f) * mZoom;
+        float overX = (mContainerWidth / 20f) * mZoom;
+        float overY = (mContainerHeight / 20f) * mZoom;
         return (int) Math.min(overX, overY);
     }
 
@@ -357,79 +362,112 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         mTransformationGravity = gravity;
     }
 
-    @Override
-    public void onGlobalLayout() {
-        int width = mView.getWidth();
-        int height = mView.getHeight();
-        if (width <= 0 || height <= 0) return;
-        if (width != mViewWidth || height != mViewHeight) {
-            init(width, height, mContentBaseRect);
-        }
+    /**
+     * Notifies the helper of the content size (be it a child View, a Bitmap, or whatever else).
+     * This is needed for the helper to start working.
+     *
+     * @deprecated use {@link #setContentSize(float, float)} instead.
+     */
+    @Deprecated
+    public void setContentSize(RectF rect) {
+        setContentSize(rect.width(), rect.height());
+    }
+
+    /**
+     * Notifies the helper of the content size (be it a child View, a Bitmap, or whatever else).
+     * This is needed for the helper to start working.
+     * Shorthand for {@link #setContentSize(float, float, boolean)} without applying transformations.
+     *
+     * @param width the content width
+     * @param height the content height
+     */
+    @SuppressWarnings("WeakerAccess")
+    public void setContentSize(float width, float height) {
+        setContentSize(width, height, false);
     }
 
     /**
      * Notifies the helper of the content size (be it a child View, a Bitmap, or whatever else).
      * This is needed for the helper to start working.
      *
-     * @param rect the content rect
+     * @param width the content width
+     * @param height the content height
+     * @param applyTransformation whether to apply the transformation defined by {@link #setTransformation(int, int)}
      */
-    public void setContentSize(RectF rect) {
-        if (rect.width() <= 0 || rect.height() <= 0) return;
-        if (!rect.equals(mContentBaseRect)) {
-            init(mViewWidth, mViewHeight, rect);
+    @SuppressWarnings("WeakerAccess")
+    public void setContentSize(float width, float height, boolean applyTransformation) {
+        if (width <= 0 || height <= 0) return;
+        if (mContentRect.width() != width || mContentRect.height() != height || applyTransformation) {
+            mContentRect.set(0, 0, width, height);
+            onSizeChanged(applyTransformation);
         }
     }
 
-    private void init(float viewWidth, float viewHeight, RectF rect) {
-        mViewWidth = viewWidth;
-        mViewHeight = viewHeight;
-        mContentBaseRect.set(rect);
-        mContentRect.set(rect);
+    /**
+     * Sets the size of the container view. Normally you don't need to call this because the size
+     * is detected from the container passed to the constructor using a global layout listener.
+     *
+     * However, there are cases where you might want to update it, for example during
+     * {@link View#onSizeChanged(int, int, int, int)} (called during shared element transitions).
+     *
+     * Shorthand for {@link #setContainerSize(float, float, boolean)} with no transformation.
+     *
+     * @param width the container width
+     * @param height the container height
+     */
+    @SuppressWarnings("WeakerAccess")
+    public void setContainerSize(float width, float height) {
+        setContentSize(width, height, false);
+    }
 
-        if (rect.width() <= 0 || rect.height() <= 0 || viewWidth <= 0 || viewHeight <= 0) return;
-        LOG.i("init:", "viewWdith:", viewWidth, "viewHeight:", viewHeight,
-                "rectWidth:", rect.width(), "rectHeight:", rect.height());
+    /**
+     * Sets the size of the container view. Normally you don't need to call this because the size
+     * is detected from the container passed to the constructor using a global layout listener.
+     *
+     * However, there are cases where you might want to update it, for example during
+     * {@link View#onSizeChanged(int, int, int, int)} (called during shared element transitions).
+     *
+     * @param width the container width
+     * @param height the container height
+     * @param applyTransformation whether to apply the transformation defined by {@link #setTransformation(int, int)}
+     */
+    @SuppressWarnings("WeakerAccess")
+    public void setContainerSize(float width, float height, boolean applyTransformation) {
+        if (width <= 0 || height <= 0) return;
+        if (width != mContainerWidth || height != mContainerHeight || applyTransformation) {
+            mContainerWidth = width;
+            mContainerHeight = height;
+            onSizeChanged(applyTransformation);
+        }
+    }
 
-        if (mInitialized) {
-            // Content dimensions changed.
-            setState(NONE);
+    private void onSizeChanged(boolean applyTransformation) {
+        // We will sync them later using matrix.mapRect.
+        mTransformedRect.set(mContentRect);
 
-            // Base zoom makes no sense anymore. We must recompute it.
-            // We must also compute a new zoom value so that real zoom (that is, the matrix scale)
-            // is kept the same as before. (So, no matrix updates here).
-            LOG.i("init:", "wasAlready:", "Trying to keep real zoom to", getRealZoom());
-            LOG.i("init:", "wasAlready:", "oldBaseZoom:", mBaseZoom, "oldZoom:" + mZoom);
-            @RealZoom float realZoom = getRealZoom();
-            mBaseZoom = computeBaseZoom();
-            mZoom = realZoom / mBaseZoom;
-            LOG.i("init:", "wasAlready: newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
+        if (mContentRect.width() <= 0
+                || mContentRect.height() <= 0
+                || mContainerWidth <= 0
+                || mContainerHeight <= 0) return;
 
-            // Now sync the content rect with the current matrix since we are trying to keep it.
-            // This is to have consistent values for other calls here.
-            mMatrix.mapRect(mContentRect, mContentBaseRect);
+        LOG.i("onSizeChanged:", "containerWidth:", mContainerWidth,
+                "containerHeight:", mContainerHeight,
+                "contentWidth:", mContentRect.width(),
+                "contentHeight:", mContentRect.height());
 
-            // If the new zoom value is invalid, though, we must bring it to the valid place.
-            // This is a possible matrix update.
-            @Zoom float newZoom = ensureScaleBounds(mZoom, false);
-            LOG.i("init:", "wasAlready:", "scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
-            if (newZoom != mZoom) applyZoom(newZoom, false);
-
-            // If there was any, pan should be kept. I think there's nothing to do here:
-            // If the matrix is kept, and real zoom is kept, then also the real pan is kept.
-            // I am not 100% sure of this though.
-            ensureCurrentTranslationBounds(false);
-            dispatchOnMatrix();
-
-        } else {
+        // See if we need to apply the transformation. This is the easier case, because
+        // if we don't want to apply it, we must do extra computations to keep the appearance unchanged.
+        setState(NONE);
+        boolean apply = !mInitialized || applyTransformation;
+        if (apply) {
             // First time. Apply base zoom, dispatch first event and return.
             mBaseZoom = computeBaseZoom();
             mMatrix.setScale(mBaseZoom, mBaseZoom);
-            mMatrix.mapRect(mContentRect, mContentBaseRect);
+            mMatrix.mapRect(mTransformedRect, mContentRect);
             mZoom = 1f;
-            LOG.i("init:", "fromScratch:", "newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
-
+            LOG.i("onSizeChanged:", "apply:", "newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
             @Zoom float newZoom = ensureScaleBounds(mZoom, false);
-            LOG.i("init:", "fromScratch:", "scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
+            LOG.i("onSizeChanged:", "apply:", "scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
             if (newZoom != mZoom) applyZoom(newZoom, false);
 
             // pan based on transformation gravity.
@@ -440,22 +478,51 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
             ensureCurrentTranslationBounds(false);
             dispatchOnMatrix();
-            mInitialized = true;
+            if (!mInitialized) {
+                mInitialized = true;
+            }
+        } else {
+            // We were initialized, but some size changed. Since applyTransformation is false,
+            // we must do extra work: recompute the baseZoom (since size changed, it makes no sense)
+            // but also compute a new zoom such that the real zoom is kept unchanged.
+            // So, this method triggers no Matrix updates.
+            LOG.i("onSizeChanged:", "Trying to keep real zoom to", getRealZoom());
+            LOG.i("onSizeChanged:", "oldBaseZoom:", mBaseZoom, "oldZoom:" + mZoom);
+            @RealZoom float realZoom = getRealZoom();
+            mBaseZoom = computeBaseZoom();
+            mZoom = realZoom / mBaseZoom;
+            LOG.i("onSizeChanged:", "newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
+
+            // Now sync the content rect with the current matrix since we are trying to keep it.
+            // This is to have consistent values for other calls here.
+            mMatrix.mapRect(mTransformedRect, mContentRect);
+
+            // If the new zoom value is invalid, though, we must bring it to the valid place.
+            // This is a possible matrix update.
+            @Zoom float newZoom = ensureScaleBounds(mZoom, false);
+            LOG.i("onSizeChanged:", "wasAlready:", "scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
+            if (newZoom != mZoom) applyZoom(newZoom, false);
+
+            // If there was any, pan should be kept. I think there's nothing to do here:
+            // If the matrix is kept, and real zoom is kept, then also the real pan is kept.
+            // I am not 100% sure of this though, so I prefer to call a useless dispatch.
+            ensureCurrentTranslationBounds(false);
+            dispatchOnMatrix();
         }
     }
 
     /**
      * Clears the current state, and stops dispatching matrix events
-     * until the view is laid out again and {@link #setContentSize(RectF)}
+     * until the view is laid out again and {@link #setContentSize(float, float)}
      * is called.
      */
     public void clear() {
-        mViewHeight = 0;
-        mViewWidth = 0;
+        mContainerHeight = 0;
+        mContainerWidth = 0;
         mZoom = 1;
         mBaseZoom = 0;
+        mTransformedRect = new RectF();
         mContentRect = new RectF();
-        mContentBaseRect = new RectF();
         mMatrix = new Matrix();
         mInitialized = false;
     }
@@ -463,14 +530,14 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     private float computeBaseZoom() {
         switch (mTransformation) {
             case TRANSFORMATION_CENTER_INSIDE: {
-                float scaleX = mViewWidth / mContentRect.width();
-                float scaleY = mViewHeight / mContentRect.height();
+                float scaleX = mContainerWidth / mTransformedRect.width();
+                float scaleY = mContainerHeight / mTransformedRect.height();
                 LOG.v("computeBaseZoom", "centerInside", "scaleX:", scaleX, "scaleY:", scaleY);
                 return Math.min(scaleX, scaleY);
             }
             case TRANSFORMATION_CENTER_CROP: {
-                float scaleX = mViewWidth / mContentRect.width();
-                float scaleY = mViewHeight / mContentRect.height();
+                float scaleX = mContainerWidth / mTransformedRect.width();
+                float scaleY = mContainerHeight / mTransformedRect.height();
                 LOG.v("computeBaseZoom", "centerCrop", "scaleX:", scaleX, "scaleY:", scaleY);
                 return Math.max(scaleX, scaleY);
             }
@@ -483,8 +550,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     @ScaledPan
     private float[] computeBasePan() {
         float[] result = new float[]{0f, 0f};
-        float extraWidth = mContentRect.width() - mViewWidth;
-        float extraHeight = mContentRect.height() - mViewHeight;
+        float extraWidth = mTransformedRect.width() - mContainerWidth;
+        float extraHeight = mTransformedRect.height() - mContainerHeight;
         if (extraWidth > 0) {
             // Honour the horizontal gravity indication.
             switch (mTransformationGravity & Gravity.HORIZONTAL_GRAVITY_MASK) {
@@ -551,7 +618,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         @ScaledPan float fixY = ensureTranslationBounds(0, false, allowOverScroll);
         if (fixX != 0 || fixY != 0) {
             mMatrix.postTranslate(fixX, fixY);
-            mMatrix.mapRect(mContentRect, mContentBaseRect);
+            mMatrix.mapRect(mTransformedRect, mContentRect);
         }
     }
 
@@ -560,8 +627,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     @ScaledPan
     private float ensureTranslationBounds(@ScaledPan float delta, boolean horizontal, boolean allowOverScroll) {
         @ScaledPan float value = horizontal ? getScaledPanX() : getScaledPanY();
-        float viewSize = horizontal ? mViewWidth : mViewHeight;
-        @ScaledPan float contentSize = horizontal ? mContentRect.width() : mContentRect.height();
+        float viewSize = horizontal ? mContainerWidth : mContainerHeight;
+        @ScaledPan float contentSize = horizontal ? mTransformedRect.width() : mTransformedRect.height();
 
         boolean overScrollable = horizontal ? mOverScrollHorizontal : mOverScrollVertical;
         @ScaledPan float overScroll = (overScrollable && allowOverScroll) ? getCurrentOverScroll() : 0;
@@ -801,7 +868,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     /**
      * A low level API that can animate both zoom and pan at the same time.
      * Zoom might not be the actual matrix scale, see {@link #getZoom()} and {@link #getRealZoom()}.
-     * The coordinates are referred to the content size passed in {@link #setContentSize(RectF)}
+     * The coordinates are referred to the content size passed in {@link #setContentSize(float, float)}
      * so they do not depend on current zoom.
      *
      * @param zoom    the desired zoom value
@@ -821,7 +888,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     /**
      * Pans the content until the top-left coordinates match the given x-y
-     * values. These are referred to the content size passed in {@link #setContentSize(RectF)},
+     * values. These are referred to the content size passed in {@link #setContentSize(float, float)},
      * so they do not depend on current zoom.
      *
      * @param x       the desired left coordinate
@@ -835,7 +902,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     /**
      * Pans the content by the given quantity in dx-dy values.
-     * These are referred to the content size passed in {@link #setContentSize(RectF)},
+     * These are referred to the content size passed in {@link #setContentSize(float, float)},
      * so they do not depend on current zoom.
      * <p>
      * In other words, asking to pan by 1 pixel might result in a bigger pan, if the content
@@ -995,7 +1062,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     /**
      * Returns the current horizontal pan value, in content coordinates
      * (that is, as if there was no zoom at all) referring to what was passed
-     * to {@link #setContentSize(RectF)}.
+     * to {@link #setContentSize(float, float)}.
      *
      * @return the current horizontal pan
      */
@@ -1008,7 +1075,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     /**
      * Returns the current vertical pan value, in content coordinates
      * (that is, as if there was no zoom at all) referring to what was passed
-     * to {@link #setContentSize(RectF)}.
+     * to {@link #setContentSize(float, float)}.
      *
      * @return the current vertical pan
      */
@@ -1020,12 +1087,12 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
 
     @ScaledPan
     private float getScaledPanX() {
-        return mContentRect.left;
+        return mTransformedRect.left;
     }
 
     @ScaledPan
     private float getScaledPanY() {
-        return mContentRect.top;
+        return mTransformedRect.top;
     }
 
     //endregion
@@ -1046,7 +1113,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             final long startTime = System.currentTimeMillis();
             @Zoom final float startZoom = mZoom;
             @Zoom final float endZoom = newZoom;
-            mView.post(new Runnable() {
+            mContainer.post(new Runnable() {
                 @Override
                 public void run() {
                     if (mClearAnimation) return;
@@ -1057,7 +1124,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                     if (time >= 1f) {
                         setState(NONE);
                     } else {
-                        mView.postOnAnimation(this);
+                        mContainer.postOnAnimation(this);
                     }
                 }
             });
@@ -1086,7 +1153,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             @AbsolutePan final float startY = getPanY();
             LOG.i("animateZoomAndAbsolutePan:", "starting.", "startX:", startX, "endX:", x, "startY:", startY, "endY:", y);
             LOG.i("animateZoomAndAbsolutePan:", "starting.", "startZoom:", startZoom, "endZoom:", endZoom);
-            mView.post(new Runnable() {
+            mContainer.post(new Runnable() {
                 @Override
                 public void run() {
                     if (mClearAnimation) return;
@@ -1099,7 +1166,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                     if (time >= 1f) {
                         setState(NONE);
                     } else {
-                        mView.postOnAnimation(this);
+                        mContainer.postOnAnimation(this);
                     }
                 }
             });
@@ -1123,7 +1190,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
             @ScaledPan final float startY = getScaledPanY();
             @ScaledPan final float endX = startX + deltaX;
             @ScaledPan final float endY = startY + deltaY;
-            mView.post(new Runnable() {
+            mContainer.post(new Runnable() {
                 @Override
                 public void run() {
                     if (mClearAnimation) return;
@@ -1135,7 +1202,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                     if (time >= 1f) {
                         setState(NONE);
                     } else {
-                        mView.postOnAnimation(this);
+                        mContainer.postOnAnimation(this);
                     }
                 }
             });
@@ -1159,8 +1226,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         newZoom = ensureScaleBounds(newZoom, allowOverPinch);
         float scaleFactor = newZoom / mZoom;
         mMatrix.postScale(scaleFactor, scaleFactor,
-                mViewWidth / 2f, mViewHeight / 2f);
-        mMatrix.mapRect(mContentRect, mContentBaseRect);
+                mContainerWidth / 2f, mContainerHeight / 2f);
+        mMatrix.mapRect(mTransformedRect, mContentRect);
         mZoom = newZoom;
         ensureCurrentTranslationBounds(false);
         dispatchOnMatrix();
@@ -1186,7 +1253,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         @AbsolutePan float deltaX = x - getPanX();
         @AbsolutePan float deltaY = y - getPanY();
         mMatrix.preTranslate(deltaX, deltaY);
-        mMatrix.mapRect(mContentRect, mContentBaseRect);
+        mMatrix.mapRect(mTransformedRect, mContentRect);
 
         // Scale
         newZoom = ensureScaleBounds(newZoom, false);
@@ -1196,7 +1263,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
         // It keeps the pivot point at the scaled values 0, 0 (see applyPinch).
         // I think we should keep the current top, left.. Let's try:
         mMatrix.postScale(scaleFactor, scaleFactor, 0, 0);
-        mMatrix.mapRect(mContentRect, mContentBaseRect);
+        mMatrix.mapRect(mTransformedRect, mContentRect);
         mZoom = newZoom;
 
         ensureCurrentTranslationBounds(allowOverScroll);
@@ -1215,7 +1282,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      */
     private void applyScaledPan(@ScaledPan float deltaX, @ScaledPan float deltaY, boolean allowOverScroll) {
         mMatrix.postTranslate(deltaX, deltaY);
-        mMatrix.mapRect(mContentRect, mContentBaseRect);
+        mMatrix.mapRect(mTransformedRect, mContentRect);
         ensureCurrentTranslationBounds(allowOverScroll);
         dispatchOnMatrix();
     }
@@ -1245,7 +1312,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                 getScaledPanX() - scaledX,
                 getScaledPanY() - scaledY);
 
-        mMatrix.mapRect(mContentRect, mContentBaseRect);
+        mMatrix.mapRect(mTransformedRect, mContentRect);
         mZoom = newZoom;
         ensureCurrentTranslationBounds(false);
         dispatchOnMatrix();
@@ -1260,8 +1327,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
     // while max values are related to top-left.
     private boolean computeScrollerValues(boolean horizontal) {
         @ScaledPan int currentPan = (int) (horizontal ? getScaledPanX() : getScaledPanY());
-        int viewDim = (int) (horizontal ? mViewWidth : mViewHeight);
-        @ScaledPan int contentDim = (int) (horizontal ? mContentRect.width() : mContentRect.height());
+        int viewDim = (int) (horizontal ? mContainerWidth : mContainerHeight);
+        @ScaledPan int contentDim = (int) (horizontal ? mTransformedRect.width() : mTransformedRect.height());
         int fix = (int) ensureTranslationBounds(0, horizontal, false);
         if (viewDim >= contentDim) {
             // Content is smaller, we are showing some boundary.
@@ -1310,7 +1377,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                 minX, maxX, minY, maxY,
                 overScrollX, overScrollY);
 
-        mView.post(new Runnable() {
+        mContainer.post(new Runnable() {
             @Override
             public void run() {
                 if (mFlingScroller.isFinished()) {
@@ -1320,7 +1387,7 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
                     @ScaledPan final int newPanY = mFlingScroller.getCurrY();
                     // OverScroller will eventually go back to our bounds.
                     applyScaledPan(newPanX - getScaledPanX(), newPanY - getScaledPanY(), true);
-                    mView.postOnAnimation(this);
+                    mContainer.postOnAnimation(this);
                 }
             }
         });
@@ -1348,8 +1415,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @return the horizontal scroll range.
      */
     public int computeHorizontalScrollRange() {
-        // TODO is this simply mContentRect.width? I think so.
-        return (int) (mContentBaseRect.width() * getRealZoom());
+        // TODO is this simply mTransformedRect.width? I think so.
+        return (int) (mContentRect.width() * getRealZoom());
     }
 
     /**
@@ -1369,8 +1436,8 @@ public final class ZoomEngine implements ViewTreeObserver.OnGlobalLayoutListener
      * @return the vertical scroll range.
      */
     public int computeVerticalScrollRange() {
-        // TODO is this simply mContentRect.height? I think so.
-        return (int) (mContentBaseRect.height() * getRealZoom());
+        // TODO is this simply mTransformedRect.height? I think so.
+        return (int) (mContentRect.height() * getRealZoom());
     }
 
     //endregion

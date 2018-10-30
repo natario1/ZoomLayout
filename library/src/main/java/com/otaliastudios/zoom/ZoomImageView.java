@@ -27,7 +27,6 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
 
     private ZoomEngine mEngine;
     private Matrix mMatrix = new Matrix();
-    private RectF mDrawableRect = new RectF();
 
     public ZoomImageView(@NonNull Context context) {
         this(context, null);
@@ -82,8 +81,7 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     private void init() {
         Drawable drawable = getDrawable();
         if (drawable != null) {
-            mDrawableRect.set(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
-            mEngine.setContentSize(mDrawableRect);
+            mEngine.setContentSize(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
         }
     }
 
