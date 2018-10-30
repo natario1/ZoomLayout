@@ -14,9 +14,9 @@ android:
   components:
     - tools
     - platform-tools
-    - build-tools-27.0.3
-    - android-27
-    - doc-27
+    - build-tools-28.0.3
+    - android-28
+    - doc-28
 
 cache:
   directories:
