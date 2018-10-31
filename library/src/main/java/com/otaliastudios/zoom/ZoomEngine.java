@@ -45,10 +45,7 @@ public final class ZoomEngine implements ZoomApi {
     // TODO add OverScrollCallback and OverPinchCallback.
     // Should notify the user when the boundaries are reached.
 
-    // As is, this makes not much sense to be exposed.
-    // The friction equation should be revised to expose a meaningful parameter
-    // such that friction = 0 is normal behavior, and a positive value adds friction.
-    private static final float DEFAULT_FRICTION = 0.4F;
+    // TODO expose friction parameters, use an interpolator.
 
     // TODO Make public, add API.
     private static final float DEFAULT_OVERSCROLL_FACTOR = 0.10F;
@@ -896,13 +893,13 @@ public final class ZoomEngine implements ZoomApi {
                     // Compute friction: a factor for distances. Must be 1 if we are not overscrolling,
                     // and 0 if we are at the end of the available overscroll. This works:
                     float overScrollX = Math.abs(fixX) / getMaxOverScroll(); // 0 ... 1
-                    float frictionX = 1F - (float) Math.pow(overScrollX, DEFAULT_FRICTION); // 0 ... 1
+                    float frictionX = 0.6F * (1F - (float) Math.pow(overScrollX, 0.4F)); // 0 ... 0.6
                     LOG.i("onScroll", "applying friction X:", frictionX);
                     distanceX *= frictionX;
                 }
                 if ((fixY < 0 && distanceY > 0) || (fixY > 0 && distanceY < 0)) {
                     float overScrollY = Math.abs(fixY) / getMaxOverScroll(); // 0 ... 1
-                    float frictionY = 1F - (float) Math.pow(overScrollY, DEFAULT_FRICTION); // 0 ... 1
+                    float frictionY = 0.6F * (1F - (float) Math.pow(overScrollY, 0.4F)); // 0 ... 10.6
                     LOG.i("onScroll", "applying friction Y:", frictionY);
                     distanceY *= frictionY;
                 }
@@ -1493,7 +1490,7 @@ public final class ZoomEngine implements ZoomApi {
      */
     @SuppressWarnings("WeakerAccess")
     public int computeHorizontalScrollOffset() {
-        return (int) (-1 * getPanX() * getRealZoom());
+        return (int) -getScaledPanX();
     }
 
     /**
@@ -1504,8 +1501,7 @@ public final class ZoomEngine implements ZoomApi {
      */
     @SuppressWarnings("WeakerAccess")
     public int computeHorizontalScrollRange() {
-        // TODO is this simply mTransformedRect.width? I think so.
-        return (int) (mContentRect.width() * getRealZoom());
+        return (int) mTransformedRect.width();
     }
 
     /**
@@ -1516,7 +1512,7 @@ public final class ZoomEngine implements ZoomApi {
      */
     @SuppressWarnings("WeakerAccess")
     public int computeVerticalScrollOffset() {
-        return (int) (-1 * getPanY() * getRealZoom());
+        return (int) -getScaledPanY();
     }
 
     /**
@@ -1527,8 +1523,7 @@ public final class ZoomEngine implements ZoomApi {
      */
     @SuppressWarnings("WeakerAccess")
     public int computeVerticalScrollRange() {
-        // TODO is this simply mTransformedRect.height? I think so.
-        return (int) (mContentRect.height() * getRealZoom());
+        return (int) mTransformedRect.height();
     }
 
     //endregion
