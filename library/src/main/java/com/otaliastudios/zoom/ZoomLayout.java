@@ -66,6 +66,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         @ZoomType int maxZoomMode = a.getInteger(R.styleable.ZoomEngine_maxZoomType, TYPE_ZOOM);
         int transformation = a.getInteger(R.styleable.ZoomEngine_transformation, TRANSFORMATION_CENTER_INSIDE);
         int transformationGravity = a.getInt(R.styleable.ZoomEngine_transformationGravity, Gravity.CENTER);
+        long animationDuration = a.getInt(R.styleable.ZoomEngine_animationDuration, (int) ZoomEngine.DEFAULT_ANIMATION_DURATION);
         a.recycle();
 
         mEngine = new ZoomEngine(context, this);
@@ -77,6 +78,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         setVerticalPanEnabled(verticalPanEnabled);
         setOverPinchable(overPinchable);
         setZoomEnabled(zoomEnabled);
+        setAnimationDuration(animationDuration);
         if (minZoom > -1) setMinZoom(minZoom, minZoomMode);
         if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode);
         setHasClickableChildren(hasChildren);

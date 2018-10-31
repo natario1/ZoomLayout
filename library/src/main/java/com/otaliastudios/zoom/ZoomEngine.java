@@ -7,6 +7,8 @@ import android.graphics.RectF;
 import android.os.Build;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
+
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -40,9 +42,21 @@ import java.util.ArrayList;
  */
 public final class ZoomEngine implements ZoomApi {
 
-    public static final long DEFAULT_ANIMATION_DURATION = 280;
+    // TODO add OverScrollCallback and OverPinchCallback.
+    // Should notify the user when the boundaries are reached.
+
+    // As is, this makes not much sense to be exposed.
+    // The friction equation should be revised to expose a meaningful parameter
+    // such that friction = 0 is normal behavior, and a positive value adds friction.
+    private static final float DEFAULT_FRICTION = 0.4F;
+
+    // TODO Make public, add API.
+    private static final float DEFAULT_OVERSCROLL_FACTOR = 0.10F;
+
     // TODO Make public, add API. Use androidx.Interpolator?
-    private static final Interpolator INTERPOLATOR = new AccelerateDecelerateInterpolator();
+    private static final Interpolator ANIMATION_INTERPOLATOR = new AccelerateDecelerateInterpolator();
+
+    public static final long DEFAULT_ANIMATION_DURATION = 280;
 
     private static final String TAG = ZoomEngine.class.getSimpleName();
     private static final ZoomLogger LOG = ZoomLogger.create(TAG);
@@ -118,7 +132,7 @@ public final class ZoomEngine implements ZoomApi {
     private Matrix mMatrix = new Matrix();
     private Matrix mOutMatrix = new Matrix();
     @State
-    private int mMode = NONE;
+    private int mState = NONE;
     private View mContainer;
     private float mContainerWidth;
     private float mContainerHeight;
@@ -218,8 +232,8 @@ public final class ZoomEngine implements ZoomApi {
         return mOutMatrix;
     }
 
-    private static String ms(@State int mode) {
-        switch (mode) {
+    private static String getStateName(@State int state) {
+        switch (state) {
             case NONE:
                 return "NONE";
             case FLINGING:
@@ -236,13 +250,13 @@ public final class ZoomEngine implements ZoomApi {
 
     // Returns true if we should go to that mode.
     @SuppressLint("SwitchIntDef")
-    private boolean setState(@State int mode) {
-        LOG.v("trySetState:", ms(mode));
+    private boolean setState(@State int state) {
+        LOG.v("trySetState:", getStateName(state));
         if (!mInitialized) return false;
-        if (mode == mMode) return true;
-        int oldMode = mMode;
+        if (state == mState) return true;
+        int oldMode = mState;
 
-        switch (mode) {
+        switch (state) {
             case SCROLLING:
                 if (oldMode == PINCHING || oldMode == ANIMATING) return false;
                 break;
@@ -267,8 +281,8 @@ public final class ZoomEngine implements ZoomApi {
                 break;
         }
 
-        LOG.i("setState:", ms(mode));
-        mMode = mode;
+        LOG.i("setState:", getStateName(state));
+        mState = state;
         return true;
     }
 
@@ -331,14 +345,15 @@ public final class ZoomEngine implements ZoomApi {
     }
 
     @ScaledPan
-    private int getCurrentOverScroll() {
-        float overX = (mContainerWidth / 20f) * mZoom;
-        float overY = (mContainerHeight / 20f) * mZoom;
-        return (int) Math.min(overX, overY);
+    private int getMaxOverScroll() {
+        float overX = mContainerWidth * DEFAULT_OVERSCROLL_FACTOR;
+        float overY = mContainerHeight * DEFAULT_OVERSCROLL_FACTOR;
+        // Get a scaled pan value.
+        return (int) (Math.min(overX, overY) * mZoom);
     }
 
     @Zoom
-    private float getCurrentOverPinch() {
+    private float getMaxOverPinch() {
         return 0.1f * (resolveZoom(mMaxZoom, mMaxZoomMode) - resolveZoom(mMinZoom, mMinZoomMode));
     }
 
@@ -475,7 +490,7 @@ public final class ZoomEngine implements ZoomApi {
             mMatrix.mapRect(mTransformedRect, mContentRect);
             mZoom = 1f;
             LOG.i("onSizeChanged: newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
-            @Zoom float newZoom = ensureScaleBounds(mZoom, false);
+            @Zoom float newZoom = checkZoomBounds(mZoom, false);
             LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
             if (newZoom != mZoom) applyZoom(newZoom, false);
 
@@ -485,7 +500,7 @@ public final class ZoomEngine implements ZoomApi {
             @ScaledPan float deltaY = newPan[1] - getScaledPanY();
             if (deltaX != 0 || deltaY != 0) applyScaledPan(deltaX, deltaY, false);
 
-            ensureCurrentTranslationBounds(false);
+            ensurePanBounds(false);
             dispatchOnMatrix();
             if (!mInitialized) {
                 mInitialized = true;
@@ -508,14 +523,14 @@ public final class ZoomEngine implements ZoomApi {
 
             // If the new zoom value is invalid, though, we must bring it to the valid place.
             // This is a possible matrix update.
-            @Zoom float newZoom = ensureScaleBounds(mZoom, false);
+            @Zoom float newZoom = checkZoomBounds(mZoom, false);
             LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
             if (newZoom != mZoom) applyZoom(newZoom, false);
 
             // If there was any, pan should be kept. I think there's nothing to do here:
             // If the matrix is kept, and real zoom is kept, then also the real pan is kept.
             // I am not 100% sure of this though, so I prefer to call a useless dispatch.
-            ensureCurrentTranslationBounds(false);
+            ensurePanBounds(false);
             dispatchOnMatrix();
         }
     }
@@ -611,44 +626,43 @@ public final class ZoomEngine implements ZoomApi {
         }
     }
 
+    /**
+     * Checks the current zoom state.
+     * Returns 0 if we are in a valid state, or the zoom correction to be applied
+     * to get into a valid state again.
+     */
     @Zoom
-    private float ensureScaleBounds(@Zoom float value, boolean allowOverPinch) {
+    private float checkZoomBounds(@Zoom float value, boolean allowOverPinch) {
         float minZoom = resolveZoom(mMinZoom, mMinZoomMode);
         float maxZoom = resolveZoom(mMaxZoom, mMaxZoomMode);
         if (allowOverPinch && mOverPinchable) {
-            minZoom -= getCurrentOverPinch();
-            maxZoom += getCurrentOverPinch();
+            minZoom -= getMaxOverPinch();
+            maxZoom += getMaxOverPinch();
         }
         if (value < minZoom) value = minZoom;
         if (value > maxZoom) value = maxZoom;
         return value;
     }
 
-    private void ensureCurrentTranslationBounds(boolean allowOverScroll) {
-        @ScaledPan float fixX = ensureTranslationBounds(0, true, allowOverScroll);
-        @ScaledPan float fixY = ensureTranslationBounds(0, false, allowOverScroll);
-        if (fixX != 0 || fixY != 0) {
-            mMatrix.postTranslate(fixX, fixY);
-            mMatrix.mapRect(mTransformedRect, mContentRect);
-        }
-    }
-
-    // Checks against the translation value to ensure it is inside our acceptable bounds.
-    // If allowOverScroll, overScroll value might be considered to allow "invalid" value.
+    /**
+     * Checks the current pan state.
+     * Returns 0 if we are in a valid state, or the pan correction to be applied
+     * to get into a valid state again.
+     */
     @ScaledPan
-    private float ensureTranslationBounds(@SuppressWarnings("SameParameterValue") @ScaledPan float delta, boolean horizontal, boolean allowOverScroll) {
+    private float checkPanBounds(boolean horizontal, boolean allowOverScroll) {
         @ScaledPan float value = horizontal ? getScaledPanX() : getScaledPanY();
         float viewSize = horizontal ? mContainerWidth : mContainerHeight;
         @ScaledPan float contentSize = horizontal ? mTransformedRect.width() : mTransformedRect.height();
 
         boolean overScrollable = horizontal ? mOverScrollHorizontal : mOverScrollVertical;
-        @ScaledPan float overScroll = (overScrollable && allowOverScroll) ? getCurrentOverScroll() : 0;
-        return getTranslationCorrection(value + delta, viewSize, contentSize, overScroll);
+        @ScaledPan float overScroll = (overScrollable && allowOverScroll) ? getMaxOverScroll() : 0;
+        return getPanCorrection(value, viewSize, contentSize, overScroll);
     }
 
     @ScaledPan
-    private float getTranslationCorrection(@ScaledPan float value, float viewSize,
-                                           @ScaledPan float contentSize, @ScaledPan float overScroll) {
+    private float getPanCorrection(@ScaledPan float value, float viewSize,
+                                   @ScaledPan float contentSize, @ScaledPan float overScroll) {
         @ScaledPan int tolerance = (int) overScroll;
         float min, max;
         if (contentSize <= viewSize) {
@@ -668,6 +682,19 @@ public final class ZoomEngine implements ZoomApi {
         if (desired < min) desired = min;
         if (desired > max) desired = max;
         return desired - value;
+    }
+
+    /**
+     * Calls {@link #checkPanBounds(boolean, boolean)} on both directions
+     * and applies the correction to the matrix if needed.
+     */
+    private void ensurePanBounds(boolean allowOverScroll) {
+        @ScaledPan float fixX = checkPanBounds(true, allowOverScroll);
+        @ScaledPan float fixY = checkPanBounds(false, allowOverScroll);
+        if (fixX != 0 || fixY != 0) {
+            mMatrix.postTranslate(fixX, fixY);
+            mMatrix.mapRect(mTransformedRect, mContentRect);
+        }
     }
 
     @Zoom
@@ -726,20 +753,20 @@ public final class ZoomEngine implements ZoomApi {
 
     private int processTouchEvent(MotionEvent event) {
         LOG.v("processTouchEvent:", "start.");
-        if (mMode == ANIMATING) return TOUCH_STEAL;
+        if (mState == ANIMATING) return TOUCH_STEAL;
 
         boolean result = mScaleDetector.onTouchEvent(event);
         LOG.v("processTouchEvent:", "scaleResult:", result);
 
         // Pinch detector always returns true. If we actually started a pinch,
         // Don't pass to fling detector.
-        if (mMode != PINCHING) {
+        if (mState != PINCHING) {
             result = result | mFlingDragDetector.onTouchEvent(event);
             LOG.v("processTouchEvent:", "flingResult:", result);
         }
 
         // Detect scroll ends, this appears to be the only way.
-        if (mMode == SCROLLING) {
+        if (mState == SCROLLING) {
             int a = event.getActionMasked();
             if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL) {
                 LOG.i("processTouchEvent:", "up event while scrolling, dispatching onScrollEnd.");
@@ -747,7 +774,7 @@ public final class ZoomEngine implements ZoomApi {
             }
         }
 
-        if (result && mMode != NONE) {
+        if (result && mState != NONE) {
             LOG.v("processTouchEvent:", "returning: TOUCH_STEAL");
             return TOUCH_STEAL;
         } else if (result) {
@@ -839,22 +866,61 @@ public final class ZoomEngine implements ZoomApi {
 
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-            int vX = (int) (mHorizontalPanEnabled ? velocityX : 0);
-            int vY = (int) (mVerticalPanEnabled ? velocityY : 0);
-            return startFling(vX, vY);
+            boolean overScrollX = checkPanBounds(true, false) != 0;
+            boolean overScrollY = checkPanBounds(true, false) != 0;
+            if (overScrollX || overScrollY) {
+                return false;
+            } else {
+                int vX = (int) (mHorizontalPanEnabled ? velocityX : 0);
+                int vY = (int) (mVerticalPanEnabled ? velocityY : 0);
+                return startFling(vX, vY);
+            }
         }
 
 
+        /**
+         * Scroll event detected.
+         *
+         * We assume overScroll is true. If this is the case, it will be reset in {@link #onScrollEnd()}.
+         * If not, the {@link #applyScaledPan(float, float, boolean)} function will ignore our delta.
+         *
+         * TODO this this not true! ^
+         */
         @Override
         public boolean onScroll(MotionEvent e1, MotionEvent e2,
                                 @AbsolutePan float distanceX, @AbsolutePan float distanceY) {
             if (setState(SCROLLING)) {
-                // Allow overScroll. Will be reset in onScrollEnd().
-                distanceX = mHorizontalPanEnabled ? -distanceX : 0;
-                distanceY = mVerticalPanEnabled ? -distanceY : 0;
+                // Change sign, since we work with opposite values.
+                distanceX = -distanceX;
+                distanceY = -distanceY;
 
-                applyScaledPan(distanceX, distanceY, true);
-                // applyZoomAndAbsolutePan(getZoom(), getPanX() + distanceX, getPanY() + distanceY, true);
+                // See if we are overscrolling.
+                float fixX = checkPanBounds(true, false);
+                float fixY = checkPanBounds(false, false);
+
+                // If we are overscrolling AND scrolling towards the overscroll direction...
+                if ((fixX < 0 && distanceX > 0) || (fixX > 0 && distanceX < 0)) {
+                    // Compute friction: a factor for distances. Must be 1 if we are not overscrolling,
+                    // and 0 if we are at the end of the available overscroll. This works:
+                    float overScrollX = Math.abs(fixX) / getMaxOverScroll(); // 0 ... 1
+                    float frictionX = 1F - (float) Math.pow(overScrollX, DEFAULT_FRICTION); // 0 ... 1
+                    LOG.i("onScroll", "applying friction X:", frictionX);
+                    distanceX *= frictionX;
+                }
+                if ((fixY < 0 && distanceY > 0) || (fixY > 0 && distanceY < 0)) {
+                    float overScrollY = Math.abs(fixY) / getMaxOverScroll(); // 0 ... 1
+                    float frictionY = 1F - (float) Math.pow(overScrollY, DEFAULT_FRICTION); // 0 ... 1
+                    LOG.i("onScroll", "applying friction Y:", frictionY);
+                    distanceY *= frictionY;
+                }
+
+                // If disabled, reset to 0.
+                if (!mHorizontalPanEnabled) distanceX = 0;
+                if (!mVerticalPanEnabled) distanceY = 0;
+
+                if (distanceX != 0 || distanceY != 0) {
+                    applyScaledPan(distanceX, distanceY, true);
+                }
                 return true;
             }
             return false;
@@ -864,8 +930,8 @@ public final class ZoomEngine implements ZoomApi {
     private void onScrollEnd() {
         if (mOverScrollHorizontal || mOverScrollVertical) {
             // We might have over scrolled. Animate back to reasonable value.
-            @ScaledPan float fixX = ensureTranslationBounds(0, true, false);
-            @ScaledPan float fixY = ensureTranslationBounds(0, false, false);
+            @ScaledPan float fixX = checkPanBounds(true, false);
+            @ScaledPan float fixY = checkPanBounds(false, false);
             if (fixX != 0 || fixY != 0) {
                 animateScaledPan(fixX, fixY, true);
                 return;
@@ -1120,7 +1186,7 @@ public final class ZoomEngine implements ZoomApi {
      * @param allowOverPinch whether overpinching is allowed
      */
     private void animateZoom(@Zoom float newZoom, final boolean allowOverPinch) {
-        newZoom = ensureScaleBounds(newZoom, allowOverPinch);
+        newZoom = checkZoomBounds(newZoom, allowOverPinch);
         if (setState(ANIMATING)) {
             mClearAnimation = false;
             final long startTime = System.currentTimeMillis();
@@ -1156,7 +1222,7 @@ public final class ZoomEngine implements ZoomApi {
     private void animateZoomAndAbsolutePan(@Zoom float newZoom,
                                            @AbsolutePan final float x, @AbsolutePan final float y,
                                            @SuppressWarnings("SameParameterValue") final boolean allowOverScroll) {
-        newZoom = ensureScaleBounds(newZoom, allowOverScroll);
+        newZoom = checkZoomBounds(newZoom, allowOverScroll);
         if (setState(ANIMATING)) {
             mClearAnimation = false;
             final long startTime = System.currentTimeMillis();
@@ -1229,7 +1295,7 @@ public final class ZoomEngine implements ZoomApi {
 
     private float interpolateAnimationTime(long delta) {
         float time = Math.min(1, (float) delta / (float) mAnimationDuration);
-        return INTERPOLATOR.getInterpolation(time);
+        return ANIMATION_INTERPOLATOR.getInterpolation(time);
     }
 
     /**
@@ -1241,13 +1307,13 @@ public final class ZoomEngine implements ZoomApi {
      * @param allowOverPinch whether to overpinch
      */
     private void applyZoom(@Zoom float newZoom, boolean allowOverPinch) {
-        newZoom = ensureScaleBounds(newZoom, allowOverPinch);
+        newZoom = checkZoomBounds(newZoom, allowOverPinch);
         float scaleFactor = newZoom / mZoom;
         mMatrix.postScale(scaleFactor, scaleFactor,
                 mContainerWidth / 2f, mContainerHeight / 2f);
         mMatrix.mapRect(mTransformedRect, mContentRect);
         mZoom = newZoom;
-        ensureCurrentTranslationBounds(false);
+        ensurePanBounds(false);
         dispatchOnMatrix();
     }
 
@@ -1274,7 +1340,7 @@ public final class ZoomEngine implements ZoomApi {
         mMatrix.mapRect(mTransformedRect, mContentRect);
 
         // Scale
-        newZoom = ensureScaleBounds(newZoom, false);
+        newZoom = checkZoomBounds(newZoom, false);
         float scaleFactor = newZoom / mZoom;
         // TODO: This used to work but I am not sure about it.
         // mMatrix.postScale(scaleFactor, scaleFactor, getScaledPanX(), getScaledPanY());
@@ -1284,7 +1350,7 @@ public final class ZoomEngine implements ZoomApi {
         mMatrix.mapRect(mTransformedRect, mContentRect);
         mZoom = newZoom;
 
-        ensureCurrentTranslationBounds(allowOverScroll);
+        ensurePanBounds(allowOverScroll);
         dispatchOnMatrix();
     }
 
@@ -1301,7 +1367,7 @@ public final class ZoomEngine implements ZoomApi {
     private void applyScaledPan(@ScaledPan float deltaX, @ScaledPan float deltaY, boolean allowOverScroll) {
         mMatrix.postTranslate(deltaX, deltaY);
         mMatrix.mapRect(mTransformedRect, mContentRect);
-        ensureCurrentTranslationBounds(allowOverScroll);
+        ensurePanBounds(allowOverScroll);
         dispatchOnMatrix();
     }
 
@@ -1324,7 +1390,7 @@ public final class ZoomEngine implements ZoomApi {
 
         @ScaledPan float scaledX = resolvePan(targetX);
         @ScaledPan float scaledY = resolvePan(targetY);
-        newZoom = ensureScaleBounds(newZoom, allowOverPinch);
+        newZoom = checkZoomBounds(newZoom, allowOverPinch);
         float scaleFactor = newZoom / mZoom;
         mMatrix.postScale(scaleFactor, scaleFactor,
                 getScaledPanX() - scaledX,
@@ -1332,7 +1398,7 @@ public final class ZoomEngine implements ZoomApi {
 
         mMatrix.mapRect(mTransformedRect, mContentRect);
         mZoom = newZoom;
-        ensureCurrentTranslationBounds(false);
+        ensurePanBounds(false);
         dispatchOnMatrix();
     }
 
@@ -1347,7 +1413,7 @@ public final class ZoomEngine implements ZoomApi {
         @ScaledPan int currentPan = (int) (horizontal ? getScaledPanX() : getScaledPanY());
         int viewDim = (int) (horizontal ? mContainerWidth : mContainerHeight);
         @ScaledPan int contentDim = (int) (horizontal ? mTransformedRect.width() : mTransformedRect.height());
-        int fix = (int) ensureTranslationBounds(0, horizontal, false);
+        int fix = (int) checkPanBounds(horizontal, false);
         if (viewDim >= contentDim) {
             // Content is smaller, we are showing some boundary.
             // We can't move in any direction (but we can overScroll).
@@ -1365,6 +1431,7 @@ public final class ZoomEngine implements ZoomApi {
     }
 
     private boolean startFling(@ScaledPan int velocityX, @ScaledPan int velocityY) {
+        Log.e("setState startFling", "velX: " + velocityX);
         if (!setState(FLINGING)) return false;
 
         // Using actual pan values for the scroller.
@@ -1385,8 +1452,8 @@ public final class ZoomEngine implements ZoomApi {
             return false;
         }
 
-        @ScaledPan int overScrollX = mOverScrollHorizontal ? getCurrentOverScroll() : 0;
-        @ScaledPan int overScrollY = mOverScrollVertical ? getCurrentOverScroll() : 0;
+        @ScaledPan int overScrollX = mOverScrollHorizontal ? getMaxOverScroll() : 0;
+        @ScaledPan int overScrollY = mOverScrollVertical ? getMaxOverScroll() : 0;
         LOG.i("startFling", "velocityX:", velocityX, "velocityY:", velocityY);
         LOG.i("startFling", "flingX:", "min:", minX, "max:", maxX, "start:", startX, "overScroll:", overScrollY);
         LOG.i("startFling", "flingY:", "min:", minY, "max:", maxY, "start:", startY, "overScroll:", overScrollX);
