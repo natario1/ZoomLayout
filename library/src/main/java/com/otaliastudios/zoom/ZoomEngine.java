@@ -156,7 +156,6 @@ public final class ZoomEngine implements ZoomApi {
     private boolean mZoomEnabled = true;
     private boolean mClearAnimation;
     private OverScroller mFlingScroller;
-    private int[] mTemp = new int[3];
     private long mAnimationDuration = DEFAULT_ANIMATION_DURATION;
 
     private ScaleGestureDetector mScaleDetector;
@@ -866,15 +865,9 @@ public final class ZoomEngine implements ZoomApi {
 
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-            boolean overScrollX = checkPanBounds(true, false) != 0;
-            boolean overScrollY = checkPanBounds(true, false) != 0;
-            if (overScrollX || overScrollY) {
-                return false;
-            } else {
-                int vX = (int) (mHorizontalPanEnabled ? velocityX : 0);
-                int vY = (int) (mVerticalPanEnabled ? velocityY : 0);
-                return startFling(vX, vY);
-            }
+            int vX = (int) (mHorizontalPanEnabled ? velocityX : 0);
+            int vY = (int) (mVerticalPanEnabled ? velocityY : 0);
+            return startFling(vX, vY);
         }
 
 
@@ -1409,7 +1402,7 @@ public final class ZoomEngine implements ZoomApi {
     // Puts min, start and max values in the mTemp array.
     // Since axes are shifted (pans are negative), min values are related to bottom-right,
     // while max values are related to top-left.
-    private boolean computeScrollerValues(boolean horizontal) {
+    private void computeScrollerValues(boolean horizontal, ScrollerValues output) {
         @ScaledPan int currentPan = (int) (horizontal ? getScaledPanX() : getScaledPanY());
         int viewDim = (int) (horizontal ? mContainerWidth : mContainerHeight);
         @ScaledPan int contentDim = (int) (horizontal ? mTransformedRect.width() : mTransformedRect.height());
@@ -1417,40 +1410,49 @@ public final class ZoomEngine implements ZoomApi {
         if (viewDim >= contentDim) {
             // Content is smaller, we are showing some boundary.
             // We can't move in any direction (but we can overScroll).
-            mTemp[0] = currentPan + fix;
-            mTemp[1] = currentPan;
-            mTemp[2] = currentPan + fix;
+            output.minValue = currentPan + fix;
+            output.startValue = currentPan;
+            output.maxValue = currentPan + fix;
         } else {
             // Content is bigger, we can move.
             // in this case minPan + viewDim = contentDim
-            mTemp[0] = -(contentDim - viewDim);
-            mTemp[1] = currentPan;
-            mTemp[2] = 0;
+            output.minValue = -(contentDim - viewDim);
+            output.startValue = currentPan;
+            output.maxValue = 0;
         }
-        return fix != 0;
+        output.isInOverScroll = fix != 0;
     }
 
-    private boolean startFling(@ScaledPan int velocityX, @ScaledPan int velocityY) {
-        Log.e("setState startFling", "velX: " + velocityX);
-        if (!setState(FLINGING)) return false;
+    private static class ScrollerValues {
+        @ScaledPan int minValue;
+        @ScaledPan int startValue;
+        @ScaledPan int maxValue;
+        boolean isInOverScroll;
+    }
 
+    private ScrollerValues mScrollerValuesX = new ScrollerValues();
+    private ScrollerValues mScrollerValuesY = new ScrollerValues();
+
+    private boolean startFling(@ScaledPan int velocityX, @ScaledPan int velocityY) {
         // Using actual pan values for the scroller.
         // Note: these won't make sense if zoom changes.
-        boolean overScrolled;
-        overScrolled = computeScrollerValues(true);
-        @ScaledPan int minX = mTemp[0];
-        @ScaledPan int startX = mTemp[1];
-        @ScaledPan int maxX = mTemp[2];
-        overScrolled = overScrolled | computeScrollerValues(false);
-        @ScaledPan int minY = mTemp[0];
-        @ScaledPan int startY = mTemp[1];
-        @ScaledPan int maxY = mTemp[2];
-
-        boolean go = overScrolled || mOverScrollHorizontal || mOverScrollVertical || minX < maxX || minY < maxY;
-        if (!go) {
-            setState(NONE);
+        computeScrollerValues(true, mScrollerValuesX);
+        computeScrollerValues(false, mScrollerValuesY);
+        @ScaledPan int minX = mScrollerValuesX.minValue;
+        @ScaledPan int startX = mScrollerValuesX.startValue;
+        @ScaledPan int maxX = mScrollerValuesX.maxValue;
+        @ScaledPan int minY = mScrollerValuesY.minValue;
+        @ScaledPan int startY = mScrollerValuesY.startValue;
+        @ScaledPan int maxY = mScrollerValuesY.maxValue;
+        if (mScrollerValuesX.isInOverScroll || mScrollerValuesY.isInOverScroll) {
+            // Don't accept new flings when in overscroll. This causes artifacts.
             return false;
         }
+        if (minX >= maxX && minY >= maxY && !mOverScrollVertical && !mOverScrollHorizontal) {
+            return false;
+        }
+        // Must be after the other conditions.
+        if (!setState(FLINGING)) return false;
 
         @ScaledPan int overScrollX = mOverScrollHorizontal ? getMaxOverScroll() : 0;
         @ScaledPan int overScrollY = mOverScrollVertical ? getMaxOverScroll() : 0;
