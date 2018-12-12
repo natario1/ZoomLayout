@@ -194,7 +194,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
 
         if (!mHasClickableChildren) {
             int save = canvas.save();
-            canvas.setMatrix(mMatrix);
+            canvas.concat(mMatrix);
             result = super.drawChild(canvas, child, drawingTime);
             canvas.restoreToCount(save);
         } else {
