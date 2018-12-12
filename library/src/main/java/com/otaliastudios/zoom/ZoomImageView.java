@@ -88,7 +88,8 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        return mEngine.onTouchEvent(ev) || super.onTouchEvent(ev);
+        // Using | so click listeners work.
+        return mEngine.onTouchEvent(ev) | super.onTouchEvent(ev);
     }
 
     @Override
