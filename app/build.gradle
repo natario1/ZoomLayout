@@ -3,7 +3,6 @@ apply plugin: 'com.android.application'
 android {
 
     compileSdkVersion rootProject.ext.compileSdkVersion
-    buildToolsVersion rootProject.ext.buildToolsVersion
 
     defaultConfig {
         applicationId "com.otaliastudios.zoom.demo"
@@ -22,6 +21,6 @@ android {
 }
 
 dependencies {
-    implementation "com.android.support:appcompat-v7:$supportLibVersion"
+    implementation "androidx.appcompat:appcompat:$supportLibVersion"
     implementation project(':library')
 }

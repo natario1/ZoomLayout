@@ -5,14 +5,13 @@ apply plugin: 'com.jfrog.bintray'
 // Required by bintray
 // archivesBaseName is required if artifactId is different from gradle module name
 // or you can add baseName to each archive task (sources, javadoc, aar)
-version = '1.3.0'
+version = '1.4.0'
 group = 'com.otaliastudios'
 archivesBaseName = 'zoomlayout'
 
 android {
 
     compileSdkVersion rootProject.ext.compileSdkVersion
-    buildToolsVersion rootProject.ext.buildToolsVersion
 
     defaultConfig {
         minSdkVersion rootProject.ext.minSdkVersion
@@ -30,7 +29,7 @@ android {
 }
 
 dependencies {
-    api "com.android.support:support-annotations:$supportLibVersion"
+    api "androidx.annotation:annotation:$supportLibVersion"
 }
 
 

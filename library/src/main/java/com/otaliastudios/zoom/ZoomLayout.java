@@ -5,9 +5,9 @@ import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.RectF;
-import android.support.annotation.AttrRes;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.AttrRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -71,9 +71,11 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         @ZoomType int maxZoomMode = a.getInteger(R.styleable.ZoomEngine_maxZoomType, TYPE_ZOOM);
         int transformation = a.getInteger(R.styleable.ZoomEngine_transformation, TRANSFORMATION_CENTER_INSIDE);
         int transformationGravity = a.getInt(R.styleable.ZoomEngine_transformationGravity, Gravity.CENTER);
+        long animationDuration = a.getInt(R.styleable.ZoomEngine_animationDuration, (int) ZoomEngine.DEFAULT_ANIMATION_DURATION);
         a.recycle();
 
-        mEngine = new ZoomEngine(context, this, this);
+        mEngine = new ZoomEngine(context, this);
+        mEngine.addListener(this);
         setTransformation(transformation, transformationGravity);
         setOverScrollHorizontal(overScrollHorizontal);
         setOverScrollVertical(overScrollVertical);
@@ -81,6 +83,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
         setVerticalPanEnabled(verticalPanEnabled);
         setOverPinchable(overPinchable);
         setZoomEnabled(zoomEnabled);
+        setAnimationDuration(animationDuration);
         if (minZoom > -1) setMinZoom(minZoom, minZoomMode);
         if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode);
         setHasClickableChildren(hasChildren);
@@ -163,17 +166,11 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     }
 
     @Override
-    public void onUpdate(ZoomEngine helper, Matrix matrix) {
+    public void onUpdate(@NonNull ZoomEngine engine, @NonNull Matrix matrix) {
         mMatrix.set(matrix);
         if (mHasClickableChildren) {
             if (getChildCount() > 0) {
                 View child = getChildAt(0);
-
-                // child.getMatrix().getValues(mMatrixValues);
-                // Log.e(TAG, "values 0:" + Arrays.toString(mMatrixValues));
-                // mMatrix.getValues(mMatrixValues);
-                // Log.e(TAG, "values 1:" + Arrays.toString(mMatrixValues));
-
                 mMatrix.getValues(mMatrixValues);
                 child.setPivotX(0);
                 child.setPivotY(0);
@@ -181,9 +178,6 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
                 child.setTranslationY(mMatrixValues[Matrix.MTRANS_Y]);
                 child.setScaleX(mMatrixValues[Matrix.MSCALE_X]);
                 child.setScaleY(mMatrixValues[Matrix.MSCALE_Y]);
-
-                // child.getMatrix().getValues(mMatrixValues);
-                // Log.e(TAG, "values 2:" + Arrays.toString(mMatrixValues));
             }
         } else {
             invalidate();
@@ -195,27 +189,27 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     }
 
     @Override
-    public void onIdle(ZoomEngine engine) {
+    public void onIdle(@NonNull ZoomEngine engine) {
     }
 
     @Override
     protected int computeHorizontalScrollOffset() {
-        return (int) (-1 * mEngine.getPanX() * mEngine.getRealZoom());
+        return mEngine.computeHorizontalScrollOffset();
     }
 
     @Override
     protected int computeHorizontalScrollRange() {
-        return (int) (mChildRect.width() * mEngine.getRealZoom());
+        return mEngine.computeHorizontalScrollRange();
     }
 
     @Override
     protected int computeVerticalScrollOffset() {
-        return (int) (-1 * mEngine.getPanY() * mEngine.getRealZoom());
+        return mEngine.computeVerticalScrollOffset();
     }
 
     @Override
     protected int computeVerticalScrollRange() {
-        return (int) (mChildRect.height() * mEngine.getRealZoom());
+        return mEngine.computeVerticalScrollRange();
     }
 
     @Override
@@ -224,7 +218,7 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
 
         if (!mHasClickableChildren) {
             int save = canvas.save();
-            canvas.setMatrix(mMatrix);
+            canvas.concat(mMatrix);
             result = super.drawChild(canvas, child, drawingTime);
             canvas.restoreToCount(save);
         } else {
@@ -534,6 +528,17 @@ public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, Zoom
     @Override
     public float getPanY() {
         return getEngine().getPanY();
+    }
+
+    /**
+     * Sets the duration of animations triggered by zoom and pan APIs.
+     * Defaults to {@link ZoomEngine#DEFAULT_ANIMATION_DURATION}.
+     *
+     * @param duration new animation duration
+     */
+    @Override
+    public void setAnimationDuration(long duration) {
+        getEngine().setAnimationDuration(duration);
     }
 
     //endregion

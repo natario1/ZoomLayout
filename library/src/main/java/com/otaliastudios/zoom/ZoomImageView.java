@@ -3,13 +3,15 @@ package com.otaliastudios.zoom;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
-import android.support.annotation.AttrRes;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.AttrRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.widget.ImageView;
@@ -27,7 +29,6 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
 
     private ZoomEngine mEngine;
     private Matrix mMatrix = new Matrix();
-    private RectF mDrawableRect = new RectF();
 
     public ZoomImageView(@NonNull Context context) {
         this(context, null);
@@ -53,9 +54,11 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
         @ZoomType int maxZoomMode = a.getInteger(R.styleable.ZoomEngine_maxZoomType, TYPE_ZOOM);
         int transformation = a.getInteger(R.styleable.ZoomEngine_transformation, TRANSFORMATION_CENTER_INSIDE);
         int transformationGravity = a.getInt(R.styleable.ZoomEngine_transformationGravity, Gravity.CENTER);
+        long animationDuration = a.getInt(R.styleable.ZoomEngine_animationDuration, (int) ZoomEngine.DEFAULT_ANIMATION_DURATION);
         a.recycle();
 
-        mEngine = new ZoomEngine(context, this, this);
+        mEngine = new ZoomEngine(context, this);
+        mEngine.addListener(this);
         setTransformation(transformation, transformationGravity);
         setOverScrollHorizontal(overScrollHorizontal);
         setOverScrollVertical(overScrollVertical);
@@ -63,6 +66,7 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
         setVerticalPanEnabled(verticalPanEnabled);
         setOverPinchable(overPinchable);
         setZoomEnabled(zoomEnabled);
+        setAnimationDuration(animationDuration);
         if (minZoom > -1) setMinZoom(minZoom, minZoomMode);
         if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode);
 
@@ -74,53 +78,73 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
 
     @Override
     public void setImageDrawable(@Nullable Drawable drawable) {
-        super.setImageDrawable(drawable);
-        init();
-    }
-
-    private void init() {
-        Drawable drawable = getDrawable();
         if (drawable != null) {
-            mDrawableRect.set(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
-            mEngine.setContentSize(mDrawableRect);
+            mEngine.setContentSize(drawable.getIntrinsicWidth(),
+                    drawable.getIntrinsicHeight());
         }
+        super.setImageDrawable(drawable);
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        return mEngine.onTouchEvent(ev) || super.onTouchEvent(ev);
+        // Using | so click listeners work.
+        return mEngine.onTouchEvent(ev) | super.onTouchEvent(ev);
     }
 
     @Override
-    public void onUpdate(ZoomEngine helper, Matrix matrix) {
+    public void onUpdate(@NonNull ZoomEngine engine, @NonNull Matrix matrix) {
+        // matrix.getValues(mTemp);
+        // Log.e("ZoomEngineDEBUG", "View - Received update, matrix scale = " + mTemp[Matrix.MSCALE_X]);
         mMatrix.set(matrix);
         setImageMatrix(mMatrix);
-
         awakenScrollBars();
     }
 
     @Override
-    public void onIdle(ZoomEngine engine) {
+    public void onIdle(@NonNull ZoomEngine engine) { }
+
+    private boolean isInSharedElementTransition() {
+        return getWidth() != getMeasuredWidth() || getHeight() != getMeasuredHeight();
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        /* Log.e("ZoomEngineDEBUG", "View - dispatching container size" +
+                " width: " + getWidth() + ", height:" + getHeight() +
+                " - different?" + isInSharedElementTransition()); */
+        mEngine.setContainerSize(getWidth(), getHeight(), true);
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        if (isInSharedElementTransition()) {
+            // The framework will often change our matrix between onUpdate and onDraw, leaving us with
+            // a bad first frame that makes a noticeable flash. Replace the matrix values with our own.
+            setImageMatrix(mMatrix);
+        }
+        super.onDraw(canvas);
     }
 
     @Override
     protected int computeHorizontalScrollOffset() {
-        return (int) (-1 * mEngine.getPanX() * mEngine.getRealZoom());
+        return mEngine.computeHorizontalScrollOffset();
     }
 
     @Override
     protected int computeHorizontalScrollRange() {
-        return (int) (mDrawableRect.width() * mEngine.getRealZoom());
+        return mEngine.computeHorizontalScrollRange();
     }
 
     @Override
     protected int computeVerticalScrollOffset() {
-        return (int) (-1 * mEngine.getPanY() * mEngine.getRealZoom());
+        return mEngine.computeVerticalScrollOffset();
     }
 
     @Override
     protected int computeVerticalScrollRange() {
-        return (int) (mDrawableRect.height() * mEngine.getRealZoom());
+        return mEngine.computeVerticalScrollRange();
     }
 
     //endregion
@@ -395,6 +419,17 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     @Override
     public float getPanY() {
         return getEngine().getPanY();
+    }
+
+    /**
+     * Sets the duration of animations triggered by zoom and pan APIs.
+     * Defaults to {@link ZoomEngine#DEFAULT_ANIMATION_DURATION}.
+     *
+     * @param duration new animation duration
+     */
+    @Override
+    public void setAnimationDuration(long duration) {
+        getEngine().setAnimationDuration(duration);
     }
 
     //endregion

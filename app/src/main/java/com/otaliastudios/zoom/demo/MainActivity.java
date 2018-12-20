@@ -1,6 +1,5 @@
 package com.otaliastudios.zoom.demo;
 
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -8,6 +7,8 @@ import android.widget.Button;
 import com.otaliastudios.zoom.ZoomImageView;
 import com.otaliastudios.zoom.ZoomLayout;
 import com.otaliastudios.zoom.ZoomLogger;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 
 public class MainActivity extends AppCompatActivity {
