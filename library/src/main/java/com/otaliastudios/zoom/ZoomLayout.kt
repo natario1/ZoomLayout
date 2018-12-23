@@ -1,44 +1,48 @@
 package com.otaliastudios.zoom;
 
-import android.annotation.SuppressLint;
-import android.content.Context;
-import android.content.res.TypedArray;
-import android.graphics.Canvas;
-import android.graphics.Matrix;
-import android.graphics.RectF;
-import android.graphics.drawable.Drawable;
-import androidx.annotation.AttrRes;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import android.util.AttributeSet;
-import android.util.Log;
-import android.view.Gravity;
-import android.view.MotionEvent;
-import android.widget.ImageView;
+import android.content.Context
+import android.content.res.TypedArray
+import android.graphics.Canvas
+import android.graphics.Matrix
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
+import androidx.annotation.NonNull
 
 
 /**
- * Uses {@link ZoomEngine} to allow zooming and pan events to the inner drawable.
+ * Uses {@link ZoomEngine} to allow zooming and pan events onto a view hierarchy.
+ * The hierarchy must be contained in a single view, added to this layout
+ * (like what you do with a ScrollView).
+ * <p>
+ * If the hierarchy has clickable children that should react to touch events, you are
+ * required to call {@link #setHasClickableChildren(boolean)} or use the attribute.
+ * This is off by default because it is more expensive in terms of performance.
+ * <p>
+ * Currently padding to this view / margins to the child view are NOT supported.
  * <p>
  * TODO: support padding (from inside ZoomEngine that gets the view)
+ * TODO: support layout_margin (here)
  */
-@SuppressLint("AppCompatCustomView")
-public class ZoomImageView extends ImageView implements ZoomEngine.Listener, ZoomApi {
+public class ZoomLayout extends FrameLayout implements ZoomEngine.Listener, ZoomApi {
 
-    private final static String TAG = ZoomImageView.class.getSimpleName();
+    private final static String TAG = ZoomLayout.class.getSimpleName();
+    private final static ZoomLogger LOG = ZoomLogger.create(TAG);
 
     private ZoomEngine mEngine;
     private Matrix mMatrix = new Matrix();
+    private float[] mMatrixValues = new float[9];
+    private boolean mHasClickableChildren;
 
-    public ZoomImageView(@NonNull Context context) {
+    public ZoomLayout(@NonNull Context context) {
         this(context, null);
     }
 
-    public ZoomImageView(@NonNull Context context, @Nullable AttributeSet attrs) {
+    public ZoomLayout(@NonNull Context context, @Nullable AttributeSet attrs) {
         this(context, attrs, 0);
     }
 
-    public ZoomImageView(@NonNull Context context, @Nullable AttributeSet attrs, @AttrRes int defStyleAttr) {
+    public ZoomLayout(@NonNull Context context, @Nullable AttributeSet attrs, @AttrRes int defStyleAttr) {
         super(context, attrs, defStyleAttr);
 
         TypedArray a = context.getTheme().obtainStyledAttributes(attrs, R.styleable.ZoomEngine, defStyleAttr, 0);
@@ -48,6 +52,7 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
         boolean verticalPanEnabled = a.getBoolean(R.styleable.ZoomEngine_verticalPanEnabled, true);
         boolean overPinchable = a.getBoolean(R.styleable.ZoomEngine_overPinchable, true);
         boolean zoomEnabled = a.getBoolean(R.styleable.ZoomEngine_zoomEnabled, true);
+        boolean hasChildren = a.getBoolean(R.styleable.ZoomEngine_hasClickableChildren, false);
         float minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, -1);
         float maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, -1);
         @ZoomType int minZoomMode = a.getInteger(R.styleable.ZoomEngine_minZoomType, TYPE_ZOOM);
@@ -69,62 +74,81 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
         setAnimationDuration(animationDuration);
         if (minZoom > -1) setMinZoom(minZoom, minZoomMode);
         if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode);
+        setHasClickableChildren(hasChildren);
 
-        setImageMatrix(mMatrix);
-        setScaleType(ScaleType.MATRIX);
+        setWillNotDraw(false);
     }
 
     //region Internal
 
     @Override
-    public void setImageDrawable(@Nullable Drawable drawable) {
-        if (drawable != null) {
-            mEngine.setContentSize(drawable.getIntrinsicWidth(),
-                    drawable.getIntrinsicHeight());
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+
+        // Measure ourselves as MATCH_PARENT
+        int widthMode = MeasureSpec.getMode(widthMeasureSpec);
+        int heightMode = MeasureSpec.getMode(heightMeasureSpec);
+        if (widthMode == MeasureSpec.UNSPECIFIED || heightMode == MeasureSpec.UNSPECIFIED) {
+            throw new RuntimeException(TAG + " must be used with fixed dimensions (e.g. match_parent)");
         }
-        super.setImageDrawable(drawable);
+        int widthSize = MeasureSpec.getSize(widthMeasureSpec);
+        int heightSize = MeasureSpec.getSize(heightMeasureSpec);
+        setMeasuredDimension(widthSize, heightSize);
+
+        // Measure our child as unspecified.
+        int spec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+        measureChildren(spec, spec);
     }
 
-    @SuppressLint("ClickableViewAccessibility")
+    @Override
+    public void addView(final View child, int index, ViewGroup.LayoutParams params) {
+        if (getChildCount() == 0) {
+            child.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    mEngine.setContentSize(child.getWidth(), child.getHeight());
+                }
+            });
+            super.addView(child, index, params);
+        } else {
+            throw new RuntimeException(TAG + " accepts only a single child.");
+        }
+    }
+
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+        return mEngine.onInterceptTouchEvent(ev) || (mHasClickableChildren && super.onInterceptTouchEvent(ev));
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        // Using | so click listeners work.
-        return mEngine.onTouchEvent(ev) | super.onTouchEvent(ev);
+        return mEngine.onTouchEvent(ev) || (mHasClickableChildren && super.onTouchEvent(ev));
     }
 
     @Override
     public void onUpdate(@NonNull ZoomEngine engine, @NonNull Matrix matrix) {
-        // matrix.getValues(mTemp);
-        // Log.e("ZoomEngineDEBUG", "View - Received update, matrix scale = " + mTemp[Matrix.MSCALE_X]);
         mMatrix.set(matrix);
-        setImageMatrix(mMatrix);
-        awakenScrollBars();
-    }
-
-    @Override
-    public void onIdle(@NonNull ZoomEngine engine) { }
-
-    private boolean isInSharedElementTransition() {
-        return getWidth() != getMeasuredWidth() || getHeight() != getMeasuredHeight();
-    }
-
-    @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh);
-        /* Log.e("ZoomEngineDEBUG", "View - dispatching container size" +
-                " width: " + getWidth() + ", height:" + getHeight() +
-                " - different?" + isInSharedElementTransition()); */
-        mEngine.setContainerSize(getWidth(), getHeight(), true);
-    }
-
-    @Override
-    protected void onDraw(Canvas canvas) {
-        if (isInSharedElementTransition()) {
-            // The framework will often change our matrix between onUpdate and onDraw, leaving us with
-            // a bad first frame that makes a noticeable flash. Replace the matrix values with our own.
-            setImageMatrix(mMatrix);
+        if (mHasClickableChildren) {
+            if (getChildCount() > 0) {
+                View child = getChildAt(0);
+                mMatrix.getValues(mMatrixValues);
+                child.setPivotX(0);
+                child.setPivotY(0);
+                child.setTranslationX(mMatrixValues[Matrix.MTRANS_X]);
+                child.setTranslationY(mMatrixValues[Matrix.MTRANS_Y]);
+                child.setScaleX(mMatrixValues[Matrix.MSCALE_X]);
+                child.setScaleY(mMatrixValues[Matrix.MSCALE_Y]);
+            }
+        } else {
+            invalidate();
         }
-        super.onDraw(canvas);
+
+        if ((isHorizontalScrollBarEnabled() || isVerticalScrollBarEnabled()) && !awakenScrollBars()) {
+            invalidate();
+        }
+    }
+
+    @Override
+    public void onIdle(@NonNull ZoomEngine engine) {
     }
 
     @Override
@@ -147,10 +171,55 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
         return mEngine.computeVerticalScrollRange();
     }
 
+    @Override
+    protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+        boolean result;
+
+        if (!mHasClickableChildren) {
+            int save = canvas.save();
+            canvas.concat(mMatrix);
+            result = super.drawChild(canvas, child, drawingTime);
+            canvas.restoreToCount(save);
+        } else {
+            result = super.drawChild(canvas, child, drawingTime);
+        }
+
+        return result;
+    }
+
     //endregion
 
     //region APIs
 
+    /**
+     * Whether the view hierarchy inside has (or will have) clickable children.
+     * This is false by default.
+     *
+     * @param hasClickableChildren whether we have clickable children
+     */
+    public void setHasClickableChildren(boolean hasClickableChildren) {
+        LOG.i("setHasClickableChildren:", "old:", mHasClickableChildren, "new:", hasClickableChildren);
+        if (mHasClickableChildren && !hasClickableChildren) {
+            // Revert any transformation that was applied to our child.
+            if (getChildCount() > 0) {
+                View child = getChildAt(0);
+                child.setScaleX(1);
+                child.setScaleY(1);
+                child.setTranslationX(0);
+                child.setTranslationY(0);
+            }
+        }
+        mHasClickableChildren = hasClickableChildren;
+
+        // Update if we were laid out already.
+        if (getWidth() > 0 && getHeight() > 0) {
+            if (mHasClickableChildren) {
+                onUpdate(mEngine, mMatrix);
+            } else {
+                invalidate();
+            }
+        }
+    }
 
     /**
      * Gets the backing {@link ZoomEngine} so you can access its APIs.
@@ -162,7 +231,6 @@ public class ZoomImageView extends ImageView implements ZoomEngine.Listener, Zoo
     }
 
     //endregion
-
 
     //region ZoomApis
 

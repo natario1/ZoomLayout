@@ -1,10 +1,9 @@
 package com.otaliastudios.zoom;
 
-import androidx.annotation.IntDef;
-import android.util.Log;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
+import android.util.Log
+import androidx.annotation.IntDef
+import java.lang.annotation.Retention
+import java.lang.annotation.RetentionPolicy
 
 /**
  * Utility class that can log traces and info.
