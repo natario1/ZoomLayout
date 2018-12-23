@@ -1,80 +1,112 @@
-package com.otaliastudios.zoom;
+package com.otaliastudios.zoom
 
+import android.graphics.Matrix
 import androidx.annotation.IntDef
-import java.lang.annotation.Retention
-import java.lang.annotation.RetentionPolicy
 
 
 /**
  * An interface for zoom controls.
  */
-public interface ZoomApi {
-
-    @Retention(RetentionPolicy.SOURCE)
-    @interface RealZoom {
-    }
-
-    @Retention(RetentionPolicy.SOURCE)
-    @interface Zoom {
-    }
-
-    @Retention(RetentionPolicy.SOURCE)
-    @interface AbsolutePan {
-    }
-
-    @Retention(RetentionPolicy.SOURCE)
-    @interface ScaledPan {
-    }
+interface ZoomApi {
 
     /**
-     * Flag for zoom constraints and settings.
-     * With TYPE_ZOOM the constraint is measured over the zoom in {@link #getZoom()}.
-     * This is not the actual matrix scale value.
+     * Gets the current zoom value, which can be used as a reference when calling
+     * [ZoomApi.zoomTo] or [ZoomApi.zoomBy].
      *
-     * @see #getZoom()
-     * @see #getRealZoom()
-     */
-    int TYPE_ZOOM = 0;
-
-    /**
-     * Flag for zoom constraints and settings.
-     * With TYPE_REAL_ZOOM the constraint is measured over the zoom in {@link #getRealZoom()},
-     * which is the actual scale you get in the matrix.
      *
-     * @see #getZoom()
-     * @see #getRealZoom()
+     * This can be different than the actual scale you get in the matrix, because at startup
+     * we apply a base zoom to respect the "center inside" policy.
+     * All zoom calls, including min zoom and max zoom, refer to this axis, where zoom is set to 1
+     * right after the initial transformation.
+     *
+     * @return the current zoom
+     * @see realZoom
      */
-    int TYPE_REAL_ZOOM = 1;
-
-    @Retention(RetentionPolicy.SOURCE)
-    @IntDef({TYPE_ZOOM, TYPE_REAL_ZOOM})
-    @interface ZoomType {
-    }
+    @Zoom
+    val zoom: Float
 
     /**
-     * Constant for {@link #setTransformation(int, int)}.
-     * The content will be zoomed so that it fits completely inside the container.
+     * Gets the current zoom value, including the base zoom that was eventually applied when
+     * initializing to respect the "center inside" policy. This will match the scaleX - scaleY
+     * values you get into the [Matrix], and is the actual scale value of the content
+     * from its original size.
+     *
+     * @return the real zoom
+     * @see zoom
      */
-    int TRANSFORMATION_CENTER_INSIDE = 0;
+    @RealZoom
+    val realZoom: Float
 
     /**
-     * Constant for {@link #setTransformation(int, int)}.
-     * The content will be zoomed so that its smaller side fits exactly inside the container.
-     * The larger side will be partially cropped.
+     * Returns the current horizontal pan value, in content coordinates
+     * (that is, as if there was no zoom at all).
+     *
+     * @return the current horizontal pan
      */
-    int TRANSFORMATION_CENTER_CROP = 1;
+    @AbsolutePan
+    val panX: Float
 
     /**
-     * Constant for {@link #setTransformation(int, int)}.
-     * No transformation will be applied, which means that both {@link #getZoom()} and
-     * {@link #getRealZoom()} will return the same value.
+     * Returns the current vertical pan value, in content coordinates
+     * (that is, as if there was no zoom at all).
+     *
+     * @return the current vertical pan
      */
-    int TRANSFORMATION_NONE = 2;
+    @AbsolutePan
+    val panY: Float
 
-    @Retention(RetentionPolicy.SOURCE)
-    @IntDef({TRANSFORMATION_CENTER_INSIDE, TRANSFORMATION_CENTER_CROP, TRANSFORMATION_NONE})
-    @interface Transformation {
-    }
+    /**
+     * Annotation to indicate a RealZoom value.
+     *
+     * @see realZoom
+     */
+    @Retention(AnnotationRetention.SOURCE)
+    annotation class RealZoom
+
+    /**
+     * Annotation to indicate a zoom value.
+     *
+     * @see zoom
+     */
+    @Retention(AnnotationRetention.SOURCE)
+    annotation class Zoom
+
+    /**
+     * Annotation to indicate an AbsolutePan value.
+     *
+     * @see panX
+     * @see panY
+     * @see ScaledPan
+     */
+    @Retention(AnnotationRetention.SOURCE)
+    annotation class AbsolutePan
+
+    /**
+     * Annotation to indicate a ScaledPan value.
+     *
+     * @see panX
+     * @see panY
+     * @see AbsolutePan
+     */
+    @Retention(AnnotationRetention.SOURCE)
+    annotation class ScaledPan
+
+    /**
+     * Defines the available zoom types
+     *
+     * @see zoom
+     * @see realZoom
+     */
+    @Retention(AnnotationRetention.SOURCE)
+    @IntDef(TYPE_ZOOM, TYPE_REAL_ZOOM)
+    annotation class ZoomType
+
+    /**
+     * Defines the available transvormation types
+     */
+    @Retention(AnnotationRetention.SOURCE)
+    @IntDef(TRANSFORMATION_CENTER_INSIDE, TRANSFORMATION_CENTER_CROP, TRANSFORMATION_NONE)
+    annotation class Transformation
 
     /**
      * Controls whether the content should be over-scrollable horizontally.
@@ -83,7 +115,7 @@ public interface ZoomApi {
      *
      * @param overScroll whether to allow horizontal over scrolling
      */
-    void setOverScrollHorizontal(boolean overScroll);
+    fun setOverScrollHorizontal(overScroll: Boolean)
 
     /**
      * Controls whether the content should be over-scrollable vertically.
@@ -92,21 +124,21 @@ public interface ZoomApi {
      *
      * @param overScroll whether to allow vertical over scrolling
      */
-    void setOverScrollVertical(boolean overScroll);
+    fun setOverScrollVertical(overScroll: Boolean)
 
     /**
      * Controls whether horizontal panning using gestures is enabled.
      *
      * @param enabled true enables horizontal panning, false disables it
      */
-    void setHorizontalPanEnabled(boolean enabled);
+    fun setHorizontalPanEnabled(enabled: Boolean)
 
     /**
      * Controls whether vertical panning using gestures is enabled.
      *
      * @param enabled true enables vertical panning, false disables it
      */
-    void setVerticalPanEnabled(boolean enabled);
+    fun setVerticalPanEnabled(enabled: Boolean)
 
     /**
      * Controls whether the content should be overPinchable.
@@ -115,28 +147,28 @@ public interface ZoomApi {
      *
      * @param overPinchable whether to allow over pinching
      */
-    void setOverPinchable(boolean overPinchable);
+    fun setOverPinchable(overPinchable: Boolean)
 
     /**
      * Controls whether zoom using pinch gesture is enabled or not.
      *
      * @param enabled true enables zooming, false disables it
      */
-    void setZoomEnabled(boolean enabled);
+    fun setZoomEnabled(enabled: Boolean)
 
     /**
      * Sets the base transformation to be applied to the content.
-     * Defaults to {@link #TRANSFORMATION_CENTER_INSIDE} with {@link android.view.Gravity#CENTER},
+     * Defaults to [TRANSFORMATION_CENTER_INSIDE] with [android.view.Gravity.CENTER],
      * which means that the content will be zoomed so that it fits completely inside the container.
      *
      * @param transformation the transformation type
      * @param gravity        the transformation gravity. Might be ignored for some transformations
      */
-    void setTransformation(@Transformation int transformation, int gravity);
+    fun setTransformation(@Transformation transformation: Int, gravity: Int)
 
     /**
      * A low level API that can animate both zoom and pan at the same time.
-     * Zoom might not be the actual matrix scale, see {@link #getZoom()} and {@link #getRealZoom()}.
+     * Zoom might not be the actual matrix scale, see [ZoomApi.zoom] and [ZoomApi.realZoom].
      * The coordinates are referred to the content size so they do not depend on current zoom.
      *
      * @param zoom    the desired zoom value
@@ -144,7 +176,7 @@ public interface ZoomApi {
      * @param y       the desired top coordinate
      * @param animate whether to animate the transition
      */
-    void moveTo(@Zoom float zoom, @AbsolutePan float x, @AbsolutePan float y, boolean animate);
+    fun moveTo(@Zoom zoom: Float, @AbsolutePan x: Float, @AbsolutePan y: Float, animate: Boolean)
 
     /**
      * Pans the content until the top-left coordinates match the given x-y
@@ -154,12 +186,13 @@ public interface ZoomApi {
      * @param y       the desired top coordinate
      * @param animate whether to animate the transition
      */
-    void panTo(@AbsolutePan float x, @AbsolutePan float y, boolean animate);
+    fun panTo(@AbsolutePan x: Float, @AbsolutePan y: Float, animate: Boolean)
 
     /**
      * Pans the content by the given quantity in dx-dy values.
      * These are referred to the content size so they do not depend on current zoom.
-     * <p>
+     *
+     *
      * In other words, asking to pan by 1 pixel might result in a bigger pan, if the content
      * was zoomed in.
      *
@@ -167,16 +200,16 @@ public interface ZoomApi {
      * @param dy      the desired delta y
      * @param animate whether to animate the transition
      */
-    void panBy(@AbsolutePan float dx, @AbsolutePan float dy, boolean animate);
+    fun panBy(@AbsolutePan dx: Float, @AbsolutePan dy: Float, animate: Boolean)
 
     /**
      * Zooms to the given scale. This might not be the actual matrix zoom,
-     * see {@link #getZoom()} and {@link #getRealZoom()}.
+     * see [ZoomApi.zoom] and [ZoomApi.realZoom].
      *
      * @param zoom    the new scale value
      * @param animate whether to animate the transition
      */
-    void zoomTo(@Zoom float zoom, boolean animate);
+    fun zoomTo(@Zoom zoom: Float, animate: Boolean)
 
     /**
      * Applies the given factor to the current zoom.
@@ -184,17 +217,17 @@ public interface ZoomApi {
      * @param zoomFactor a multiplicative factor
      * @param animate    whether to animate the transition
      */
-    void zoomBy(float zoomFactor, boolean animate);
+    fun zoomBy(zoomFactor: Float, animate: Boolean)
 
     /**
      * Applies a small, animated zoom-in.
      */
-    void zoomIn();
+    fun zoomIn()
 
     /**
      * Applies a small, animated zoom-out.
      */
-    void zoomOut();
+    fun zoomOut()
 
     /**
      * Animates the actual matrix zoom to the given value.
@@ -202,81 +235,80 @@ public interface ZoomApi {
      * @param realZoom the new real zoom value
      * @param animate  whether to animate the transition
      */
-    void realZoomTo(float realZoom, boolean animate);
+    fun realZoomTo(realZoom: Float, animate: Boolean)
 
     /**
      * Which is the max zoom that should be allowed.
-     * If {@link #setOverPinchable(boolean)} is set to true, this can be over-pinched
+     * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
      * for a brief time.
      *
      * @param maxZoom the max zoom
      * @param type    the constraint mode
-     * @see #getZoom()
-     * @see #getRealZoom()
+     * @see zoom
+     * @see realZoom
      */
-    void setMaxZoom(float maxZoom, @ZoomType int type);
+    fun setMaxZoom(maxZoom: Float, @ZoomType type: Int)
 
     /**
      * Which is the min zoom that should be allowed.
-     * If {@link #setOverPinchable(boolean)} is set to true, this can be over-pinched
+     * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
      * for a brief time.
      *
      * @param minZoom the min zoom
      * @param type    the constraint mode
-     * @see #getZoom()
-     * @see #getRealZoom()
+     * @see zoom
+     * @see realZoom
      */
-    void setMinZoom(float minZoom, @ZoomType int type);
-
-    /**
-     * Gets the current zoom value, which can be used as a reference when calling
-     * {@link #zoomTo(float, boolean)} or {@link #zoomBy(float, boolean)}.
-     * <p>
-     * This can be different than the actual scale you get in the matrix, because at startup
-     * we apply a base zoom to respect the "center inside" policy.
-     * All zoom calls, including min zoom and max zoom, refer to this axis, where zoom is set to 1
-     * right after the initial transformation.
-     *
-     * @return the current zoom
-     * @see #getRealZoom()
-     */
-    @Zoom
-    float getZoom();
-
-    /**
-     * Gets the current zoom value, including the base zoom that was eventually applied when
-     * initializing to respect the "center inside" policy. This will match the scaleX - scaleY
-     * values you get into the {@link Matrix}, and is the actual scale value of the content
-     * from its original size.
-     *
-     * @return the real zoom
-     */
-    @RealZoom
-    float getRealZoom();
-
-    /**
-     * Returns the current horizontal pan value, in content coordinates
-     * (that is, as if there was no zoom at all).
-     *
-     * @return the current horizontal pan
-     */
-    @AbsolutePan
-    float getPanX();
-
-    /**
-     * Returns the current vertical pan value, in content coordinates
-     * (that is, as if there was no zoom at all).
-     *
-     * @return the current vertical pan
-     */
-    @AbsolutePan
-    float getPanY();
+    fun setMinZoom(minZoom: Float, @ZoomType type: Int)
 
     /**
      * Sets the duration of animations triggered by zoom and pan APIs.
-     * Defaults to {@link ZoomEngine#DEFAULT_ANIMATION_DURATION}.
+     * Defaults to [ZoomEngine.DEFAULT_ANIMATION_DURATION].
      *
      * @param duration new animation duration
      */
-    void setAnimationDuration(long duration);
+    fun setAnimationDuration(duration: Long)
+
+    companion object {
+
+        /**
+         * Flag for zoom constraints and settings.
+         * With [ZoomApi.TYPE_ZOOM] the constraint is measured over the zoom in [ZoomApi.zoom].
+         * This is not the actual matrix scale value.
+         *
+         * @see zoom
+         * @see realZoom
+         */
+        const val TYPE_ZOOM = 0
+
+        /**
+         * Flag for zoom constraints and settings.
+         * With [ZoomApi.TYPE_REAL_ZOOM] the constraint is measured over the zoom in [ZoomApi.realZoom],
+         * which is the actual scale you get in the matrix.
+         *
+         * @see zoom
+         * @see realZoom
+         */
+        const val TYPE_REAL_ZOOM = 1
+
+        /**
+         * Constant for [ZoomApi.setTransformation].
+         * The content will be zoomed so that it fits completely inside the container.
+         */
+        const val TRANSFORMATION_CENTER_INSIDE = 0
+
+        /**
+         * Constant for [ZoomApi.setTransformation].
+         * The content will be zoomed so that its smaller side fits exactly inside the container.
+         * The larger side will be partially cropped.
+         */
+        const val TRANSFORMATION_CENTER_CROP = 1
+
+        /**
+         * Constant for [ZoomApi.setTransformation].
+         * No transformation will be applied, which means that both [ZoomApi.zoom] and
+         * [ZoomApi.realZoom] will return the same value.
+         */
+        const val TRANSFORMATION_NONE = 2
+    }
 }

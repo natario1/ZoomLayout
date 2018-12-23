@@ -1,70 +1,205 @@
-package com.otaliastudios.zoom;
+package com.otaliastudios.zoom
 
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Matrix
 import android.graphics.RectF
 import android.os.Build
-import android.view.GestureDetector
-import android.view.Gravity
-import android.view.MotionEvent
-import android.view.ScaleGestureDetector
+import android.view.*
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.widget.OverScroller
 import androidx.annotation.IntDef
-import androidx.annotation.NonNull
-import java.lang.annotation.Retention
-import java.lang.annotation.RetentionPolicy
-import java.util.*
+import com.otaliastudios.zoom.ZoomApi.*
 
 
 /**
  * A low level class that listens to touch events and posts zoom and pan updates.
- * The most useful output is a {@link Matrix} that can be used to do pretty much everything,
+ * The most useful output is a [Matrix] that can be used to do pretty much everything,
  * from canvas drawing to View hierarchies translations.
- * <p>
+ *
+ *
  * Users are required to:
  * - Pass the container view in the constructor
- * - Notify the helper of the content size, using {@link #setContentSize(float, float)}
- * - Pass touch events to {@link #onInterceptTouchEvent(MotionEvent)} and {@link #onTouchEvent(MotionEvent)}
- * <p>
- * This class will apply a base transformation to the content, see {@link #setTransformation(int, int)},
+ * - Notify the helper of the content size, using [setContentSize]
+ * - Pass touch events to [onInterceptTouchEvent] and [onTouchEvent]
+ *
+ *
+ * This class will apply a base transformation to the content, see [setTransformation],
  * so that it is laid out initially as we wish.
- * <p>
+ *
+ *
  * When the scaling makes the content smaller than our viewport, the engine will always try
  * to keep the content centered.
  */
-public final class ZoomEngine implements ZoomApi {
+class ZoomEngine
+/**
+ * Constructs an helper instance.
+ *
+ * @param context   a valid context
+ */
+internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener, ZoomApi {
 
-    // TODO add OverScrollCallback and OverPinchCallback.
-    // Should notify the user when the boundaries are reached.
+    /**
+     * Constructs an helper instance.
+     *
+     * @param context   a valid context
+     * @param container the view hosting the zoomable content
+     **/
+    constructor(context: Context, container: View) : this(context) {
+        setContainer(container)
+    }
 
-    // TODO expose friction parameters, use an interpolator.
+    /**
+     * Constructs an helper instance.
+     * Deprecated: use [addListener] to add a listener.
+     *
+     * @param context   a valid context
+     * @param container the view hosting the zoomable content
+     * @param listener a listener for events
+     **/
+    @Deprecated("Use [addListener] to add a listener.",
+            replaceWith = ReplaceWith("constructor(context, container)"))
+    constructor(context: Context, container: View, listener: Listener) : this(context, container) {
+        addListener(listener)
+    }
 
-    // TODO Make public, add API.
-    private static final float DEFAULT_OVERSCROLL_FACTOR = 0.10F;
+    private val mListeners = mutableListOf<Listener>()
+    private var mMatrix = Matrix()
+    private val mOutMatrix = Matrix()
+    @State
+    private var mState = NONE
+    private lateinit var mContainer: View
+    private var mContainerWidth = 0.toFloat()
+    private var mContainerHeight = 0.toFloat()
+    private var mInitialized = false
+    private var mTransformedRect = RectF()
+    private var mContentRect = RectF()
+    private var mMinZoom = 0.8f
+    private var mMinZoomMode = ZoomApi.TYPE_ZOOM
+    private var mMaxZoom = 2.5f
+    private var mMaxZoomMode = ZoomApi.TYPE_ZOOM
 
-    // TODO Make public, add API. Use androidx.Interpolator?
-    private static final Interpolator ANIMATION_INTERPOLATOR = new AccelerateDecelerateInterpolator();
+    /**
+     * Gets the current zoom value, which can be used as a reference when calling
+     * [zoomTo] or [zoomBy].
+     *
+     *
+     * This can be different than the actual scale you get in the matrix, because at startup
+     * we apply a base transformation, see [setTransformation].
+     * All zoom calls, including min zoom and max zoom, refer to this axis, where zoom is set to 1
+     * right after the initial transformation.
+     *
+     * @return the current zoom
+     * @see realZoom
+     */
+    @Zoom
+    @get:Zoom
+    override var zoom = 1f // Not necessarily equal to the matrix scale.
+        private set
+    private var mBaseZoom = 0.toFloat() // mZoom * mBaseZoom matches the matrix scale.
+    private var mTransformation = ZoomApi.TRANSFORMATION_CENTER_INSIDE
+    private var mTransformationGravity = Gravity.CENTER
+    private var mOverScrollHorizontal = true
+    private var mOverScrollVertical = true
+    private var mHorizontalPanEnabled = true
+    private var mVerticalPanEnabled = true
+    private var mOverPinchable = true
+    private var mZoomEnabled = true
+    private var mClearAnimation = false
+    private val mFlingScroller = OverScroller(context)
+    private var mAnimationDuration = DEFAULT_ANIMATION_DURATION
 
-    public static final long DEFAULT_ANIMATION_DURATION = 280;
+    private val mScaleDetector = ScaleGestureDetector(context, PinchListener())
+    private val mFlingDragDetector = GestureDetector(context, FlingScrollListener())
 
-    private static final String TAG = ZoomEngine.class.getSimpleName();
-    private static final ZoomLogger LOG = ZoomLogger.create(TAG);
+    /**
+     * Returns the current matrix. This can be changed from the outside, but is not
+     * guaranteed to remain stable.
+     *
+     * @return the current matrix.
+     */
+    @Suppress("MemberVisibilityCanBePrivate")
+    val matrix: Matrix
+        get() {
+            mOutMatrix.set(mMatrix)
+            return mOutMatrix
+        }
+
+    @ScaledPan
+    private val maxOverScroll: Int
+        get() {
+            val overX = mContainerWidth * DEFAULT_OVERSCROLL_FACTOR
+            val overY = mContainerHeight * DEFAULT_OVERSCROLL_FACTOR
+            return Math.min(overX, overY).toInt()
+        }
+
+    @Zoom
+    private val maxOverPinch: Float
+        @Zoom
+        get() = 0.1f * (resolveZoom(mMaxZoom, mMaxZoomMode) - resolveZoom(mMinZoom, mMinZoomMode))
+
+    /**
+     * Gets the current zoom value, including the base zoom that was eventually applied during
+     * the starting transformation, see [setTransformation].
+     * This value will match the scaleX - scaleY values you get into the [Matrix],
+     * and is the actual scale value of the content from its original size.
+     *
+     * @return the real zoom
+     */
+    @RealZoom
+    override val realZoom: Float
+        @RealZoom
+        get() = zoom * mBaseZoom
+
+    /**
+     * Returns the current horizontal pan value, in content coordinates
+     * (that is, as if there was no zoom at all) referring to what was passed
+     * to [setContentSize].
+     *
+     * @return the current horizontal pan
+     */
+    @AbsolutePan
+    override val panX: Float
+        @AbsolutePan
+        get() = scaledPanX / realZoom
+
+    /**
+     * Returns the current vertical pan value, in content coordinates
+     * (that is, as if there was no zoom at all) referring to what was passed
+     * to [setContentSize].
+     *
+     * @return the current vertical pan
+     */
+    @AbsolutePan
+    override val panY: Float
+        get() = scaledPanY / realZoom
+
+    @ScaledPan
+    private val scaledPanX: Float
+        get() = mTransformedRect.left
+
+    @ScaledPan
+    private val scaledPanY: Float
+        get() = mTransformedRect.top
+
+    private val mScrollerValuesX = ScrollerValues()
+    private val mScrollerValuesY = ScrollerValues()
 
     /**
      * An interface to listen for updates in the inner matrix. This will be called
      * typically on animation frames.
      */
-    public interface Listener {
+    interface Listener {
 
         /**
          * Notifies that the inner matrix was updated. The passed matrix can be changed,
          * but is not guaranteed to be stable. For a long lasting value it is recommended
-         * to make a copy of it using {@link Matrix#set(Matrix)}.
+         * to make a copy of it using [Matrix.set].
          *
          * @param engine the engine hosting the matrix
          * @param matrix a matrix with the given updates
          */
-        void onUpdate(@NonNull ZoomEngine engine, @NonNull Matrix matrix);
+        fun onUpdate(engine: ZoomEngine, matrix: Matrix)
 
         /**
          * Notifies that the engine is in an idle state. This means that (most probably)
@@ -72,27 +207,26 @@ public final class ZoomEngine implements ZoomApi {
          *
          * @param engine this engine
          */
-        void onIdle(@NonNull ZoomEngine engine);
+        fun onIdle(engine: ZoomEngine)
     }
 
     /**
-     * A simple implementation of {@link Listener} that will extract the translation
+     * A simple implementation of [Listener] that will extract the translation
      * and scale values from the output matrix.
      */
-    @SuppressWarnings("unused")
-    public abstract static class SimpleListener implements Listener {
+    @Suppress("unused")
+    abstract class SimpleListener : Listener {
 
-        private float[] mMatrixValues = new float[9];
+        private val mMatrixValues = FloatArray(9)
 
-        @Override
-        public final void onUpdate(@NonNull ZoomEngine engine, @NonNull Matrix matrix) {
-            matrix.getValues(mMatrixValues);
-            float panX = mMatrixValues[Matrix.MTRANS_X];
-            float panY = mMatrixValues[Matrix.MTRANS_Y];
-            float scaleX = mMatrixValues[Matrix.MSCALE_X];
-            float scaleY = mMatrixValues[Matrix.MSCALE_Y];
-            float scale = (scaleX + scaleY) / 2F; // These should always be equal.
-            onUpdate(engine, panX, panY, scale);
+        override fun onUpdate(engine: ZoomEngine, matrix: Matrix) {
+            matrix.getValues(mMatrixValues)
+            val panX = mMatrixValues[Matrix.MTRANS_X]
+            val panY = mMatrixValues[Matrix.MTRANS_Y]
+            val scaleX = mMatrixValues[Matrix.MSCALE_X]
+            val scaleY = mMatrixValues[Matrix.MSCALE_Y]
+            val scale = (scaleX + scaleY) / 2f // These should always be equal.
+            onUpdate(engine, panX, panY, scale)
         }
 
         /**
@@ -103,98 +237,25 @@ public final class ZoomEngine implements ZoomApi {
          * @param panY the new vertical pan value
          * @param zoom the new scale value
          */
-        abstract void onUpdate(@NonNull ZoomEngine engine, float panX, float panY, float zoom);
+        internal abstract fun onUpdate(engine: ZoomEngine, panX: Float, panY: Float, zoom: Float)
     }
 
-    private static final int NONE = 0;
-    private static final int SCROLLING = 1;
-    private static final int PINCHING = 2;
-    private static final int ANIMATING = 3;
-    private static final int FLINGING = 4;
+    @Retention(AnnotationRetention.SOURCE)
+    @IntDef(NONE, SCROLLING, PINCHING, ANIMATING, FLINGING)
+    private annotation class State
 
-    @Retention(RetentionPolicy.SOURCE)
-    @IntDef({NONE, SCROLLING, PINCHING, ANIMATING, FLINGING})
-    private @interface State {
-    }
-
-    private ArrayList<Listener> mListeners = new ArrayList<>();
-    private Matrix mMatrix = new Matrix();
-    private Matrix mOutMatrix = new Matrix();
-    @State
-    private int mState = NONE;
-    private View mContainer;
-    private float mContainerWidth;
-    private float mContainerHeight;
-    private boolean mInitialized;
-    private RectF mTransformedRect = new RectF();
-    private RectF mContentRect = new RectF();
-    private float mMinZoom = 0.8f;
-    private int mMinZoomMode = TYPE_ZOOM;
-    private float mMaxZoom = 2.5f;
-    private int mMaxZoomMode = TYPE_ZOOM;
-    @Zoom
-    private float mZoom = 1f; // Not necessarily equal to the matrix scale.
-    private float mBaseZoom; // mZoom * mBaseZoom matches the matrix scale.
-    private int mTransformation = TRANSFORMATION_CENTER_INSIDE;
-    private int mTransformationGravity = Gravity.CENTER;
-    private boolean mOverScrollHorizontal = true;
-    private boolean mOverScrollVertical = true;
-    private boolean mHorizontalPanEnabled = true;
-    private boolean mVerticalPanEnabled = true;
-    private boolean mOverPinchable = true;
-    private boolean mZoomEnabled = true;
-    private boolean mClearAnimation;
-    private OverScroller mFlingScroller;
-    private long mAnimationDuration = DEFAULT_ANIMATION_DURATION;
-
-    private ScaleGestureDetector mScaleDetector;
-    private GestureDetector mFlingDragDetector;
-
-    /**
-     * Constructs an helper instance.
-     * Deprecated: use {@link #addListener(Listener)} to add a listener.
-     *
-     * @param context   a valid context
-     * @param container the view hosting the zoomable content
-     * @param listener  a listener for events
-     */
-    @Deprecated
-    public ZoomEngine(Context context, View container, Listener listener) {
-        this(context, container);
-        addListener(listener);
+    init {
+        if (Build.VERSION.SDK_INT >= 19) mScaleDetector.isQuickScaleEnabled = false
+        mFlingDragDetector.setOnDoubleTapListener(null)
     }
 
     /**
-     * Constructs an helper instance.
-     * Deprecated: use {@link #addListener(Listener)} to add a listener.
-     *
-     * @param context   a valid context
-     * @param container the view hosting the zoomable content
-     */
-    public ZoomEngine(@NonNull Context context, @NonNull final View container) {
-        mContainer = container;
-        mFlingScroller = new OverScroller(context);
-        mScaleDetector = new ScaleGestureDetector(context, new PinchListener());
-        if (Build.VERSION.SDK_INT >= 19) mScaleDetector.setQuickScaleEnabled(false);
-        GestureDetector gestureDetector = new GestureDetector(context, new FlingScrollListener());
-        gestureDetector.setOnDoubleTapListener(null);
-        mFlingDragDetector = gestureDetector;
-        container.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                setContainerSize(container.getWidth(), container.getHeight());
-            }
-        });
-    }
-
-    /**
-     * Registers a new {@link Listener} to be notified of matrix updates.
+     * Registers a new [Listener] to be notified of matrix updates.
      * @param listener the new listener
      */
-    @SuppressWarnings("WeakerAccess")
-    public void addListener(@NonNull Listener listener) {
+    fun addListener(listener: Listener) {
         if (!mListeners.contains(listener)) {
-            mListeners.add(listener);
+            mListeners.add(listener)
         }
     }
 
@@ -202,76 +263,46 @@ public final class ZoomEngine implements ZoomApi {
      * Removes a previously registered listener.
      * @param listener the listener to be removed
      */
-    @SuppressWarnings("unused")
-    public void removeListener(@NonNull Listener listener) {
-        mListeners.remove(listener);
-    }
-
-    /**
-     * Returns the current matrix. This can be changed from the outside, but is not
-     * guaranteed to remain stable.
-     *
-     * @return the current matrix.
-     */
-    @SuppressWarnings("WeakerAccess")
-    @NonNull
-    public Matrix getMatrix() {
-        mOutMatrix.set(mMatrix);
-        return mOutMatrix;
-    }
-
-    private static String getStateName(@State int state) {
-        switch (state) {
-            case NONE:
-                return "NONE";
-            case FLINGING:
-                return "FLINGING";
-            case SCROLLING:
-                return "SCROLLING";
-            case PINCHING:
-                return "PINCHING";
-            case ANIMATING:
-                return "ANIMATING";
-        }
-        return "";
+    @Suppress("unused")
+    fun removeListener(listener: Listener) {
+        mListeners.remove(listener)
     }
 
     // Returns true if we should go to that mode.
     @SuppressLint("SwitchIntDef")
-    private boolean setState(@State int state) {
-        LOG.v("trySetState:", getStateName(state));
-        if (!mInitialized) return false;
-        if (state == mState) return true;
-        int oldMode = mState;
+    private fun setState(@State state: Int): Boolean {
+        LOG.v("trySetState:", getStateName(state))
+        if (!mInitialized) return false
+        if (state == mState) return true
+        val oldMode = mState
 
-        switch (state) {
-            case SCROLLING:
-                if (oldMode == PINCHING || oldMode == ANIMATING) return false;
-                break;
-            case FLINGING:
-                if (oldMode == ANIMATING) return false;
-                break;
-            case PINCHING:
-                if (oldMode == ANIMATING) return false;
-                break;
-            case NONE:
-                dispatchOnIdle();
-                break;
+        when (state) {
+            SCROLLING -> if (oldMode == PINCHING || oldMode == ANIMATING) return false
+            FLINGING -> if (oldMode == ANIMATING) return false
+            PINCHING -> if (oldMode == ANIMATING) return false
+            NONE -> dispatchOnIdle()
         }
 
         // Now that it succeeded, do some cleanup.
-        switch (oldMode) {
-            case FLINGING:
-                mFlingScroller.forceFinished(true);
-                break;
-            case ANIMATING:
-                mClearAnimation = true;
-                break;
+        when (oldMode) {
+            FLINGING -> mFlingScroller.forceFinished(true)
+            ANIMATING -> mClearAnimation = true
         }
 
-        LOG.i("setState:", getStateName(state));
-        mState = state;
-        return true;
+        LOG.i("setState:", getStateName(state))
+        mState = state
+        return true
+    }
+
+    /**
+     * Set a container to perform transformations on.
+     * This method should only be called once at initialization time.
+     *
+     * @param container view
+     */
+    internal fun setContainer(container: View) {
+        mContainer = container
+        mContainer.viewTreeObserver.addOnGlobalLayoutListener(this)
     }
 
     //region Overscroll
@@ -283,9 +314,8 @@ public final class ZoomEngine implements ZoomApi {
      *
      * @param overScroll whether to allow horizontal over scrolling
      */
-    @Override
-    public void setOverScrollHorizontal(boolean overScroll) {
-        mOverScrollHorizontal = overScroll;
+    override fun setOverScrollHorizontal(overScroll: Boolean) {
+        mOverScrollHorizontal = overScroll
     }
 
     /**
@@ -295,9 +325,8 @@ public final class ZoomEngine implements ZoomApi {
      *
      * @param overScroll whether to allow vertical over scrolling
      */
-    @Override
-    public void setOverScrollVertical(boolean overScroll) {
-        mOverScrollVertical = overScroll;
+    override fun setOverScrollVertical(overScroll: Boolean) {
+        mOverScrollVertical = overScroll
     }
 
     /**
@@ -305,9 +334,8 @@ public final class ZoomEngine implements ZoomApi {
      *
      * @param enabled true enables horizontal panning, false disables it
      */
-    @Override
-    public void setHorizontalPanEnabled(boolean enabled) {
-        mHorizontalPanEnabled = enabled;
+    override fun setHorizontalPanEnabled(enabled: Boolean) {
+        mHorizontalPanEnabled = enabled
     }
 
     /**
@@ -315,9 +343,8 @@ public final class ZoomEngine implements ZoomApi {
      *
      * @param enabled true enables vertical panning, false disables it
      */
-    @Override
-    public void setVerticalPanEnabled(boolean enabled) {
-        mVerticalPanEnabled = enabled;
+    override fun setVerticalPanEnabled(enabled: Boolean) {
+        mVerticalPanEnabled = enabled
     }
 
     /**
@@ -327,22 +354,8 @@ public final class ZoomEngine implements ZoomApi {
      *
      * @param overPinchable whether to allow over pinching
      */
-    @Override
-    public void setOverPinchable(boolean overPinchable) {
-        mOverPinchable = overPinchable;
-    }
-
-    @ScaledPan
-    private int getMaxOverScroll() {
-        float overX = mContainerWidth * DEFAULT_OVERSCROLL_FACTOR;
-        float overY = mContainerHeight * DEFAULT_OVERSCROLL_FACTOR;
-        // Get a scaled pan value.
-        return (int) (Math.min(overX, overY) * mZoom);
-    }
-
-    @Zoom
-    private float getMaxOverPinch() {
-        return 0.1f * (resolveZoom(mMaxZoom, mMaxZoomMode) - resolveZoom(mMinZoom, mMinZoomMode));
+    override fun setOverPinchable(overPinchable: Boolean) {
+        mOverPinchable = overPinchable
     }
 
     /**
@@ -350,9 +363,8 @@ public final class ZoomEngine implements ZoomApi {
      *
      * @param enabled true enables zooming, false disables it
      */
-    @Override
-    public void setZoomEnabled(boolean enabled) {
-        mZoomEnabled = enabled;
+    override fun setZoomEnabled(enabled: Boolean) {
+        mZoomEnabled = enabled
     }
 
     //endregion
@@ -361,41 +373,33 @@ public final class ZoomEngine implements ZoomApi {
 
     /**
      * Sets the base transformation to be applied to the content.
-     * Defaults to {@link #TRANSFORMATION_CENTER_INSIDE} with {@link Gravity#CENTER},
+     * Defaults to [ZoomApi.TRANSFORMATION_CENTER_INSIDE] with [Gravity.CENTER],
      * which means that the content will be zoomed so that it fits completely inside the container.
      *
      * @param transformation the transformation type
      * @param gravity        the transformation gravity. Might be ignored for some transformations
      */
-    @Override
-    public void setTransformation(int transformation, int gravity) {
-        mTransformation = transformation;
-        mTransformationGravity = gravity;
+    override fun setTransformation(transformation: Int, gravity: Int) {
+        mTransformation = transformation
+        mTransformationGravity = gravity
+    }
+
+    override fun onGlobalLayout() {
+        setContainerSize(mContainer.width.toFloat(), mContainer.height.toFloat())
     }
 
     /**
      * Notifies the helper of the content size (be it a child View, a Bitmap, or whatever else).
      * This is needed for the helper to start working.
      *
-     * @deprecated use {@link #setContentSize(float, float)} instead.
+     * @param rect the content rect
      */
-    @Deprecated
-    public void setContentSize(RectF rect) {
-        setContentSize(rect.width(), rect.height());
+    @Deprecated("Deprecated in favor of not using RectF class",
+            replaceWith = ReplaceWith("setContentSize(width, height)"))
+    fun setContentSize(rect: RectF) {
+        setContentSize(rect.width(), rect.height())
     }
 
-    /**
-     * Notifies the helper of the content size (be it a child View, a Bitmap, or whatever else).
-     * This is needed for the helper to start working.
-     * Shorthand for {@link #setContentSize(float, float, boolean)} without applying transformations.
-     *
-     * @param width the content width
-     * @param height the content height
-     */
-    @SuppressWarnings("WeakerAccess")
-    public void setContentSize(float width, float height) {
-        setContentSize(width, height, false);
-    }
 
     /**
      * Notifies the helper of the content size (be it a child View, a Bitmap, or whatever else).
@@ -403,14 +407,14 @@ public final class ZoomEngine implements ZoomApi {
      *
      * @param width the content width
      * @param height the content height
-     * @param applyTransformation whether to apply the transformation defined by {@link #setTransformation(int, int)}
+     * @param applyTransformation whether to apply the transformation defined by [setTransformation]
      */
-    @SuppressWarnings("WeakerAccess")
-    public void setContentSize(float width, float height, boolean applyTransformation) {
-        if (width <= 0 || height <= 0) return;
+    @JvmOverloads
+    fun setContentSize(width: Float, height: Float, applyTransformation: Boolean = false) {
+        if (width <= 0 || height <= 0) return
         if (mContentRect.width() != width || mContentRect.height() != height || applyTransformation) {
-            mContentRect.set(0, 0, width, height);
-            onSizeChanged(applyTransformation);
+            mContentRect.set(0f, 0f, width, height)
+            onSizeChanged(applyTransformation)
         }
     }
 
@@ -419,198 +423,168 @@ public final class ZoomEngine implements ZoomApi {
      * is detected from the container passed to the constructor using a global layout listener.
      *
      * However, there are cases where you might want to update it, for example during
-     * {@link View#onSizeChanged(int, int, int, int)} (called during shared element transitions).
-     *
-     * Shorthand for {@link #setContainerSize(float, float, boolean)} with no transformation.
+     * [View.onSizeChanged] (called during shared element transitions).
      *
      * @param width the container width
      * @param height the container height
+     * @param applyTransformation whether to apply the transformation defined by [setTransformation]
      */
-    @SuppressWarnings("WeakerAccess")
-    public void setContainerSize(float width, float height) {
-        setContainerSize(width, height, false);
-    }
-
-    /**
-     * Sets the size of the container view. Normally you don't need to call this because the size
-     * is detected from the container passed to the constructor using a global layout listener.
-     *
-     * However, there are cases where you might want to update it, for example during
-     * {@link View#onSizeChanged(int, int, int, int)} (called during shared element transitions).
-     *
-     * @param width the container width
-     * @param height the container height
-     * @param applyTransformation whether to apply the transformation defined by {@link #setTransformation(int, int)}
-     */
-    @SuppressWarnings({"WeakerAccess", "unused"})
-    public void setContainerSize(float width, float height, boolean applyTransformation) {
-        if (width <= 0 || height <= 0) return;
+    @JvmOverloads
+    fun setContainerSize(width: Float, height: Float, applyTransformation: Boolean = false) {
+        if (width <= 0 || height <= 0) return
         if (width != mContainerWidth || height != mContainerHeight || applyTransformation) {
-            mContainerWidth = width;
-            mContainerHeight = height;
-            onSizeChanged(applyTransformation);
+            mContainerWidth = width
+            mContainerHeight = height
+            onSizeChanged(applyTransformation)
         }
     }
 
-    private void onSizeChanged(boolean applyTransformation) {
+    private fun onSizeChanged(applyTransformation: Boolean) {
         // We will sync them later using matrix.mapRect.
-        mTransformedRect.set(mContentRect);
+        mTransformedRect.set(mContentRect)
 
         if (mContentRect.width() <= 0
                 || mContentRect.height() <= 0
                 || mContainerWidth <= 0
-                || mContainerHeight <= 0) return;
+                || mContainerHeight <= 0)
+            return
 
         LOG.w("onSizeChanged:", "containerWidth:", mContainerWidth,
                 "containerHeight:", mContainerHeight,
                 "contentWidth:", mContentRect.width(),
-                "contentHeight:", mContentRect.height());
+                "contentHeight:", mContentRect.height())
 
         // See if we need to apply the transformation. This is the easier case, because
         // if we don't want to apply it, we must do extra computations to keep the appearance unchanged.
-        setState(NONE);
-        boolean apply = !mInitialized || applyTransformation;
-        LOG.w("onSizeChanged: will apply?", apply, "transformation?", mTransformation);
+        setState(NONE)
+        val apply = !mInitialized || applyTransformation
+        LOG.w("onSizeChanged: will apply?", apply, "transformation?", mTransformation)
         if (apply) {
             // First time. Apply base zoom, dispatch first event and return.
-            mBaseZoom = computeBaseZoom();
-            mMatrix.setScale(mBaseZoom, mBaseZoom);
-            mMatrix.mapRect(mTransformedRect, mContentRect);
-            mZoom = 1f;
-            LOG.i("onSizeChanged: newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
-            @Zoom float newZoom = checkZoomBounds(mZoom, false);
-            LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
-            if (newZoom != mZoom) applyZoom(newZoom, false);
+            mBaseZoom = computeBaseZoom()
+            mMatrix.setScale(mBaseZoom, mBaseZoom)
+            mMatrix.mapRect(mTransformedRect, mContentRect)
+            zoom = 1f
+            LOG.i("onSizeChanged: newBaseZoom:", mBaseZoom, "newZoom:", zoom)
+            @Zoom val newZoom = checkZoomBounds(zoom, false)
+            LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", newZoom - zoom)
+            if (newZoom != zoom) applyZoom(newZoom, false)
 
             // pan based on transformation gravity.
-            @ScaledPan float[] newPan = computeBasePan();
-            @ScaledPan float deltaX = newPan[0] - getScaledPanX();
-            @ScaledPan float deltaY = newPan[1] - getScaledPanY();
-            if (deltaX != 0 || deltaY != 0) applyScaledPan(deltaX, deltaY, false);
+            @ScaledPan val newPan = computeBasePan()
+            @ScaledPan val deltaX = newPan[0] - scaledPanX
+            @ScaledPan val deltaY = newPan[1] - scaledPanY
+            if (deltaX != 0f || deltaY != 0f) applyScaledPan(deltaX, deltaY, false)
 
-            ensurePanBounds(false);
-            dispatchOnMatrix();
+            ensurePanBounds(false)
+            dispatchOnMatrix()
             if (!mInitialized) {
-                mInitialized = true;
+                mInitialized = true
             }
         } else {
             // We were initialized, but some size changed. Since applyTransformation is false,
             // we must do extra work: recompute the baseZoom (since size changed, it makes no sense)
             // but also compute a new zoom such that the real zoom is kept unchanged.
             // So, this method triggers no Matrix updates.
-            LOG.i("onSizeChanged: Trying to keep real zoom to", getRealZoom());
-            LOG.i("onSizeChanged: oldBaseZoom:", mBaseZoom, "oldZoom:" + mZoom);
-            @RealZoom float realZoom = getRealZoom();
-            mBaseZoom = computeBaseZoom();
-            mZoom = realZoom / mBaseZoom;
-            LOG.i("onSizeChanged: newBaseZoom:", mBaseZoom, "newZoom:", mZoom);
+            LOG.i("onSizeChanged: Trying to keep real zoom to", realZoom)
+            LOG.i("onSizeChanged: oldBaseZoom:", mBaseZoom, "oldZoom:$zoom")
+            @RealZoom val realZoom = realZoom
+            mBaseZoom = computeBaseZoom()
+            zoom = realZoom / mBaseZoom
+            LOG.i("onSizeChanged: newBaseZoom:", mBaseZoom, "newZoom:", zoom)
 
             // Now sync the content rect with the current matrix since we are trying to keep it.
             // This is to have consistent values for other calls here.
-            mMatrix.mapRect(mTransformedRect, mContentRect);
+            mMatrix.mapRect(mTransformedRect, mContentRect)
 
             // If the new zoom value is invalid, though, we must bring it to the valid place.
             // This is a possible matrix update.
-            @Zoom float newZoom = checkZoomBounds(mZoom, false);
-            LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", (newZoom - mZoom));
-            if (newZoom != mZoom) applyZoom(newZoom, false);
+            @Zoom val newZoom = checkZoomBounds(zoom, false)
+            LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", newZoom - zoom)
+            if (newZoom != zoom) applyZoom(newZoom, false)
 
             // If there was any, pan should be kept. I think there's nothing to do here:
             // If the matrix is kept, and real zoom is kept, then also the real pan is kept.
             // I am not 100% sure of this though, so I prefer to call a useless dispatch.
-            ensurePanBounds(false);
-            dispatchOnMatrix();
+            ensurePanBounds(false)
+            dispatchOnMatrix()
         }
     }
 
     /**
      * Clears the current state, and stops dispatching matrix events
-     * until the view is laid out again and {@link #setContentSize(float, float)}
+     * until the view is laid out again and [ZoomEngine.setContentSize]
      * is called.
      */
-    public void clear() {
-        mContainerHeight = 0;
-        mContainerWidth = 0;
-        mZoom = 1;
-        mBaseZoom = 0;
-        mTransformedRect = new RectF();
-        mContentRect = new RectF();
-        mMatrix = new Matrix();
-        mInitialized = false;
+    fun clear() {
+        mContainerHeight = 0f
+        mContainerWidth = 0f
+        zoom = 1f
+        mBaseZoom = 0f
+        mTransformedRect = RectF()
+        mContentRect = RectF()
+        mMatrix = Matrix()
+        mInitialized = false
     }
 
-    private float computeBaseZoom() {
-        switch (mTransformation) {
-            case TRANSFORMATION_CENTER_INSIDE: {
-                float scaleX = mContainerWidth / mTransformedRect.width();
-                float scaleY = mContainerHeight / mTransformedRect.height();
-                LOG.v("computeBaseZoom", "centerInside", "scaleX:", scaleX, "scaleY:", scaleY);
-                return Math.min(scaleX, scaleY);
+    private fun computeBaseZoom(): Float {
+        when (mTransformation) {
+            ZoomApi.TRANSFORMATION_CENTER_INSIDE -> {
+                val scaleX = mContainerWidth / mTransformedRect.width()
+                val scaleY = mContainerHeight / mTransformedRect.height()
+                LOG.v("computeBaseZoom", "centerInside", "scaleX:", scaleX, "scaleY:", scaleY)
+                return Math.min(scaleX, scaleY)
             }
-            case TRANSFORMATION_CENTER_CROP: {
-                float scaleX = mContainerWidth / mTransformedRect.width();
-                float scaleY = mContainerHeight / mTransformedRect.height();
-                LOG.v("computeBaseZoom", "centerCrop", "scaleX:", scaleX, "scaleY:", scaleY);
-                return Math.max(scaleX, scaleY);
+            ZoomApi.TRANSFORMATION_CENTER_CROP -> {
+                val scaleX = mContainerWidth / mTransformedRect.width()
+                val scaleY = mContainerHeight / mTransformedRect.height()
+                LOG.v("computeBaseZoom", "centerCrop", "scaleX:", scaleX, "scaleY:", scaleY)
+                return Math.max(scaleX, scaleY)
             }
-            case TRANSFORMATION_NONE:
-            default:
-                return 1f;
+            ZoomApi.TRANSFORMATION_NONE -> return 1f
+            else -> return 1f
         }
     }
 
     // TODO support START and END correctly.
     @SuppressLint("RtlHardcoded")
     @ScaledPan
-    private float[] computeBasePan() {
-        float[] result = new float[]{0f, 0f};
-        float extraWidth = mTransformedRect.width() - mContainerWidth;
-        float extraHeight = mTransformedRect.height() - mContainerHeight;
+    private fun computeBasePan(): FloatArray {
+        val result = floatArrayOf(0f, 0f)
+        val extraWidth = mTransformedRect.width() - mContainerWidth
+        val extraHeight = mTransformedRect.height() - mContainerHeight
         if (extraWidth > 0) {
             // Honour the horizontal gravity indication.
-            switch (mTransformationGravity & Gravity.HORIZONTAL_GRAVITY_MASK) {
-                case Gravity.LEFT:
-                    result[0] = 0;
-                    break;
-                case Gravity.CENTER_HORIZONTAL:
-                    result[0] = -0.5F * extraWidth;
-                    break;
-                case Gravity.RIGHT:
-                    result[0] = -extraWidth;
-                    break;
+            when (mTransformationGravity and Gravity.HORIZONTAL_GRAVITY_MASK) {
+                Gravity.LEFT -> result[0] = 0f
+                Gravity.CENTER_HORIZONTAL -> result[0] = -0.5f * extraWidth
+                Gravity.RIGHT -> result[0] = -extraWidth
             }
         }
         if (extraHeight > 0) {
             // Honour the vertical gravity indication.
-            switch (mTransformationGravity & Gravity.VERTICAL_GRAVITY_MASK) {
-                case Gravity.TOP:
-                    result[1] = 0;
-                    break;
-                case Gravity.CENTER_VERTICAL:
-                    result[1] = -0.5F * extraHeight;
-                    break;
-                case Gravity.BOTTOM:
-                    result[1] = -extraHeight;
-                    break;
+            when (mTransformationGravity and Gravity.VERTICAL_GRAVITY_MASK) {
+                Gravity.TOP -> result[1] = 0f
+                Gravity.CENTER_VERTICAL -> result[1] = -0.5f * extraHeight
+                Gravity.BOTTOM -> result[1] = -extraHeight
             }
         }
-        return result;
+        return result
     }
 
     //endregion
 
     //region Private helpers
 
-    private void dispatchOnMatrix() {
-        Matrix matrix = getMatrix();
-        for (Listener listener : mListeners) {
-            listener.onUpdate(this, matrix);
+    private fun dispatchOnMatrix() {
+        mListeners.forEach {
+            it.onUpdate(this, matrix)
         }
     }
 
-    private void dispatchOnIdle() {
-        for (Listener listener : mListeners) {
-            listener.onIdle(this);
+    private fun dispatchOnIdle() {
+        mListeners.forEach {
+            it.onIdle(this)
         }
     }
 
@@ -620,16 +594,15 @@ public final class ZoomEngine implements ZoomApi {
      * to get into a valid state again.
      */
     @Zoom
-    private float checkZoomBounds(@Zoom float value, boolean allowOverPinch) {
-        float minZoom = resolveZoom(mMinZoom, mMinZoomMode);
-        float maxZoom = resolveZoom(mMaxZoom, mMaxZoomMode);
+    private fun checkZoomBounds(@Zoom value: Float, allowOverPinch: Boolean): Float {
+        var minZoom = resolveZoom(mMinZoom, mMinZoomMode)
+        var maxZoom = resolveZoom(mMaxZoom, mMaxZoomMode)
         if (allowOverPinch && mOverPinchable) {
-            minZoom -= getMaxOverPinch();
-            maxZoom += getMaxOverPinch();
+            minZoom -= maxOverPinch
+            maxZoom += maxOverPinch
         }
-        if (value < minZoom) value = minZoom;
-        if (value > maxZoom) value = maxZoom;
-        return value;
+
+        return value.coerceIn(minZoom, maxZoom)
     }
 
     /**
@@ -638,82 +611,72 @@ public final class ZoomEngine implements ZoomApi {
      * to get into a valid state again.
      */
     @ScaledPan
-    private float checkPanBounds(boolean horizontal, boolean allowOverScroll) {
-        @ScaledPan float value = horizontal ? getScaledPanX() : getScaledPanY();
-        float viewSize = horizontal ? mContainerWidth : mContainerHeight;
-        @ScaledPan float contentSize = horizontal ? mTransformedRect.width() : mTransformedRect.height();
+    private fun checkPanBounds(horizontal: Boolean, allowOverScroll: Boolean): Float {
+        @ScaledPan val value = if (horizontal) scaledPanX else scaledPanY
+        val viewSize = if (horizontal) mContainerWidth else mContainerHeight
+        @ScaledPan val contentSize = if (horizontal) mTransformedRect.width() else mTransformedRect.height()
 
-        boolean overScrollable = horizontal ? mOverScrollHorizontal : mOverScrollVertical;
-        @ScaledPan float overScroll = (overScrollable && allowOverScroll) ? getMaxOverScroll() : 0;
-        return getPanCorrection(value, viewSize, contentSize, overScroll);
+        val overScrollable = if (horizontal) mOverScrollHorizontal else mOverScrollVertical
+        @ScaledPan val overScroll = (if (overScrollable && allowOverScroll) maxOverScroll else 0).toFloat()
+        return getPanCorrection(value, viewSize, contentSize, overScroll)
     }
 
     @ScaledPan
-    private float getPanCorrection(@ScaledPan float value, float viewSize,
-                                   @ScaledPan float contentSize, @ScaledPan float overScroll) {
-        @ScaledPan int tolerance = (int) overScroll;
-        float min, max;
+    private fun getPanCorrection(@ScaledPan value: Float, viewSize: Float,
+                                 @ScaledPan contentSize: Float, @ScaledPan overScroll: Float): Float {
+        @ScaledPan val tolerance = overScroll.toInt()
+        var min: Float
+        var max: Float
         if (contentSize <= viewSize) {
             // If contentSize <= viewSize, we want to stay centered.
             // Need a positive translation, that shows some background.
-            min = (viewSize - contentSize) / 2f;
-            max = (viewSize - contentSize) / 2f;
+            min = (viewSize - contentSize) / 2f
+            max = (viewSize - contentSize) / 2f
         } else {
             // If contentSize is bigger, we just don't want to go outside.
             // Need a negative translation, that hides content.
-            min = viewSize - contentSize;
-            max = 0;
+            min = viewSize - contentSize
+            max = 0f
         }
-        min -= tolerance;
-        max += tolerance;
-        float desired = value;
-        if (desired < min) desired = min;
-        if (desired > max) desired = max;
-        return desired - value;
+        min -= tolerance.toFloat()
+        max += tolerance.toFloat()
+        var desired = value
+        if (desired < min) desired = min
+        if (desired > max) desired = max
+        return desired - value
     }
 
     /**
-     * Calls {@link #checkPanBounds(boolean, boolean)} on both directions
+     * Calls [checkPanBounds] on both directions
      * and applies the correction to the matrix if needed.
      */
-    private void ensurePanBounds(boolean allowOverScroll) {
-        @ScaledPan float fixX = checkPanBounds(true, allowOverScroll);
-        @ScaledPan float fixY = checkPanBounds(false, allowOverScroll);
-        if (fixX != 0 || fixY != 0) {
-            mMatrix.postTranslate(fixX, fixY);
-            mMatrix.mapRect(mTransformedRect, mContentRect);
+    private fun ensurePanBounds(allowOverScroll: Boolean) {
+        @ScaledPan val fixX = checkPanBounds(true, allowOverScroll)
+        @ScaledPan val fixY = checkPanBounds(false, allowOverScroll)
+        if (fixX != 0f || fixY != 0f) {
+            mMatrix.postTranslate(fixX, fixY)
+            mMatrix.mapRect(mTransformedRect, mContentRect)
         }
     }
 
     @Zoom
-    private float resolveZoom(float zoom, @ZoomType int mode) {
-        switch (mode) {
-            case TYPE_ZOOM:
-                return zoom;
-            case TYPE_REAL_ZOOM:
-                return zoom / mBaseZoom;
+    private fun resolveZoom(zoom: Float, @ZoomType mode: Int): Float {
+        when (mode) {
+            ZoomApi.TYPE_ZOOM -> return zoom
+            ZoomApi.TYPE_REAL_ZOOM -> return zoom / mBaseZoom
         }
-        return -1;
+        return -1f
     }
 
     @ScaledPan
-    private float resolvePan(@AbsolutePan float pan) {
-        return pan * getRealZoom();
+    private fun resolvePan(@AbsolutePan pan: Float): Float {
+        return pan * realZoom
     }
 
     @AbsolutePan
-    private float unresolvePan(@ScaledPan float pan) {
-        return pan / getRealZoom();
+    private fun unresolvePan(@ScaledPan pan: Float): Float {
+        return pan / realZoom
     }
-
-    //endregion
-
-    //region Touch events and Gesture Listeners
-
-    // Might make these public some day?
-    private final static int TOUCH_NO = 0;
-    private final static int TOUCH_LISTEN = 1;
-    private final static int TOUCH_STEAL = 2;
 
     /**
      * This is required when the content is a View that has clickable hierarchies inside.
@@ -722,9 +685,8 @@ public final class ZoomEngine implements ZoomApi {
      * @param ev the motion event
      * @return whether we want to intercept the event
      */
-    @SuppressWarnings("WeakerAccess")
-    public boolean onInterceptTouchEvent(MotionEvent ev) {
-        return processTouchEvent(ev) > TOUCH_LISTEN;
+    fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        return processTouchEvent(ev) > TOUCH_LISTEN
     }
 
     /**
@@ -734,192 +696,186 @@ public final class ZoomEngine implements ZoomApi {
      * @param ev the motion event
      * @return whether we want to steal the event
      */
-    @SuppressWarnings("WeakerAccess")
-    public boolean onTouchEvent(MotionEvent ev) {
-        return processTouchEvent(ev) > TOUCH_NO;
+    fun onTouchEvent(ev: MotionEvent): Boolean {
+        return processTouchEvent(ev) > TOUCH_NO
     }
 
-    private int processTouchEvent(MotionEvent event) {
-        LOG.v("processTouchEvent:", "start.");
-        if (mState == ANIMATING) return TOUCH_STEAL;
+    private fun processTouchEvent(event: MotionEvent): Int {
+        LOG.v("processTouchEvent:", "start.")
+        if (mState == ANIMATING) return TOUCH_STEAL
 
-        boolean result = mScaleDetector.onTouchEvent(event);
-        LOG.v("processTouchEvent:", "scaleResult:", result);
+        var result = mScaleDetector.onTouchEvent(event)
+        LOG.v("processTouchEvent:", "scaleResult:", result)
 
         // Pinch detector always returns true. If we actually started a pinch,
         // Don't pass to fling detector.
         if (mState != PINCHING) {
-            result = result | mFlingDragDetector.onTouchEvent(event);
-            LOG.v("processTouchEvent:", "flingResult:", result);
+            result = result or mFlingDragDetector.onTouchEvent(event)
+            LOG.v("processTouchEvent:", "flingResult:", result)
         }
 
         // Detect scroll ends, this appears to be the only way.
         if (mState == SCROLLING) {
-            int a = event.getActionMasked();
+            val a = event.actionMasked
             if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL) {
-                LOG.i("processTouchEvent:", "up event while scrolling, dispatching onScrollEnd.");
-                onScrollEnd();
+                LOG.i("processTouchEvent:", "up event while scrolling, dispatching onScrollEnd.")
+                onScrollEnd()
             }
         }
 
         if (result && mState != NONE) {
-            LOG.v("processTouchEvent:", "returning: TOUCH_STEAL");
-            return TOUCH_STEAL;
+            LOG.v("processTouchEvent:", "returning: TOUCH_STEAL")
+            return TOUCH_STEAL
         } else if (result) {
-            LOG.v("processTouchEvent:", "returning: TOUCH_LISTEN");
-            return TOUCH_LISTEN;
+            LOG.v("processTouchEvent:", "returning: TOUCH_LISTEN")
+            return TOUCH_LISTEN
         } else {
-            LOG.v("processTouchEvent:", "returning: TOUCH_NO");
-            setState(NONE);
-            return TOUCH_NO;
+            LOG.v("processTouchEvent:", "returning: TOUCH_NO")
+            setState(NONE)
+            return TOUCH_NO
         }
     }
 
-    private class PinchListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
+    private inner class PinchListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
 
-        private @AbsolutePan
-        float mAbsTargetX = 0;
-        private @AbsolutePan
-        float mAbsTargetY = 0;
+        @AbsolutePan
+        private var mAbsTargetX = 0f
+        @AbsolutePan
+        private var mAbsTargetY = 0f
 
-        @Override
-        public boolean onScaleBegin(ScaleGestureDetector detector) {
-            return true;
+        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+            return true
         }
 
-        @Override
-        public boolean onScale(ScaleGestureDetector detector) {
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
             if (!mZoomEnabled) {
-                return false;
+                return false
             }
 
             if (setState(PINCHING)) {
-                float eps = 0.0001f;
+                val eps = 0.0001f
                 if (Math.abs(mAbsTargetX) < eps || Math.abs(mAbsTargetY) < eps) {
                     // We want to interpret this as a scaled value, to work with the *actual* zoom.
-                    @ScaledPan float scaledFocusX = -detector.getFocusX();
-                    @ScaledPan float scaledFocusY = -detector.getFocusY();
-                    LOG.i("onScale:", "Setting focus.", "detectorFocusX:", scaledFocusX, "detectorFocusX:", scaledFocusY);
+                    @ScaledPan var scaledFocusX = -detector.focusX
+                    @ScaledPan var scaledFocusY = -detector.focusY
+                    LOG.i("onScale:", "Setting focus.", "detectorFocusX:", scaledFocusX, "detectorFocusX:", scaledFocusY)
 
                     // Account for current pan.
-                    scaledFocusX += getScaledPanX();
-                    scaledFocusY += getScaledPanY();
+                    scaledFocusX += scaledPanX
+                    scaledFocusY += scaledPanY
 
                     // Transform to an absolute, scale-independent value.
-                    mAbsTargetX = unresolvePan(scaledFocusX);
-                    mAbsTargetY = unresolvePan(scaledFocusY);
-                    LOG.i("onScale:", "Setting focus.", "absTargetX:", mAbsTargetX, "absTargetY:", mAbsTargetY);
+                    mAbsTargetX = unresolvePan(scaledFocusX)
+                    mAbsTargetY = unresolvePan(scaledFocusY)
+                    LOG.i("onScale:", "Setting focus.", "absTargetX:", mAbsTargetX, "absTargetY:", mAbsTargetY)
                 }
 
                 // Having both overPinch and overScroll is hard to manage, there are lots of bugs if we do.
-                float factor = detector.getScaleFactor();
-                float newZoom = mZoom * factor;
-                applyPinch(newZoom, mAbsTargetX, mAbsTargetY, true);
-                return true;
+                val factor = detector.scaleFactor
+                val newZoom = zoom * factor
+                applyPinch(newZoom, mAbsTargetX, mAbsTargetY, true)
+                return true
             }
-            return false;
+            return false
         }
 
-        @Override
-        public void onScaleEnd(ScaleGestureDetector detector) {
+        override fun onScaleEnd(detector: ScaleGestureDetector) {
             LOG.i("onScaleEnd:", "mAbsTargetX:", mAbsTargetX, "mAbsTargetY:",
-                    mAbsTargetY, "mOverPinchable;", mOverPinchable);
-            mAbsTargetX = 0;
-            mAbsTargetY = 0;
+                    mAbsTargetY, "mOverPinchable;", mOverPinchable)
+            mAbsTargetX = 0f
+            mAbsTargetY = 0f
             if (mOverPinchable) {
                 // We might have over pinched. Animate back to reasonable value.
-                @Zoom float zoom = 0f;
-                @Zoom float maxZoom = resolveZoom(mMaxZoom, mMaxZoomMode);
-                @Zoom float minZoom = resolveZoom(mMinZoom, mMinZoomMode);
-                if (getZoom() < minZoom) zoom = minZoom;
-                if (getZoom() > maxZoom) zoom = maxZoom;
-                LOG.i("onScaleEnd:", "zoom:", getZoom(), "max:",
-                        maxZoom, "min;", minZoom);
-                if (zoom > 0) {
-                    animateZoom(zoom, true);
-                    return;
+                @Zoom val maxZoom = resolveZoom(mMaxZoom, mMaxZoomMode)
+                @Zoom val minZoom = resolveZoom(mMinZoom, mMinZoomMode)
+
+                val newZoom = zoom.coerceIn(minZoom, maxZoom)
+                LOG.i("onScaleEnd:", "zoom:", zoom, "newZoom:", newZoom, "max:",
+                        maxZoom, "min;", minZoom)
+                if (newZoom > 0) {
+                    animateZoom(newZoom, true)
+                    return
                 }
             }
-            setState(NONE);
+            setState(NONE)
         }
     }
 
 
-    private class FlingScrollListener extends GestureDetector.SimpleOnGestureListener {
+    private inner class FlingScrollListener : GestureDetector.SimpleOnGestureListener() {
 
-        @Override
-        public boolean onDown(MotionEvent e) {
-            return true; // We are interested in the gesture.
+        override fun onDown(e: MotionEvent): Boolean {
+            return true // We are interested in the gesture.
         }
 
-        @Override
-        public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-            int vX = (int) (mHorizontalPanEnabled ? velocityX : 0);
-            int vY = (int) (mVerticalPanEnabled ? velocityY : 0);
-            return startFling(vX, vY);
+        override fun onFling(e1: MotionEvent, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+            val vX = (if (mHorizontalPanEnabled) velocityX else 0F).toInt()
+            val vY = (if (mVerticalPanEnabled) velocityY else 0F).toInt()
+            return startFling(vX, vY)
         }
 
 
         /**
          * Scroll event detected.
          *
-         * We assume overScroll is true. If this is the case, it will be reset in {@link #onScrollEnd()}.
-         * If not, the {@link #applyScaledPan(float, float, boolean)} function will ignore our delta.
+         * We assume overScroll is true. If this is the case, it will be reset in [onScrollEnd].
+         * If not, the [applyScaledPan] function will ignore our delta.
          *
          * TODO this this not true! ^
          */
-        @Override
-        public boolean onScroll(MotionEvent e1, MotionEvent e2,
-                                @AbsolutePan float distanceX, @AbsolutePan float distanceY) {
+        override fun onScroll(e1: MotionEvent, e2: MotionEvent,
+                              @AbsolutePan distanceX: Float, @AbsolutePan distanceY: Float): Boolean {
+            var distanceX = distanceX
+            var distanceY = distanceY
             if (setState(SCROLLING)) {
                 // Change sign, since we work with opposite values.
-                distanceX = -distanceX;
-                distanceY = -distanceY;
+                distanceX = -distanceX
+                distanceY = -distanceY
 
                 // See if we are overscrolling.
-                float fixX = checkPanBounds(true, false);
-                float fixY = checkPanBounds(false, false);
+                val fixX = checkPanBounds(true, false)
+                val fixY = checkPanBounds(false, false)
 
                 // If we are overscrolling AND scrolling towards the overscroll direction...
-                if ((fixX < 0 && distanceX > 0) || (fixX > 0 && distanceX < 0)) {
+                if (fixX < 0 && distanceX > 0 || fixX > 0 && distanceX < 0) {
                     // Compute friction: a factor for distances. Must be 1 if we are not overscrolling,
                     // and 0 if we are at the end of the available overscroll. This works:
-                    float overScrollX = Math.abs(fixX) / getMaxOverScroll(); // 0 ... 1
-                    float frictionX = 0.6F * (1F - (float) Math.pow(overScrollX, 0.4F)); // 0 ... 0.6
-                    LOG.i("onScroll", "applying friction X:", frictionX);
-                    distanceX *= frictionX;
+                    val overScrollX = Math.abs(fixX) / maxOverScroll // 0 ... 1
+                    val frictionX = 0.6f * (1f - Math.pow(overScrollX.toDouble(), 0.4).toFloat()) // 0 ... 0.6
+                    LOG.i("onScroll", "applying friction X:", frictionX)
+                    distanceX *= frictionX
                 }
-                if ((fixY < 0 && distanceY > 0) || (fixY > 0 && distanceY < 0)) {
-                    float overScrollY = Math.abs(fixY) / getMaxOverScroll(); // 0 ... 1
-                    float frictionY = 0.6F * (1F - (float) Math.pow(overScrollY, 0.4F)); // 0 ... 10.6
-                    LOG.i("onScroll", "applying friction Y:", frictionY);
-                    distanceY *= frictionY;
+                if (fixY < 0 && distanceY > 0 || fixY > 0 && distanceY < 0) {
+                    val overScrollY = Math.abs(fixY) / maxOverScroll // 0 ... 1
+                    val frictionY = 0.6f * (1f - Math.pow(overScrollY.toDouble(), 0.4).toFloat()) // 0 ... 10.6
+                    LOG.i("onScroll", "applying friction Y:", frictionY)
+                    distanceY *= frictionY
                 }
 
                 // If disabled, reset to 0.
-                if (!mHorizontalPanEnabled) distanceX = 0;
-                if (!mVerticalPanEnabled) distanceY = 0;
+                if (!mHorizontalPanEnabled) distanceX = 0f
+                if (!mVerticalPanEnabled) distanceY = 0f
 
-                if (distanceX != 0 || distanceY != 0) {
-                    applyScaledPan(distanceX, distanceY, true);
+                if (distanceX != 0f || distanceY != 0f) {
+                    applyScaledPan(distanceX, distanceY, true)
                 }
-                return true;
+                return true
             }
-            return false;
+            return false
         }
     }
 
-    private void onScrollEnd() {
+    private fun onScrollEnd() {
         if (mOverScrollHorizontal || mOverScrollVertical) {
             // We might have over scrolled. Animate back to reasonable value.
-            @ScaledPan float fixX = checkPanBounds(true, false);
-            @ScaledPan float fixY = checkPanBounds(false, false);
-            if (fixX != 0 || fixY != 0) {
-                animateScaledPan(fixX, fixY, true);
-                return;
+            @ScaledPan val fixX = checkPanBounds(true, false)
+            @ScaledPan val fixY = checkPanBounds(false, false)
+            if (fixX != 0f || fixY != 0f) {
+                animateScaledPan(fixX, fixY, true)
+                return
             }
         }
-        setState(NONE);
+        setState(NONE)
     }
 
     //endregion
@@ -928,8 +884,8 @@ public final class ZoomEngine implements ZoomApi {
 
     /**
      * A low level API that can animate both zoom and pan at the same time.
-     * Zoom might not be the actual matrix scale, see {@link #getZoom()} and {@link #getRealZoom()}.
-     * The coordinates are referred to the content size passed in {@link #setContentSize(float, float)}
+     * Zoom might not be the actual matrix scale, see [ZoomApi.zoom] and [ZoomApi.realZoom].
+     * The coordinates are referred to the content size passed in [setContentSize]
      * so they do not depend on current zoom.
      *
      * @param zoom    the desired zoom value
@@ -937,35 +893,34 @@ public final class ZoomEngine implements ZoomApi {
      * @param y       the desired top coordinate
      * @param animate whether to animate the transition
      */
-    @Override
-    public void moveTo(@Zoom float zoom, @AbsolutePan float x, @AbsolutePan float y, boolean animate) {
-        if (!mInitialized) return;
+    override fun moveTo(@Zoom zoom: Float, @AbsolutePan x: Float, @AbsolutePan y: Float, animate: Boolean) {
+        if (!mInitialized) return
         if (animate) {
-            animateZoomAndAbsolutePan(zoom, x, y, false);
+            animateZoomAndAbsolutePan(zoom, x, y, false)
         } else {
-            applyZoomAndAbsolutePan(zoom, x, y, false);
+            applyZoomAndAbsolutePan(zoom, x, y, false)
         }
     }
 
     /**
      * Pans the content until the top-left coordinates match the given x-y
-     * values. These are referred to the content size passed in {@link #setContentSize(float, float)},
+     * values. These are referred to the content size passed in [setContentSize],
      * so they do not depend on current zoom.
      *
      * @param x       the desired left coordinate
      * @param y       the desired top coordinate
      * @param animate whether to animate the transition
      */
-    @Override
-    public void panTo(@AbsolutePan float x, @AbsolutePan float y, boolean animate) {
-        panBy(x - getPanX(), y - getPanY(), animate);
+    override fun panTo(@AbsolutePan x: Float, @AbsolutePan y: Float, animate: Boolean) {
+        panBy(x - panX, y - panY, animate)
     }
 
     /**
      * Pans the content by the given quantity in dx-dy values.
-     * These are referred to the content size passed in {@link #setContentSize(float, float)},
+     * These are referred to the content size passed in [setContentSize],
      * so they do not depend on current zoom.
-     * <p>
+     *
+     *
      * In other words, asking to pan by 1 pixel might result in a bigger pan, if the content
      * was zoomed in.
      *
@@ -973,30 +928,28 @@ public final class ZoomEngine implements ZoomApi {
      * @param dy      the desired delta y
      * @param animate whether to animate the transition
      */
-    @Override
-    public void panBy(@AbsolutePan float dx, @AbsolutePan float dy, boolean animate) {
-        if (!mInitialized) return;
+    override fun panBy(@AbsolutePan dx: Float, @AbsolutePan dy: Float, animate: Boolean) {
+        if (!mInitialized) return
         if (animate) {
-            animateZoomAndAbsolutePan(mZoom, getPanX() + dx, getPanY() + dy, false);
+            animateZoomAndAbsolutePan(zoom, panX + dx, panY + dy, false)
         } else {
-            applyZoomAndAbsolutePan(mZoom, getPanX() + dx, getPanY() + dy, false);
+            applyZoomAndAbsolutePan(zoom, panX + dx, panY + dy, false)
         }
     }
 
     /**
      * Zooms to the given scale. This might not be the actual matrix zoom,
-     * see {@link #getZoom()} and {@link #getRealZoom()}.
+     * see [ZoomApi.zoom] and [ZoomApi.realZoom].
      *
      * @param zoom    the new scale value
      * @param animate whether to animate the transition
      */
-    @Override
-    public void zoomTo(@Zoom float zoom, boolean animate) {
-        if (!mInitialized) return;
+    override fun zoomTo(@Zoom zoom: Float, animate: Boolean) {
+        if (!mInitialized) return
         if (animate) {
-            animateZoom(zoom, false);
+            animateZoom(zoom, false)
         } else {
-            applyZoom(zoom, false);
+            applyZoom(zoom, false)
         }
     }
 
@@ -1006,29 +959,26 @@ public final class ZoomEngine implements ZoomApi {
      * @param zoomFactor a multiplicative factor
      * @param animate    whether to animate the transition
      */
-    @Override
-    public void zoomBy(float zoomFactor, boolean animate) {
-        @Zoom float newZoom = mZoom * zoomFactor;
-        zoomTo(newZoom, animate);
+    override fun zoomBy(zoomFactor: Float, animate: Boolean) {
+        @Zoom val newZoom = zoom * zoomFactor
+        zoomTo(newZoom, animate)
     }
 
 
     /**
      * Applies a small, animated zoom-in.
-     * Shorthand for {@link #zoomBy(float, boolean)} with factor 1.3.
+     * Shorthand for [zoomBy] with factor 1.3.
      */
-    @Override
-    public void zoomIn() {
-        zoomBy(1.3F, true);
+    override fun zoomIn() {
+        zoomBy(1.3f, true)
     }
 
     /**
      * Applies a small, animated zoom-out.
-     * Shorthand for {@link #zoomBy(float, boolean)} with factor 0.7.
+     * Shorthand for [zoomBy] with factor 0.7.
      */
-    @Override
-    public void zoomOut() {
-        zoomBy(0.7F, true);
+    override fun zoomOut() {
+        zoomBy(0.7f, true)
     }
 
     /**
@@ -1037,123 +987,53 @@ public final class ZoomEngine implements ZoomApi {
      * @param realZoom the new real zoom value
      * @param animate  whether to animate the transition
      */
-    @Override
-    public void realZoomTo(float realZoom, boolean animate) {
-        zoomTo(resolveZoom(realZoom, TYPE_REAL_ZOOM), animate);
+    override fun realZoomTo(realZoom: Float, animate: Boolean) {
+        zoomTo(resolveZoom(realZoom, ZoomApi.TYPE_REAL_ZOOM), animate)
     }
 
     /**
      * Which is the max zoom that should be allowed.
-     * If {@link #setOverPinchable(boolean)} is set to true, this can be over-pinched
+     * If [setOverPinchable] is set to true, this can be over-pinched
      * for a brief time.
      *
      * @param maxZoom the max zoom
      * @param type    the constraint mode
-     * @see #getZoom()
-     * @see #getRealZoom()
-     * @see #TYPE_ZOOM
-     * @see #TYPE_REAL_ZOOM
+     * @see ZoomApi.zoom
+     * @see ZoomApi.realZoom
+     * @see ZoomApi.TYPE_ZOOM
+     *
+     * @see ZoomApi.TYPE_REAL_ZOOM
      */
-    @Override
-    public void setMaxZoom(float maxZoom, @ZoomType int type) {
+    override fun setMaxZoom(maxZoom: Float, @ZoomType type: Int) {
         if (maxZoom < 0) {
-            throw new IllegalArgumentException("Max zoom should be >= 0.");
+            throw IllegalArgumentException("Max zoom should be >= 0.")
         }
-        mMaxZoom = maxZoom;
-        mMaxZoomMode = type;
-        if (mZoom > resolveZoom(maxZoom, type)) {
-            zoomTo(resolveZoom(maxZoom, type), true);
+        mMaxZoom = maxZoom
+        mMaxZoomMode = type
+        if (zoom > resolveZoom(maxZoom, type)) {
+            zoomTo(resolveZoom(maxZoom, type), true)
         }
     }
 
     /**
      * Which is the min zoom that should be allowed.
-     * If {@link #setOverPinchable(boolean)} is set to true, this can be over-pinched
+     * If [setOverPinchable] is set to true, this can be over-pinched
      * for a brief time.
      *
      * @param minZoom the min zoom
      * @param type    the constraint mode
-     * @see #getZoom()
-     * @see #getRealZoom()
+     * @see ZoomApi.zoom
+     * @see ZoomApi.realZoom
      */
-    @Override
-    public void setMinZoom(float minZoom, @ZoomType int type) {
+    override fun setMinZoom(minZoom: Float, @ZoomType type: Int) {
         if (minZoom < 0) {
-            throw new IllegalArgumentException("Min zoom should be >= 0");
+            throw IllegalArgumentException("Min zoom should be >= 0")
         }
-        mMinZoom = minZoom;
-        mMinZoomMode = type;
-        if (mZoom <= resolveZoom(minZoom, type)) {
-            zoomTo(resolveZoom(minZoom, type), true);
+        mMinZoom = minZoom
+        mMinZoomMode = type
+        if (zoom <= resolveZoom(minZoom, type)) {
+            zoomTo(resolveZoom(minZoom, type), true)
         }
-    }
-
-    /**
-     * Gets the current zoom value, which can be used as a reference when calling
-     * {@link #zoomTo(float, boolean)} or {@link #zoomBy(float, boolean)}.
-     * <p>
-     * This can be different than the actual scale you get in the matrix, because at startup
-     * we apply a base transformation, see {@link #setTransformation(int, int)}.
-     * All zoom calls, including min zoom and max zoom, refer to this axis, where zoom is set to 1
-     * right after the initial transformation.
-     *
-     * @return the current zoom
-     * @see #getRealZoom()
-     */
-    @Override
-    @Zoom
-    public float getZoom() {
-        return mZoom;
-    }
-
-    /**
-     * Gets the current zoom value, including the base zoom that was eventually applied during
-     * the starting transformation, see {@link #setTransformation(int, int)}.
-     * This value will match the scaleX - scaleY values you get into the {@link Matrix},
-     * and is the actual scale value of the content from its original size.
-     *
-     * @return the real zoom
-     */
-    @Override
-    @RealZoom
-    public float getRealZoom() {
-        return mZoom * mBaseZoom;
-    }
-
-    /**
-     * Returns the current horizontal pan value, in content coordinates
-     * (that is, as if there was no zoom at all) referring to what was passed
-     * to {@link #setContentSize(float, float)}.
-     *
-     * @return the current horizontal pan
-     */
-    @Override
-    @AbsolutePan
-    public float getPanX() {
-        return getScaledPanX() / getRealZoom();
-    }
-
-    /**
-     * Returns the current vertical pan value, in content coordinates
-     * (that is, as if there was no zoom at all) referring to what was passed
-     * to {@link #setContentSize(float, float)}.
-     *
-     * @return the current vertical pan
-     */
-    @Override
-    @AbsolutePan
-    public float getPanY() {
-        return getScaledPanY() / getRealZoom();
-    }
-
-    @ScaledPan
-    private float getScaledPanX() {
-        return mTransformedRect.left;
-    }
-
-    @ScaledPan
-    private float getScaledPanY() {
-        return mTransformedRect.top;
     }
 
     //endregion
@@ -1161,39 +1041,39 @@ public final class ZoomEngine implements ZoomApi {
     //region Apply values
 
     /**
-     * Calls {@link #applyZoom(float, boolean)} repeatedly
+     * Calls [applyZoom] repeatedly
      * until the final zoom is reached, interpolating.
      *
      * @param newZoom        the new zoom
      * @param allowOverPinch whether overpinching is allowed
      */
-    private void animateZoom(@Zoom float newZoom, final boolean allowOverPinch) {
-        newZoom = checkZoomBounds(newZoom, allowOverPinch);
+    private fun animateZoom(@Zoom newZoom: Float, allowOverPinch: Boolean) {
+        var newZoom = newZoom
+        newZoom = checkZoomBounds(newZoom, allowOverPinch)
         if (setState(ANIMATING)) {
-            mClearAnimation = false;
-            final long startTime = System.currentTimeMillis();
-            @Zoom final float startZoom = mZoom;
-            @Zoom final float endZoom = newZoom;
-            mContainer.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (mClearAnimation) return;
-                    float time = interpolateAnimationTime(System.currentTimeMillis() - startTime);
-                    LOG.v("animateZoomAndAbsolutePan:", "animationStep:", time);
-                    @Zoom float zoom = startZoom + time * (endZoom - startZoom);
-                    applyZoom(zoom, allowOverPinch);
+            mClearAnimation = false
+            val startTime = System.currentTimeMillis()
+            @Zoom val startZoom = zoom
+            @Zoom val endZoom = newZoom
+            mContainer.post(object : Runnable {
+                override fun run() {
+                    if (mClearAnimation) return
+                    val time = interpolateAnimationTime(System.currentTimeMillis() - startTime)
+                    LOG.v("animateZoomAndAbsolutePan:", "animationStep:", time)
+                    @Zoom val zoom = startZoom + time * (endZoom - startZoom)
+                    applyZoom(zoom, allowOverPinch)
                     if (time >= 1f) {
-                        setState(NONE);
+                        setState(NONE)
                     } else {
-                        mContainer.postOnAnimation(this);
+                        mContainer.postOnAnimation(this)
                     }
                 }
-            });
+            })
         }
     }
 
     /**
-     * Calls {@link #applyZoomAndAbsolutePan(float, float, float, boolean)} repeatedly
+     * Calls [applyZoomAndAbsolutePan] repeatedly
      * until the final position is reached, interpolating.
      *
      * @param newZoom         new zoom
@@ -1201,110 +1081,110 @@ public final class ZoomEngine implements ZoomApi {
      * @param y               final abs pan
      * @param allowOverScroll whether to overscroll
      */
-    private void animateZoomAndAbsolutePan(@Zoom float newZoom,
-                                           @AbsolutePan final float x, @AbsolutePan final float y,
-                                           @SuppressWarnings("SameParameterValue") final boolean allowOverScroll) {
-        newZoom = checkZoomBounds(newZoom, allowOverScroll);
+    private fun animateZoomAndAbsolutePan(@Zoom newZoom: Float,
+                                          @AbsolutePan x: Float, @AbsolutePan y: Float,
+                                          allowOverScroll: Boolean) {
+        var newZoom = newZoom
+        newZoom = checkZoomBounds(newZoom, allowOverScroll)
         if (setState(ANIMATING)) {
-            mClearAnimation = false;
-            final long startTime = System.currentTimeMillis();
-            @Zoom final float startZoom = mZoom;
-            @Zoom final float endZoom = newZoom;
-            @AbsolutePan final float startX = getPanX();
-            @AbsolutePan final float startY = getPanY();
-            LOG.i("animateZoomAndAbsolutePan:", "starting.", "startX:", startX, "endX:", x, "startY:", startY, "endY:", y);
-            LOG.i("animateZoomAndAbsolutePan:", "starting.", "startZoom:", startZoom, "endZoom:", endZoom);
-            mContainer.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (mClearAnimation) return;
-                    float time = interpolateAnimationTime(System.currentTimeMillis() - startTime);
-                    LOG.v("animateZoomAndAbsolutePan:", "animationStep:", time);
-                    @Zoom float zoom = startZoom + time * (endZoom - startZoom);
-                    @AbsolutePan float targetX = startX + time * (x - startX);
-                    @AbsolutePan float targetY = startY + time * (y - startY);
-                    applyZoomAndAbsolutePan(zoom, targetX, targetY, allowOverScroll);
+            mClearAnimation = false
+            val startTime = System.currentTimeMillis()
+            @Zoom val startZoom = zoom
+            @Zoom val endZoom = newZoom
+            @AbsolutePan val startX = panX
+            @AbsolutePan val startY = panY
+            LOG.i("animateZoomAndAbsolutePan:", "starting.", "startX:", startX, "endX:", x, "startY:", startY, "endY:", y)
+            LOG.i("animateZoomAndAbsolutePan:", "starting.", "startZoom:", startZoom, "endZoom:", endZoom)
+            mContainer.post(object : Runnable {
+                override fun run() {
+                    if (mClearAnimation) return
+                    val time = interpolateAnimationTime(System.currentTimeMillis() - startTime)
+                    LOG.v("animateZoomAndAbsolutePan:", "animationStep:", time)
+                    @Zoom val zoom = startZoom + time * (endZoom - startZoom)
+                    @AbsolutePan val targetX = startX + time * (x - startX)
+                    @AbsolutePan val targetY = startY + time * (y - startY)
+                    applyZoomAndAbsolutePan(zoom, targetX, targetY, allowOverScroll)
                     if (time >= 1f) {
-                        setState(NONE);
+                        setState(NONE)
                     } else {
-                        mContainer.postOnAnimation(this);
+                        mContainer.postOnAnimation(this)
                     }
                 }
-            });
+            })
         }
     }
 
     /**
-     * Calls {@link #applyScaledPan(float, float, boolean)} repeatedly
+     * Calls [applyScaledPan] repeatedly
      * until the final delta is applied, interpolating.
      *
      * @param deltaX          a scaled delta
      * @param deltaY          a scaled delta
      * @param allowOverScroll whether to overscroll
      */
-    private void animateScaledPan(@ScaledPan float deltaX, @ScaledPan float deltaY,
-                                  @SuppressWarnings("SameParameterValue") final boolean allowOverScroll) {
+    private fun animateScaledPan(@ScaledPan deltaX: Float, @ScaledPan deltaY: Float,
+                                 allowOverScroll: Boolean) {
         if (setState(ANIMATING)) {
-            mClearAnimation = false;
-            final long startTime = System.currentTimeMillis();
-            @ScaledPan final float startX = getScaledPanX();
-            @ScaledPan final float startY = getScaledPanY();
-            @ScaledPan final float endX = startX + deltaX;
-            @ScaledPan final float endY = startY + deltaY;
-            mContainer.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (mClearAnimation) return;
-                    float time = interpolateAnimationTime(System.currentTimeMillis() - startTime);
-                    LOG.v("animateScaledPan:", "animationStep:", time);
-                    @ScaledPan float x = startX + time * (endX - startX);
-                    @ScaledPan float y = startY + time * (endY - startY);
-                    applyScaledPan(x - getScaledPanX(), y - getScaledPanY(), allowOverScroll);
+            mClearAnimation = false
+            val startTime = System.currentTimeMillis()
+            @ScaledPan val startX = scaledPanX
+            @ScaledPan val startY = scaledPanY
+            @ScaledPan val endX = startX + deltaX
+            @ScaledPan val endY = startY + deltaY
+            mContainer.post(object : Runnable {
+                override fun run() {
+                    if (mClearAnimation) return
+                    val time = interpolateAnimationTime(System.currentTimeMillis() - startTime)
+                    LOG.v("animateScaledPan:", "animationStep:", time)
+                    @ScaledPan val x = startX + time * (endX - startX)
+                    @ScaledPan val y = startY + time * (endY - startY)
+                    applyScaledPan(x - scaledPanX, y - scaledPanY, allowOverScroll)
                     if (time >= 1f) {
-                        setState(NONE);
+                        setState(NONE)
                     } else {
-                        mContainer.postOnAnimation(this);
+                        mContainer.postOnAnimation(this)
                     }
                 }
-            });
+            })
         }
     }
 
-    @Override
-    public void setAnimationDuration(long duration) {
-        mAnimationDuration = duration;
+    override fun setAnimationDuration(duration: Long) {
+        mAnimationDuration = duration
     }
 
-    private float interpolateAnimationTime(long delta) {
-        float time = Math.min(1, (float) delta / (float) mAnimationDuration);
-        return ANIMATION_INTERPOLATOR.getInterpolation(time);
+    private fun interpolateAnimationTime(delta: Long): Float {
+        val time = Math.min(1f, delta.toFloat() / mAnimationDuration.toFloat())
+        return ANIMATION_INTERPOLATOR.getInterpolation(time)
     }
 
     /**
-     * Applies the given zoom value, meant as a {@link Zoom} value
-     * (so not a {@link RealZoom}).
+     * Applies the given zoom value, meant as a [Zoom] value
+     * (so not a [RealZoom]).
      * The zoom is applied so that the center point is kept in its place
      *
      * @param newZoom        the new zoom value
      * @param allowOverPinch whether to overpinch
      */
-    private void applyZoom(@Zoom float newZoom, boolean allowOverPinch) {
-        newZoom = checkZoomBounds(newZoom, allowOverPinch);
-        float scaleFactor = newZoom / mZoom;
+    private fun applyZoom(@Zoom newZoom: Float, allowOverPinch: Boolean) {
+        var newZoom = newZoom
+        newZoom = checkZoomBounds(newZoom, allowOverPinch)
+        val scaleFactor = newZoom / zoom
         mMatrix.postScale(scaleFactor, scaleFactor,
-                mContainerWidth / 2f, mContainerHeight / 2f);
-        mMatrix.mapRect(mTransformedRect, mContentRect);
-        mZoom = newZoom;
-        ensurePanBounds(false);
-        dispatchOnMatrix();
+                mContainerWidth / 2f, mContainerHeight / 2f)
+        mMatrix.mapRect(mTransformedRect, mContentRect)
+        zoom = newZoom
+        ensurePanBounds(false)
+        dispatchOnMatrix()
     }
 
     /**
      * Applies both zoom and absolute pan. This is like specifying a position.
      * The semantics of this are that after the position is applied, the zoom corresponds
-     * to the given value, getPanX() returns x, getPanY() returns y.
-     * <p>
-     * Absolute panning is achieved through {@link Matrix#preTranslate(float, float)},
+     * to the given value, [ZoomApi.panX] returns x, [ZoomApi.panY] returns y.
+     *
+     *
+     * Absolute panning is achieved through [Matrix.preTranslate],
      * which works in the original coordinate system.
      *
      * @param newZoom         the new zoom value
@@ -1312,50 +1192,52 @@ public final class ZoomEngine implements ZoomApi {
      * @param y               the final top absolute pan
      * @param allowOverScroll whether to overscroll
      */
-    private void applyZoomAndAbsolutePan(@Zoom float newZoom,
-                                         @AbsolutePan float x, @AbsolutePan float y,
-                                         boolean allowOverScroll) {
+    private fun applyZoomAndAbsolutePan(@Zoom newZoom: Float,
+                                        @AbsolutePan x: Float, @AbsolutePan y: Float,
+                                        allowOverScroll: Boolean) {
+        var newZoom = newZoom
         // Translation
-        @AbsolutePan float deltaX = x - getPanX();
-        @AbsolutePan float deltaY = y - getPanY();
-        mMatrix.preTranslate(deltaX, deltaY);
-        mMatrix.mapRect(mTransformedRect, mContentRect);
+        @AbsolutePan val deltaX = x - panX
+        @AbsolutePan val deltaY = y - panY
+        mMatrix.preTranslate(deltaX, deltaY)
+        mMatrix.mapRect(mTransformedRect, mContentRect)
 
         // Scale
-        newZoom = checkZoomBounds(newZoom, false);
-        float scaleFactor = newZoom / mZoom;
+        newZoom = checkZoomBounds(newZoom, false)
+        val scaleFactor = newZoom / zoom
         // TODO: This used to work but I am not sure about it.
         // mMatrix.postScale(scaleFactor, scaleFactor, getScaledPanX(), getScaledPanY());
         // It keeps the pivot point at the scaled values 0, 0 (see applyPinch).
         // I think we should keep the current top, left.. Let's try:
-        mMatrix.postScale(scaleFactor, scaleFactor, 0, 0);
-        mMatrix.mapRect(mTransformedRect, mContentRect);
-        mZoom = newZoom;
+        mMatrix.postScale(scaleFactor, scaleFactor, 0f, 0f)
+        mMatrix.mapRect(mTransformedRect, mContentRect)
+        zoom = newZoom
 
-        ensurePanBounds(allowOverScroll);
-        dispatchOnMatrix();
+        ensurePanBounds(allowOverScroll)
+        dispatchOnMatrix()
     }
 
     /**
      * Applies the given scaled translation.
-     * <p>
-     * Scaled translation are applied through {@link Matrix#postTranslate(float, float)},
+     *
+     *
+     * Scaled translation are applied through [Matrix.postTranslate],
      * which acts on the actual dimension of the rect.
      *
      * @param deltaX          the x translation
      * @param deltaY          the y translation
      * @param allowOverScroll whether to overScroll
      */
-    private void applyScaledPan(@ScaledPan float deltaX, @ScaledPan float deltaY, boolean allowOverScroll) {
-        mMatrix.postTranslate(deltaX, deltaY);
-        mMatrix.mapRect(mTransformedRect, mContentRect);
-        ensurePanBounds(allowOverScroll);
-        dispatchOnMatrix();
+    private fun applyScaledPan(@ScaledPan deltaX: Float, @ScaledPan deltaY: Float, allowOverScroll: Boolean) {
+        mMatrix.postTranslate(deltaX, deltaY)
+        mMatrix.mapRect(mTransformedRect, mContentRect)
+        ensurePanBounds(allowOverScroll)
+        dispatchOnMatrix()
     }
 
     /**
      * Helper for pinch gestures. In these cases what we know is the detector focus,
-     * and we can use it in {@link Matrix#postScale(float, float, float, float)} to avoid
+     * and we can use it in [Matrix.postScale] to avoid
      * buggy translations.
      *
      * @param newZoom        the new zoom
@@ -1363,25 +1245,26 @@ public final class ZoomEngine implements ZoomApi {
      * @param targetY        the target Y in abs value
      * @param allowOverPinch whether to overPinch
      */
-    private void applyPinch(@Zoom float newZoom, @AbsolutePan float targetX, @AbsolutePan float targetY,
-                            @SuppressWarnings("SameParameterValue") boolean allowOverPinch) {
+    private fun applyPinch(@Zoom newZoom: Float, @AbsolutePan targetX: Float, @AbsolutePan targetY: Float,
+                           allowOverPinch: Boolean) {
+        var newZoom = newZoom
         // The pivotX and pivotY options of postScale refer (obviously!) to the visible
         // portion of the screen, since the (0,0) point is remapped to be in top-left of the view.
         // The right coordinates to use are the view coordinates.
         // This means we should use scaled coordinates, but remove the current pan.
 
-        @ScaledPan float scaledX = resolvePan(targetX);
-        @ScaledPan float scaledY = resolvePan(targetY);
-        newZoom = checkZoomBounds(newZoom, allowOverPinch);
-        float scaleFactor = newZoom / mZoom;
+        @ScaledPan val scaledX = resolvePan(targetX)
+        @ScaledPan val scaledY = resolvePan(targetY)
+        newZoom = checkZoomBounds(newZoom, allowOverPinch)
+        val scaleFactor = newZoom / zoom
         mMatrix.postScale(scaleFactor, scaleFactor,
-                getScaledPanX() - scaledX,
-                getScaledPanY() - scaledY);
+                scaledPanX - scaledX,
+                scaledPanY - scaledY)
 
-        mMatrix.mapRect(mTransformedRect, mContentRect);
-        mZoom = newZoom;
-        ensurePanBounds(false);
-        dispatchOnMatrix();
+        mMatrix.mapRect(mTransformedRect, mContentRect)
+        zoom = newZoom
+        ensurePanBounds(false)
+        dispatchOnMatrix()
     }
 
     //endregion
@@ -1391,83 +1274,82 @@ public final class ZoomEngine implements ZoomApi {
     // Puts min, start and max values in the mTemp array.
     // Since axes are shifted (pans are negative), min values are related to bottom-right,
     // while max values are related to top-left.
-    private void computeScrollerValues(boolean horizontal, ScrollerValues output) {
-        @ScaledPan int currentPan = (int) (horizontal ? getScaledPanX() : getScaledPanY());
-        int viewDim = (int) (horizontal ? mContainerWidth : mContainerHeight);
-        @ScaledPan int contentDim = (int) (horizontal ? mTransformedRect.width() : mTransformedRect.height());
-        int fix = (int) checkPanBounds(horizontal, false);
+    private fun computeScrollerValues(horizontal: Boolean, output: ScrollerValues) {
+        @ScaledPan val currentPan = (if (horizontal) scaledPanX else scaledPanY).toInt()
+        val viewDim = (if (horizontal) mContainerWidth else mContainerHeight).toInt()
+        @ScaledPan val contentDim = (if (horizontal) mTransformedRect.width() else mTransformedRect.height()).toInt()
+        val fix = checkPanBounds(horizontal, false).toInt()
         if (viewDim >= contentDim) {
             // Content is smaller, we are showing some boundary.
             // We can't move in any direction (but we can overScroll).
-            output.minValue = currentPan + fix;
-            output.startValue = currentPan;
-            output.maxValue = currentPan + fix;
+            output.minValue = currentPan + fix
+            output.startValue = currentPan
+            output.maxValue = currentPan + fix
         } else {
             // Content is bigger, we can move.
             // in this case minPan + viewDim = contentDim
-            output.minValue = -(contentDim - viewDim);
-            output.startValue = currentPan;
-            output.maxValue = 0;
+            output.minValue = -(contentDim - viewDim)
+            output.startValue = currentPan
+            output.maxValue = 0
         }
-        output.isInOverScroll = fix != 0;
+        output.isInOverScroll = fix != 0
     }
 
-    private static class ScrollerValues {
-        @ScaledPan int minValue;
-        @ScaledPan int startValue;
-        @ScaledPan int maxValue;
-        boolean isInOverScroll;
+    private class ScrollerValues {
+        @ScaledPan
+        internal var minValue: Int = 0
+        @ScaledPan
+        internal var startValue: Int = 0
+        @ScaledPan
+        internal var maxValue: Int = 0
+        internal var isInOverScroll: Boolean = false
     }
 
-    private ScrollerValues mScrollerValuesX = new ScrollerValues();
-    private ScrollerValues mScrollerValuesY = new ScrollerValues();
-
-    private boolean startFling(@ScaledPan int velocityX, @ScaledPan int velocityY) {
+    private fun startFling(@ScaledPan velocityX: Int, @ScaledPan velocityY: Int): Boolean {
         // Using actual pan values for the scroller.
         // Note: these won't make sense if zoom changes.
-        computeScrollerValues(true, mScrollerValuesX);
-        computeScrollerValues(false, mScrollerValuesY);
-        @ScaledPan int minX = mScrollerValuesX.minValue;
-        @ScaledPan int startX = mScrollerValuesX.startValue;
-        @ScaledPan int maxX = mScrollerValuesX.maxValue;
-        @ScaledPan int minY = mScrollerValuesY.minValue;
-        @ScaledPan int startY = mScrollerValuesY.startValue;
-        @ScaledPan int maxY = mScrollerValuesY.maxValue;
+        computeScrollerValues(true, mScrollerValuesX)
+        computeScrollerValues(false, mScrollerValuesY)
+        @ScaledPan val minX = mScrollerValuesX.minValue
+        @ScaledPan val startX = mScrollerValuesX.startValue
+        @ScaledPan val maxX = mScrollerValuesX.maxValue
+        @ScaledPan val minY = mScrollerValuesY.minValue
+        @ScaledPan val startY = mScrollerValuesY.startValue
+        @ScaledPan val maxY = mScrollerValuesY.maxValue
         if (mScrollerValuesX.isInOverScroll || mScrollerValuesY.isInOverScroll) {
             // Don't accept new flings when in overscroll. This causes artifacts.
-            return false;
+            return false
         }
         if (minX >= maxX && minY >= maxY && !mOverScrollVertical && !mOverScrollHorizontal) {
-            return false;
+            return false
         }
         // Must be after the other conditions.
-        if (!setState(FLINGING)) return false;
+        if (!setState(FLINGING)) return false
 
-        @ScaledPan int overScrollX = mOverScrollHorizontal ? getMaxOverScroll() : 0;
-        @ScaledPan int overScrollY = mOverScrollVertical ? getMaxOverScroll() : 0;
-        LOG.i("startFling", "velocityX:", velocityX, "velocityY:", velocityY);
-        LOG.i("startFling", "flingX:", "min:", minX, "max:", maxX, "start:", startX, "overScroll:", overScrollY);
-        LOG.i("startFling", "flingY:", "min:", minY, "max:", maxY, "start:", startY, "overScroll:", overScrollX);
+        @ScaledPan val overScrollX = if (mOverScrollHorizontal) maxOverScroll else 0
+        @ScaledPan val overScrollY = if (mOverScrollVertical) maxOverScroll else 0
+        LOG.i("startFling", "velocityX:", velocityX, "velocityY:", velocityY)
+        LOG.i("startFling", "flingX:", "min:", minX, "max:", maxX, "start:", startX, "overScroll:", overScrollY)
+        LOG.i("startFling", "flingY:", "min:", minY, "max:", maxY, "start:", startY, "overScroll:", overScrollX)
         mFlingScroller.fling(startX, startY,
                 velocityX, velocityY,
                 minX, maxX, minY, maxY,
-                overScrollX, overScrollY);
+                overScrollX, overScrollY)
 
-        mContainer.post(new Runnable() {
-            @Override
-            public void run() {
-                if (mFlingScroller.isFinished()) {
-                    setState(NONE);
+        mContainer.post(object : Runnable {
+            override fun run() {
+                if (mFlingScroller.isFinished) {
+                    setState(NONE)
                 } else if (mFlingScroller.computeScrollOffset()) {
-                    @ScaledPan final int newPanX = mFlingScroller.getCurrX();
-                    @ScaledPan final int newPanY = mFlingScroller.getCurrY();
+                    @ScaledPan val newPanX = mFlingScroller.currX
+                    @ScaledPan val newPanY = mFlingScroller.currY
                     // OverScroller will eventually go back to our bounds.
-                    applyScaledPan(newPanX - getScaledPanX(), newPanY - getScaledPanY(), true);
-                    mContainer.postOnAnimation(this);
+                    applyScaledPan(newPanX - scaledPanX, newPanY - scaledPanY, true)
+                    mContainer.postOnAnimation(this)
                 }
             }
-        });
-        return true;
+        })
+        return true
     }
 
     //endregion
@@ -1475,47 +1357,94 @@ public final class ZoomEngine implements ZoomApi {
     //region scrollbars helpers
 
     /**
-     * Helper for implementing {@link View#computeHorizontalScrollOffset()}
+     * Helper for implementing [View.computeHorizontalScrollOffset]
      * in custom views.
      *
      * @return the horizontal scroll offset.
      */
-    @SuppressWarnings("WeakerAccess")
-    public int computeHorizontalScrollOffset() {
-        return (int) -getScaledPanX();
+    fun computeHorizontalScrollOffset(): Int {
+        return (-scaledPanX).toInt()
     }
 
     /**
-     * Helper for implementing {@link View#computeHorizontalScrollRange()}
+     * Helper for implementing [View.computeHorizontalScrollRange]
      * in custom views.
      *
      * @return the horizontal scroll range.
      */
-    @SuppressWarnings("WeakerAccess")
-    public int computeHorizontalScrollRange() {
-        return (int) mTransformedRect.width();
+    fun computeHorizontalScrollRange(): Int {
+        return mTransformedRect.width().toInt()
     }
 
     /**
-     * Helper for implementing {@link View#computeVerticalScrollOffset()}
+     * Helper for implementing [View.computeVerticalScrollOffset]
      * in custom views.
      *
      * @return the vertical scroll offset.
      */
-    @SuppressWarnings("WeakerAccess")
-    public int computeVerticalScrollOffset() {
-        return (int) -getScaledPanY();
+    fun computeVerticalScrollOffset(): Int {
+        return (-scaledPanY).toInt()
     }
 
     /**
-     * Helper for implementing {@link View#computeVerticalScrollRange()}
+     * Helper for implementing [View.computeVerticalScrollRange]
      * in custom views.
      *
      * @return the vertical scroll range.
      */
-    @SuppressWarnings("WeakerAccess")
-    public int computeVerticalScrollRange() {
-        return (int) mTransformedRect.height();
+    fun computeVerticalScrollRange(): Int {
+        return mTransformedRect.height().toInt()
+    }
+
+    companion object {
+
+        // TODO add OverScrollCallback and OverPinchCallback.
+        // Should notify the user when the boundaries are reached.
+
+        // TODO expose friction parameters, use an interpolator.
+
+        // TODO Make public, add API.
+        /**
+         * The default overscrolling factor
+         */
+        private val DEFAULT_OVERSCROLL_FACTOR = 0.10f
+
+        // TODO Make public, add API. Use androidx.Interpolator?
+        private val ANIMATION_INTERPOLATOR = AccelerateDecelerateInterpolator()
+
+        /**
+         * The default animation duration
+         */
+        const val DEFAULT_ANIMATION_DURATION: Long = 280
+
+        private val TAG = ZoomEngine::class.java.simpleName
+        private val LOG = ZoomLogger.create(TAG)
+
+        private const val NONE = 0
+        private const val SCROLLING = 1
+        private const val PINCHING = 2
+        private const val ANIMATING = 3
+        private const val FLINGING = 4
+
+        private fun getStateName(@State state: Int): String {
+            when (state) {
+                NONE -> return "NONE"
+                FLINGING -> return "FLINGING"
+                SCROLLING -> return "SCROLLING"
+                PINCHING -> return "PINCHING"
+                ANIMATING -> return "ANIMATING"
+            }
+            return ""
+        }
+
+        //endregion
+
+        //region Touch events and Gesture Listeners
+
+        // Might make these public some day?
+        private const val TOUCH_NO = 0
+        private const val TOUCH_LISTEN = 1
+        private const val TOUCH_STEAL = 2
     }
 
     //endregion
