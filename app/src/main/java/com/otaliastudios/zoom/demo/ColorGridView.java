@@ -76,7 +76,7 @@ public class ColorGridView extends GridLayout {
             paint.setColor(Color.WHITE);
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setTextSize(150f * (float) ROWS / 10f);
-            mText = new StaticLayout("This is a view hierarchy, with clickable childs.",
+            mText = new StaticLayout("This is a view hierarchy, with clickable children.",
                     paint, getWidth(), Layout.Alignment.ALIGN_NORMAL, 1, 0, false);
         }
         canvas.save();
