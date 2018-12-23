@@ -1,104 +1,115 @@
-package com.otaliastudios.zoom;
+package com.otaliastudios.zoom
 
 import android.util.Log
 import androidx.annotation.IntDef
-import java.lang.annotation.Retention
-import java.lang.annotation.RetentionPolicy
 
 /**
  * Utility class that can log traces and info.
  */
-public final class ZoomLogger {
+class ZoomLogger private constructor(private val mTag: String) {
 
-    public final static int LEVEL_VERBOSE = 0;
-    public final static int LEVEL_INFO = 1;
-    public final static int LEVEL_WARNING = 2;
-    public final static int LEVEL_ERROR = 3;
+    @IntDef(LEVEL_VERBOSE, LEVEL_INFO, LEVEL_WARNING, LEVEL_ERROR)
+    @Retention(AnnotationRetention.SOURCE)
+    internal annotation class LogLevel
 
-    @IntDef({LEVEL_VERBOSE, LEVEL_WARNING, LEVEL_ERROR})
-    @Retention(RetentionPolicy.SOURCE)
-    @interface LogLevel {}
-
-    private static int level = LEVEL_ERROR;
-
-    public static void setLogLevel(int logLevel) {
-        level = logLevel;
-    }
-
-    static String lastMessage;
-    static String lastTag;
-
-    static ZoomLogger create(String tag) {
-        return new ZoomLogger(tag);
-    }
-
-    private String mTag;
-
-    private ZoomLogger(String tag) {
-        mTag = tag;
-    }
-
-    void v(String message) {
+    internal fun v(message: String) {
         if (should(LEVEL_VERBOSE)) {
-            Log.v(mTag, message);
-            lastMessage = message;
-            lastTag = mTag;
+            Log.v(mTag, message)
+            lastMessage = message
+            lastTag = mTag
         }
     }
 
-    void i(String message) {
+    internal fun i(message: String) {
         if (should(LEVEL_INFO)) {
-            Log.i(mTag, message);
-            lastMessage = message;
-            lastTag = mTag;
+            Log.i(mTag, message)
+            lastMessage = message
+            lastTag = mTag
         }
     }
 
-    void w(String message) {
+    internal fun w(message: String) {
         if (should(LEVEL_WARNING)) {
-            Log.w(mTag, message);
-            lastMessage = message;
-            lastTag = mTag;
+            Log.w(mTag, message)
+            lastMessage = message
+            lastTag = mTag
         }
     }
 
-    void e(String message) {
+    internal fun e(message: String) {
         if (should(LEVEL_ERROR)) {
-            Log.e(mTag, message);
-            lastMessage = message;
-            lastTag = mTag;
+            Log.e(mTag, message)
+            lastMessage = message
+            lastTag = mTag
         }
     }
 
-    private boolean should(int messageLevel) {
-        return level <= messageLevel;
+    private fun should(@LogLevel messageLevel: Int): Boolean {
+        return level <= messageLevel
     }
 
-    private String string(int messageLevel, Object... ofData) {
-        String message = "";
-        if (should(messageLevel)) {
-            for (Object o : ofData) {
-                message += String.valueOf(o);
-                message += " ";
-            }
+    private fun string(@LogLevel messageLevel: Int, vararg ofData: Any): String {
+        return when (should(messageLevel)) {
+            true -> ofData.joinToString(separator = " ")
+            else -> ""
         }
-        return message.trim();
     }
 
-    void v(Object... data) {
-        i(string(LEVEL_VERBOSE, data));
+    internal fun v(vararg data: Any) {
+        i(string(LEVEL_VERBOSE, *data))
     }
 
-    void i(Object... data) {
-        i(string(LEVEL_INFO, data));
+    internal fun i(vararg data: Any) {
+        i(string(LEVEL_INFO, *data))
     }
 
-    void w(Object... data) {
-        w(string(LEVEL_WARNING, data));
+    internal fun w(vararg data: Any) {
+        w(string(LEVEL_WARNING, *data))
     }
 
-    void e(Object... data) {
-        e(string(LEVEL_ERROR, data));
+    internal fun e(vararg data: Any) {
+        e(string(LEVEL_ERROR, *data))
+    }
+
+    companion object {
+        /**
+         * Verbose logging level
+         */
+        const val LEVEL_VERBOSE = 0
+        /**
+         * Info logging level
+         */
+        const val LEVEL_INFO = 1
+        /**
+         * Warning logging level
+         */
+        const val LEVEL_WARNING = 2
+        /**
+         * Error logging level
+         */
+        const val LEVEL_ERROR = 3
+
+        /**
+         * Current logging level
+         */
+        private var level = LEVEL_ERROR
+
+        /**
+         * Set the most verbose log level to output in log
+         *
+         * @param logLevel a log level
+         */
+        @JvmStatic
+        fun setLogLevel(@LogLevel logLevel: Int) {
+            level = logLevel
+        }
+
+        internal var lastMessage: String? = null
+        internal var lastTag: String? = null
+
+        internal fun create(tag: String): ZoomLogger {
+            return ZoomLogger(tag)
+        }
     }
 }
 
