@@ -1,27 +1,19 @@
 package com.otaliastudios.zoom;
 
-import android.annotation.SuppressLint;
-import android.content.Context;
-import android.graphics.Matrix;
-import android.graphics.RectF;
-import android.os.Build;
-import androidx.annotation.IntDef;
-import androidx.annotation.NonNull;
-
-import android.util.Log;
-import android.view.GestureDetector;
-import android.view.Gravity;
-import android.view.MotionEvent;
-import android.view.ScaleGestureDetector;
-import android.view.View;
-import android.view.ViewTreeObserver;
-import android.view.animation.AccelerateDecelerateInterpolator;
-import android.view.animation.Interpolator;
-import android.widget.OverScroller;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.util.ArrayList;
+import android.annotation.SuppressLint
+import android.content.Context
+import android.graphics.Matrix
+import android.graphics.RectF
+import android.os.Build
+import android.view.GestureDetector
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
+import androidx.annotation.IntDef
+import androidx.annotation.NonNull
+import java.lang.annotation.Retention
+import java.lang.annotation.RetentionPolicy
+import java.util.*
 
 
 /**
