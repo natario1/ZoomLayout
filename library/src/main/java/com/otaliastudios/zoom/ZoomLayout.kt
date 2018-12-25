@@ -3,7 +3,6 @@ package com.otaliastudios.zoom
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Matrix
-import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.MotionEvent
@@ -12,7 +11,8 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.annotation.AttrRes
 import com.otaliastudios.zoom.ZoomApi.ZoomType
-
+import android.view.ViewTreeObserver
+import java.lang.ref.WeakReference
 
 /**
  * Uses [ZoomEngine] to allow zooming and pan events onto a view hierarchy.
@@ -80,6 +80,24 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
 
     //region Internal
 
+    private class LayoutListener constructor(engine: ZoomEngine, childView: View) : ViewTreeObserver.OnGlobalLayoutListener {
+
+        private val mEngine = WeakReference(engine)
+        private val mChildView = WeakReference(childView)
+
+        override fun onGlobalLayout() {
+
+            val engine = mEngine.get()
+            val childView = mChildView.get()
+
+            if (childView == null || engine == null) {
+                return
+            }
+
+            engine.setContentSize(childView.width.toFloat(), childView.height.toFloat())
+        }
+    }
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
 
         // Measure ourselves as MATCH_PARENT
@@ -99,7 +117,7 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
 
     override fun addView(child: View, index: Int, params: ViewGroup.LayoutParams) {
         if (childCount == 0) {
-            child.viewTreeObserver.addOnGlobalLayoutListener { engine.setContentSize(child.width.toFloat(), child.height.toFloat()) }
+            child.viewTreeObserver.addOnGlobalLayoutListener(LayoutListener(engine, child))
             super.addView(child, index, params)
         } else {
             throw RuntimeException("$TAG accepts only a single child.")
