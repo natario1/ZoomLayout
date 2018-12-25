@@ -44,7 +44,7 @@ A container for view hierarchies that can be panned or zoomed.
     app:overScrollHorizontal="true"
     app:overScrollVertical="true"
     app:overPinchable="true"
-    app:horizontalPanEnabled="true"
+    app:horizontal^Enabled="true"
     app:verticalPanEnabled="true"
     app:zoomEnabled="true"
     app:minZoom="0.7"
@@ -226,6 +226,10 @@ In any case the current scale is not considered, so your system won't change if 
 |`panBy(float, float, boolean)`|Applies the given deltas to the current pan, animating if needed.|`-`|
 
 The `moveTo(float, float, float, boolean)` API will let you animate both [zoom](#zoom) and pan at the same time.
+
+**Note:**
+To pan the content of a ZoomLayout to the right you must move it to the left - so depending on the situtation you might need to pass in negative coordinates to `panTo` or `moveTo` for the desired outcome.
+</aside>
 
 ### Direct usage
 
