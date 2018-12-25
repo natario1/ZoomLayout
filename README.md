@@ -44,7 +44,7 @@ A container for view hierarchies that can be panned or zoomed.
     app:overScrollHorizontal="true"
     app:overScrollVertical="true"
     app:overPinchable="true"
-    app:horizontal^Enabled="true"
+    app:horizontalPanEnabled="true"
     app:verticalPanEnabled="true"
     app:zoomEnabled="true"
     app:minZoom="0.7"
