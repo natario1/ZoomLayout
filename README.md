@@ -227,6 +227,10 @@ In any case the current scale is not considered, so your system won't change if 
 
 The `moveTo(float, float, float, boolean)` API will let you animate both [zoom](#zoom) and pan at the same time.
 
+**Note:**
+To pan the content of a ZoomLayout to the right you must move it to the left - so depending on the situtation you might need to pass in negative coordinates to `panTo` or `moveTo` for the desired outcome.
+</aside>
+
 ### Direct usage
 
 If you are interested in using the engine directly, I encourage you to take a look at the `ZoomLayout`
