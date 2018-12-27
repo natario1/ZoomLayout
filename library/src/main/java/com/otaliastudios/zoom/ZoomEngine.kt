@@ -621,14 +621,13 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         @ScaledPan val contentSize = if (horizontal) mTransformedRect.width() else mTransformedRect.height()
 
         val overScrollable = if (horizontal) mOverScrollHorizontal else mOverScrollVertical
-        @ScaledPan val overScroll = (if (overScrollable && allowOverScroll) maxOverScroll else 0).toFloat()
+        @ScaledPan val overScroll = if (overScrollable && allowOverScroll) maxOverScroll else 0
         return getPanCorrection(value, viewSize, contentSize, overScroll)
     }
 
     @ScaledPan
     private fun getPanCorrection(@ScaledPan value: Float, viewSize: Float,
-                                 @ScaledPan contentSize: Float, @ScaledPan overScroll: Float): Float {
-        @ScaledPan val tolerance = overScroll.toInt()
+                                 @ScaledPan contentSize: Float, @ScaledPan overscrollTolerance: Int): Float {
         var min: Float
         var max: Float
         if (contentSize <= viewSize) {
@@ -642,8 +641,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             min = viewSize - contentSize
             max = 0f
         }
-        min -= tolerance.toFloat()
-        max += tolerance.toFloat()
+        min -= overscrollTolerance
+        max += overscrollTolerance
         var desired = value
         if (desired < min) desired = min
         if (desired > max) desired = max
