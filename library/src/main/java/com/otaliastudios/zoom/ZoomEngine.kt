@@ -589,9 +589,11 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     }
 
     /**
-     * Checks the current zoom state.
-     * Returns 0 if we are in a valid state, or the zoom correction to be applied
-     * to get into a valid state again.
+     * Checks if the passed in zoom level is in expected bounds.
+     *
+     * @param value the zoom level to check
+     * @param allowOverPinch set to true if zoom values within overpinch range should be considered valid
+     * @return the zoom level that will lead into a valid state when applied.
      */
     @Zoom
     private fun checkZoomBounds(@Zoom value: Float, allowOverPinch: Boolean): Float {
@@ -607,8 +609,10 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
     /**
      * Checks the current pan state.
-     * Returns 0 if we are in a valid state, or the pan correction to be applied
-     * to get into a valid state again.
+     *
+     * @param horizontal true when checking horizontal pan, false for vertical
+     * @param allowOverScroll set to true if pan values within overscroll range should be considered valid
+     * @return 0 if we are in a valid state, otherwise the pan correction to be applied to get into a valid state again.
      */
     @ScaledPan
     private fun checkPanBounds(horizontal: Boolean, allowOverScroll: Boolean): Float {
@@ -739,14 +743,14 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private inner class PinchListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
 
         @AbsolutePan
-        private var mAbsTargetX = 0f
+        private var mAbsTargetX = Float.NaN
         @AbsolutePan
-        private var mAbsTargetY = 0f
+        private var mAbsTargetY = Float.NaN
 
         @ScaledPan
-        private var scaledFocusX = Float.MIN_VALUE
+        private var scaledFocusX = Float.NaN
         @ScaledPan
-        private var scaledFocusY = Float.MIN_VALUE
+        private var scaledFocusY = Float.NaN
 
         override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
             return true
@@ -767,10 +771,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 scaledFocusX += scaledPanX
                 scaledFocusY += scaledPanY
 
-                val eps = 0.0001f
                 var newPanX = panX
                 var newPanY = panY
-                if (Math.abs(mAbsTargetX) < eps || Math.abs(mAbsTargetY) < eps) {
+                if (mAbsTargetX.isNaN() || mAbsTargetY.isNaN()) {
                     // Transform to an absolute, scale-independent value.
                     mAbsTargetX = unresolvePan(scaledFocusX)
                     mAbsTargetY = unresolvePan(scaledFocusY)
@@ -799,9 +802,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                     "mAbsTargetY:", mAbsTargetY,
                     "mOverPinchable;", mOverPinchable)
 
-            mAbsTargetX = 0f
-            mAbsTargetY = 0f
-            if (mOverPinchable) {
+            mAbsTargetX = Float.NaN
+            mAbsTargetY = Float.NaN
+            if (mOverPinchable || mOverScrollVertical || mOverScrollHorizontal) {
                 // We might have over pinched. Animate back to reasonable value.
                 @Zoom val maxZoom = resolveZoom(mMaxZoom, mMaxZoomMode)
                 @Zoom val minZoom = resolveZoom(mMinZoom, mMinZoomMode)
@@ -814,11 +817,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                         "newZoom:", newZoom,
                         "max:", maxZoom,
                         "min:", minZoom)
-                if (newZoom > 0 || fixPanX != 0f || fixPanY != 0f) {
-                    animateZoomAndAbsolutePan(newZoom, panX + fixPanX, panY + fixPanY, true)
-                    // return here because new state will be ANIMATING
-                    return
-                }
+                animateZoomAndAbsolutePan(newZoom, panX + fixPanX, panY + fixPanY, true)
+                // return here because new state will be ANIMATING
+                return
             }
             setState(NONE)
         }
