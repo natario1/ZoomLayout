@@ -761,7 +761,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 // We want to interpret this as a scaled value, to work with the *actual* zoom.
                 scaledFocusX = -detector.focusX
                 scaledFocusY = -detector.focusY
-
                 LOG.i("onScale:", "Setting focus.", "detectorFocusX:", scaledFocusX, "detectorFocusX:", scaledFocusY)
 
                 // Account for current pan.
@@ -769,31 +768,37 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 scaledFocusY += scaledPanY
 
                 val eps = 0.0001f
+                var newPanX = panX
+                var newPanY = panY
                 if (Math.abs(mAbsTargetX) < eps || Math.abs(mAbsTargetY) < eps) {
                     // Transform to an absolute, scale-independent value.
                     mAbsTargetX = unresolvePan(scaledFocusX)
                     mAbsTargetY = unresolvePan(scaledFocusY)
-                    LOG.i("onScale:", "Setting focus.", "absTargetX:", mAbsTargetX, "absTargetY:", mAbsTargetY)
+                    LOG.i("onScale:", "Setting initial focus.", "absTargetX:", mAbsTargetX, "absTargetY:", mAbsTargetY)
                 } else {
-                    // calculate the difference in focus point from the last iteration
-                    val panX = mAbsTargetX - unresolvePan(scaledFocusX)
-                    val panY = mAbsTargetY - unresolvePan(scaledFocusY)
-                    // and apply pan to move the content accordingly
-                    panBy(panX, panY, false)
+                    // when the initial focus point is set, use it to
+                    // calculate the location difference to the current focus point
+                    newPanX += mAbsTargetX - unresolvePan(scaledFocusX)
+                    newPanY += mAbsTargetY - unresolvePan(scaledFocusY)
                 }
 
                 // Having both overPinch and overScroll is hard to manage, there are lots of bugs if we do.
                 val factor = detector.scaleFactor
                 val newZoom = zoom * factor
-                applyPinch(newZoom, mAbsTargetX, mAbsTargetY, true)
+
+                // apply the new zoom and pan values accordingly
+                applyZoomAndAbsolutePan(newZoom, newPanX, newPanY, true)
                 return true
             }
             return false
         }
 
         override fun onScaleEnd(detector: ScaleGestureDetector) {
-            LOG.i("onScaleEnd:", "mAbsTargetX:", mAbsTargetX, "mAbsTargetY:",
-                    mAbsTargetY, "mOverPinchable;", mOverPinchable)
+            LOG.i("onScaleEnd:",
+                    "mAbsTargetX:", mAbsTargetX,
+                    "mAbsTargetY:", mAbsTargetY,
+                    "mOverPinchable;", mOverPinchable)
+
             mAbsTargetX = 0f
             mAbsTargetY = 0f
             if (mOverPinchable) {
@@ -801,11 +806,16 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 @Zoom val maxZoom = resolveZoom(mMaxZoom, mMaxZoomMode)
                 @Zoom val minZoom = resolveZoom(mMinZoom, mMinZoomMode)
 
-                val newZoom = zoom.coerceIn(minZoom, maxZoom)
-                LOG.i("onScaleEnd:", "zoom:", zoom, "newZoom:", newZoom, "max:",
-                        maxZoom, "min;", minZoom)
-                if (newZoom > 0) {
-                    animateZoom(newZoom, true)
+                val newZoom = checkZoomBounds(zoom, allowOverPinch = false)
+                val fixPanX = unresolvePan(checkPanBounds(horizontal = true, allowOverScroll = false))
+                val fixPanY = unresolvePan(checkPanBounds(horizontal = false, allowOverScroll = false))
+                LOG.i("onScaleEnd:",
+                        "zoom:", zoom,
+                        "newZoom:", newZoom,
+                        "max:", maxZoom,
+                        "min:", minZoom)
+                if (newZoom > 0 || fixPanX != 0f || fixPanY != 0f) {
+                    animateZoomAndAbsolutePan(newZoom, panX + fixPanX, panY + fixPanY, true)
                     // return here because new state will be ANIMATING
                     return
                 }
