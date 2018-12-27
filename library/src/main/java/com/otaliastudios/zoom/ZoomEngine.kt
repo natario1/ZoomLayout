@@ -743,6 +743,11 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         @AbsolutePan
         private var mAbsTargetY = 0f
 
+        @ScaledPan
+        private var scaledFocusX = Float.MIN_VALUE
+        @ScaledPan
+        private var scaledFocusY = Float.MIN_VALUE
+
         override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
             return true
         }
@@ -753,21 +758,28 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             }
 
             if (setState(PINCHING)) {
+                // We want to interpret this as a scaled value, to work with the *actual* zoom.
+                scaledFocusX = -detector.focusX
+                scaledFocusY = -detector.focusY
+
+                LOG.i("onScale:", "Setting focus.", "detectorFocusX:", scaledFocusX, "detectorFocusX:", scaledFocusY)
+
+                // Account for current pan.
+                scaledFocusX += scaledPanX
+                scaledFocusY += scaledPanY
+
                 val eps = 0.0001f
                 if (Math.abs(mAbsTargetX) < eps || Math.abs(mAbsTargetY) < eps) {
-                    // We want to interpret this as a scaled value, to work with the *actual* zoom.
-                    @ScaledPan var scaledFocusX = -detector.focusX
-                    @ScaledPan var scaledFocusY = -detector.focusY
-                    LOG.i("onScale:", "Setting focus.", "detectorFocusX:", scaledFocusX, "detectorFocusX:", scaledFocusY)
-
-                    // Account for current pan.
-                    scaledFocusX += scaledPanX
-                    scaledFocusY += scaledPanY
-
                     // Transform to an absolute, scale-independent value.
                     mAbsTargetX = unresolvePan(scaledFocusX)
                     mAbsTargetY = unresolvePan(scaledFocusY)
                     LOG.i("onScale:", "Setting focus.", "absTargetX:", mAbsTargetX, "absTargetY:", mAbsTargetY)
+                } else {
+                    // calculate the difference in focus point from the last iteration
+                    val panX = mAbsTargetX - unresolvePan(scaledFocusX)
+                    val panY = mAbsTargetY - unresolvePan(scaledFocusY)
+                    // and apply pan to move the content accordingly
+                    panBy(panX, panY, false)
                 }
 
                 // Having both overPinch and overScroll is hard to manage, there are lots of bugs if we do.
@@ -794,6 +806,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                         maxZoom, "min;", minZoom)
                 if (newZoom > 0) {
                     animateZoom(newZoom, true)
+                    // return here because new state will be ANIMATING
                     return
                 }
             }
