@@ -1238,7 +1238,10 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         // mMatrix.postScale(scaleFactor, scaleFactor, getScaledPanX(), getScaledPanY());
         // It keeps the pivot point at the scaled values 0, 0 (see applyPinch).
         // I think we should keep the current top, left.. Let's try:
-        mMatrix.postScale(scaleFactor, scaleFactor, 0f, 0f)
+
+//        mMatrix.postScale(scaleFactor, scaleFactor, 0f, 0f)
+        // TODO: when animating back from overpinch the content is moved to the right, why??
+        mMatrix.postScale(scaleFactor, scaleFactor, mContainerWidth / 2f, mContainerHeight / 2f)
         mMatrix.mapRect(mTransformedRect, mContentRect)
         zoom = newZoom
 
