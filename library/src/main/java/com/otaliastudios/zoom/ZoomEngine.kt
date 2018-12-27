@@ -69,8 +69,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     @State
     private var mState = NONE
     private lateinit var mContainer: View
-    private var mContainerWidth = 0.toFloat()
-    private var mContainerHeight = 0.toFloat()
+    private var mContainerWidth = 0F
+    private var mContainerHeight = 0F
     private var mInitialized = false
     private var mTransformedRect = RectF()
     private var mContentRect = RectF()
@@ -790,7 +790,10 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 val newZoom = zoom * factor
 
                 // apply the new zoom and pan values accordingly
-                applyZoomAndAbsolutePan(newZoom, newPanX, newPanY, true)
+                applyZoomAndAbsolutePan(newZoom,
+                        newPanX, newPanY,
+                        allowOverScroll = true,
+                        allowOverPinch = true)
                 return true
             }
             return false
@@ -817,7 +820,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                         "newZoom:", newZoom,
                         "max:", maxZoom,
                         "min:", minZoom)
-                animateZoomAndAbsolutePan(newZoom, panX + fixPanX, panY + fixPanY, true)
+                animateZoomAndAbsolutePan(newZoom, panX + fixPanX, panY + fixPanY,
+                        allowOverScroll = true, allowOverPinch = true)
                 // return here because new state will be ANIMATING
                 return
             }
@@ -1100,20 +1104,21 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * Calls [applyZoomAndAbsolutePan] repeatedly
      * until the final position is reached, interpolating.
      *
-     * @param newZoom         new zoom
+     * @param zoom         new zoom
      * @param x               final abs pan
      * @param y               final abs pan
      * @param allowOverScroll whether to overscroll
      */
-    private fun animateZoomAndAbsolutePan(@Zoom newZoom: Float,
+    private fun animateZoomAndAbsolutePan(@Zoom zoom: Float,
                                           @AbsolutePan x: Float, @AbsolutePan y: Float,
-                                          allowOverScroll: Boolean) {
-        var newZoom = newZoom
+                                          allowOverScroll: Boolean,
+                                          allowOverPinch: Boolean = false) {
+        var newZoom = zoom
         newZoom = checkZoomBounds(newZoom, allowOverScroll)
         if (setState(ANIMATING)) {
             mClearAnimation = false
             val startTime = System.currentTimeMillis()
-            @Zoom val startZoom = zoom
+            @Zoom val startZoom = this.zoom
             @Zoom val endZoom = newZoom
             @AbsolutePan val startX = panX
             @AbsolutePan val startY = panY
@@ -1127,7 +1132,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                     @Zoom val zoom = startZoom + time * (endZoom - startZoom)
                     @AbsolutePan val targetX = startX + time * (x - startX)
                     @AbsolutePan val targetY = startY + time * (y - startY)
-                    applyZoomAndAbsolutePan(zoom, targetX, targetY, allowOverScroll)
+                    applyZoomAndAbsolutePan(zoom, targetX, targetY, allowOverScroll, allowOverPinch)
                     if (time >= 1f) {
                         setState(NONE)
                     } else {
@@ -1218,7 +1223,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      */
     private fun applyZoomAndAbsolutePan(@Zoom newZoom: Float,
                                         @AbsolutePan x: Float, @AbsolutePan y: Float,
-                                        allowOverScroll: Boolean) {
+                                        allowOverScroll: Boolean,
+                                        allowOverPinch: Boolean = false) {
         var newZoom = newZoom
         // Translation
         @AbsolutePan val deltaX = x - panX
@@ -1227,7 +1233,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         mMatrix.mapRect(mTransformedRect, mContentRect)
 
         // Scale
-        newZoom = checkZoomBounds(newZoom, false)
+        newZoom = checkZoomBounds(newZoom, allowOverPinch)
         val scaleFactor = newZoom / zoom
         // TODO: This used to work but I am not sure about it.
         // mMatrix.postScale(scaleFactor, scaleFactor, getScaledPanX(), getScaledPanY());
