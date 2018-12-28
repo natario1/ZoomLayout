@@ -809,12 +809,12 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
             try {
                 if (mOverPinchable || mOverScrollVertical || mOverScrollHorizontal) {
-                    // We might have over pinched. Animate back to reasonable value.
+                    // We might have over pinched/scrolled. Animate back to reasonable value.
                     @Zoom val maxZoom = resolveZoom(mMaxZoom, mMaxZoomMode)
                     @Zoom val minZoom = resolveZoom(mMinZoom, mMinZoomMode)
 
-                    // check what zoom and pan needs to be applied to get into
-                    // a non-overscrolled and non-overpinched state
+                    // check what zoom needs to be applied
+                    // to get into a non-overpinched state
                     @Zoom val newZoom = checkZoomBounds(zoom, allowOverPinch = false)
 
                     LOG.i("onScaleEnd:",
@@ -823,41 +823,50 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                             "max:", maxZoom,
                             "min:", minZoom)
 
+                    // check what pan needs to be applied
+                    // to get into a non-overscrolled state
                     @AbsolutePan var fixPanX = unresolvePan(checkPanBounds(horizontal = true, allowOverScroll = false))
                     @AbsolutePan var fixPanY = unresolvePan(checkPanBounds(horizontal = false, allowOverScroll = false))
 
-                    // select zoom pivot point based on what edge of the screen was overscrolled
+                    if (fixPanX == 0F && fixPanY == 0F && newZoom.compareTo(zoom) == 0) {
+                        // nothing to correct, we can stop right here
+                        setState(NONE)
+                        return
+                    }
+
+                    // select zoom pivot point based on what edge of the screen is currently overscrolled
                     var zoomTargetX = calculateZoomPivotPoint(true, fixPanX)
                     var zoomTargetY = calculateZoomPivotPoint(false, fixPanY)
 
+                    // calculate the new pan position
                     var newPanX = panX + fixPanX
                     var newPanY = panY + fixPanY
 
                     if (newZoom.compareTo(zoom) != 0) {
-                        // simulate target zoom to calculate pan fix for that zoom level
+                        // we have overpinched. to calculate how much pan needs to be applied
+                        // to fix overscrolling we need to simulate the target zoom (when overpinching is fixed)
+                        // to calculate pan fix for that zoom level
+
+                        // remember current zoom value to reset to that state later
                         val oldZoom = zoom
 
+                        // apply the target zoom with the currently known pivot point
                         applyZoom(newZoom, true, true, zoomTargetX, zoomTargetY)
 
-                        // recalculate fixPan to account for other borders that might overscroll when zooming out
+                        // recalculate pan fix to account for additional borders that might overscroll when zooming out
                         fixPanX = unresolvePan(checkPanBounds(horizontal = true, allowOverScroll = false))
                         fixPanY = unresolvePan(checkPanBounds(horizontal = false, allowOverScroll = false))
 
-                        // recalculate pivot point
+                        // recalculate pivot point based on the recalculated pan fix
                         zoomTargetX = calculateZoomPivotPoint(true, fixPanX)
                         zoomTargetY = calculateZoomPivotPoint(false, fixPanY)
-                        // recalculate new pan location
+
+                        // recalculate new pan location using the simulated target zoom level
                         newPanX = panX + fixPanX
                         newPanY = panY + fixPanY
 
                         // revert simulation
                         applyZoom(oldZoom, true, true, zoomTargetX, zoomTargetY)
-                    }
-
-                    if (fixPanX == 0F && fixPanY == 0F && newZoom.compareTo(zoom) == 0) {
-                        // nothing to correct
-                        setState(NONE)
-                        return
                     }
 
                     if (fixPanX == 0F && fixPanY == 0F) {
