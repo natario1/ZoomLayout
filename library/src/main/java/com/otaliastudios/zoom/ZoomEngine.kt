@@ -1540,7 +1540,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         /**
          * The default animation duration
          */
-        const val DEFAULT_ANIMATION_DURATION: Long = 1000
+        const val DEFAULT_ANIMATION_DURATION: Long = 280
 
         private val TAG = ZoomEngine::class.java.simpleName
         private val LOG = ZoomLogger.create(TAG)
