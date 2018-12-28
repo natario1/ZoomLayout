@@ -816,13 +816,43 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                     // check what zoom and pan needs to be applied to get into
                     // a non-overscrolled and non-overpinched state
                     @Zoom val newZoom = checkZoomBounds(zoom, allowOverPinch = false)
-                    @AbsolutePan val fixPanX = unresolvePan(checkPanBounds(horizontal = true, allowOverScroll = false))
-                    @AbsolutePan val fixPanY = unresolvePan(checkPanBounds(horizontal = false, allowOverScroll = false))
+
                     LOG.i("onScaleEnd:",
                             "zoom:", zoom,
                             "newZoom:", newZoom,
                             "max:", maxZoom,
                             "min:", minZoom)
+
+                    @AbsolutePan var fixPanX = unresolvePan(checkPanBounds(horizontal = true, allowOverScroll = false))
+                    @AbsolutePan var fixPanY = unresolvePan(checkPanBounds(horizontal = false, allowOverScroll = false))
+
+                    // select zoom pivot point based on what edge of the screen was overscrolled
+                    var zoomTargetX = calculateZoomPivotPoint(true, fixPanX)
+                    var zoomTargetY = calculateZoomPivotPoint(false, fixPanY)
+
+                    var newPanX = panX + fixPanX
+                    var newPanY = panY + fixPanY
+
+                    if (newZoom.compareTo(zoom) != 0) {
+                        // simulate target zoom to calculate pan fix for that zoom level
+                        val oldZoom = zoom
+
+                        applyZoom(newZoom, true, true, zoomTargetX, zoomTargetY)
+
+                        // recalculate fixPan to account for other borders that might overscroll when zooming out
+                        fixPanX = unresolvePan(checkPanBounds(horizontal = true, allowOverScroll = false))
+                        fixPanY = unresolvePan(checkPanBounds(horizontal = false, allowOverScroll = false))
+
+                        // recalculate pivot point
+                        zoomTargetX = calculateZoomPivotPoint(true, fixPanX)
+                        zoomTargetY = calculateZoomPivotPoint(false, fixPanY)
+                        // recalculate new pan location
+                        newPanX = panX + fixPanX
+                        newPanY = panY + fixPanY
+
+                        // revert simulation
+                        applyZoom(oldZoom, true, true, zoomTargetX, zoomTargetY)
+                    }
 
                     if (fixPanX == 0F && fixPanY == 0F && newZoom.compareTo(zoom) == 0) {
                         // nothing to correct
@@ -836,26 +866,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                         animateZoom(newZoom, allowOverPinch = true)
                     } else {
                         // fix overscroll (overpinch is also corrected in here if necessary)
-
-                        // TODO: this is not sufficient because the fixPan needs to account for the
-                        // zoom scale change. A simple factor like (zoom / newZoom) also doesn't cut it
-                        // because the zoom is applied with varying pivot points
-                        val newPanX = panX + fixPanX
-                        val newPanY = panY + fixPanY
-
-                        // select zoom pivot point based on what edge of the screen was overscrolled
-                        val zoomTargetX = when {
-                            fixPanX > 0 -> mContainerWidth // content needs to be moved left, use the right border as target
-                            fixPanX < 0 -> 0F // content needs to move right, use the left border as target
-                            else -> mContainerWidth / 2F // horizontal axis is not changed, use center as target
-                        }
-
-                        val zoomTargetY = when {
-                            fixPanY > 0 -> mContainerHeight // content needs to be moved up, use the bottom as target
-                            fixPanY < 0 -> 0F // content needs to move down, use the top as target
-                            else -> mContainerHeight / 2F // vertical axis is not changed, use center as target
-                        }
-
                         animateZoomAndAbsolutePan(newZoom,
                                 newPanX, newPanY,
                                 zoomTargetX = zoomTargetX,
@@ -871,6 +881,25 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 mInitialAbsTargetY = Float.NaN
                 mCurrentAbsTargetX = Float.NaN
                 mCurrentAbsTargetY = Float.NaN
+            }
+        }
+
+        /**
+         * Calculate pivot point to use for zoom based on pan fixes to be applied
+         *
+         * @param horizontal true for x-axis, false for y-axis
+         * @param fixPan the amount of pan to apply to get into a valid state (no overscroll)
+         */
+        private fun calculateZoomPivotPoint(horizontal: Boolean, @AbsolutePan fixPan: Float): Float {
+            val axisMax = when {
+                horizontal -> mContainerWidth
+                else -> mContainerHeight
+            }
+
+            return when {
+                fixPan > 0 -> axisMax // content needs to be moved left/up, use the right/bottom border as target
+                fixPan < 0 -> 0F // content needs to move right/down, use the left/top border as target
+                else -> axisMax / 2F // axis is not changed, use center as target
             }
         }
     }
@@ -1502,7 +1531,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         /**
          * The default animation duration
          */
-        const val DEFAULT_ANIMATION_DURATION: Long = 280
+        const val DEFAULT_ANIMATION_DURATION: Long = 1000
 
         private val TAG = ZoomEngine::class.java.simpleName
         private val LOG = ZoomLogger.create(TAG)
