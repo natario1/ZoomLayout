@@ -1150,7 +1150,10 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * @param zoom         new zoom
      * @param x               final abs pan
      * @param y               final abs pan
-     * @param allowOverScroll whether to overscroll
+     * @param allowOverScroll true if overscroll is allowed, false otherwise
+     * @param allowOverPinch  true if overpinch is allowed, false otherwise
+     * @param zoomTargetX     the x-axis zoom target
+     * @param zoomTargetY     the y-axis zoom target
      */
     private fun animateZoomAndAbsolutePan(@Zoom zoom: Float,
                                           @AbsolutePan x: Float, @AbsolutePan y: Float,
@@ -1261,10 +1264,13 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * Absolute panning is achieved through [Matrix.preTranslate],
      * which works in the original coordinate system.
      *
-     * @param zoom         the new zoom value
+     * @param zoom            the new zoom value
      * @param x               the final left absolute pan
      * @param y               the final top absolute pan
-     * @param allowOverScroll whether to overscroll
+     * @param allowOverScroll true if overscroll is allowed, false otherwise
+     * @param allowOverPinch  true if overpinch is allowed, false otherwise
+     * @param zoomTargetX     the x-axis zoom target
+     * @param zoomTargetY     the y-axis zoom target
      */
     private fun applyZoomAndAbsolutePan(@Zoom zoom: Float,
                                         @AbsolutePan x: Float, @AbsolutePan y: Float,
