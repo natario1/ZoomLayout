@@ -832,8 +832,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                     }
 
                     // select zoom pivot point based on what edge of the screen is currently overscrolled
-                    var zoomTargetX = calculateZoomPivotPoint(true, fixPanX)
-                    var zoomTargetY = calculateZoomPivotPoint(false, fixPanY)
+                    val zoomTargetX = calculateZoomPivotPoint(true, fixPanX)
+                    val zoomTargetY = calculateZoomPivotPoint(false, fixPanY)
 
                     // calculate the new pan position
                     var newPanX = panX + fixPanX
