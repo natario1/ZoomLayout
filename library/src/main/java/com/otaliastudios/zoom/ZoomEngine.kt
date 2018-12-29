@@ -841,8 +841,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
                     if (newZoom.compareTo(zoom) != 0) {
                         // we have overpinched. to calculate how much pan needs to be applied
-                        // to fix overscrolling we need to simulate the target zoom (when overpinching is fixed)
-                        // to calculate pan fix for that zoom level
+                        // to fix overscrolling we need to simulate the target zoom (when overpinching has been corrected)
+                        // to calculate the needed pan correction for that zoom level
 
                         // remember current zoom value to reset to that state later
                         val oldZoom = zoom
