@@ -854,10 +854,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                         fixPanX = unresolvePan(checkPanBounds(horizontal = true, allowOverScroll = false))
                         fixPanY = unresolvePan(checkPanBounds(horizontal = false, allowOverScroll = false))
 
-                        // recalculate pivot point based on the recalculated pan fix
-                        zoomTargetX = calculateZoomPivotPoint(true, fixPanX)
-                        zoomTargetY = calculateZoomPivotPoint(false, fixPanY)
-
                         // recalculate new pan location using the simulated target zoom level
                         newPanX = panX + fixPanX
                         newPanY = panY + fixPanY
