@@ -743,11 +743,11 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         /**
          * Point holding a [AbsolutePan] coordinate
          */
-        private var mInitialAbsFocusPoint: PointF = PointF(Float.NaN, Float.NaN)
+        private var mInitialAbsFocusPoint: AbsolutePoint = AbsolutePoint(Float.NaN, Float.NaN)
         /**
          * Indicating the current pan offset introduced by a pinch focus shift as [AbsolutePan] values
          */
-        private var mCurrentAbsFocusOffset: PointF = PointF(0F, 0F)
+        private var mCurrentAbsFocusOffset: AbsolutePoint = AbsolutePoint(0F, 0F)
 
         override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
             return true
@@ -760,19 +760,16 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
             if (setState(PINCHING)) {
                 // get the absolute pan position of the detector focus point
-                val newAbsFocusPoint = viewCoordinateToAbsolutePan(detector.focusX, detector.focusY)
+                val newAbsFocusPoint = viewCoordinateToAbsolutePoint(detector.focusX, detector.focusY)
 
                 if (mInitialAbsFocusPoint.x.isNaN()) {
-                    mInitialAbsFocusPoint.set(newAbsFocusPoint.x, newAbsFocusPoint.y)
+                    mInitialAbsFocusPoint.set(newAbsFocusPoint)
                     LOG.i("onScale:", "Setting initial focus.",
-                            "absTargetX:", mInitialAbsFocusPoint.x,
-                            "absTargetY:", mInitialAbsFocusPoint.y)
+                            "absTarget:", mInitialAbsFocusPoint)
                 } else {
                     // when the initial focus point is set, use it to
                     // calculate the location difference to the current focus point
-                    mCurrentAbsFocusOffset.set(
-                            mInitialAbsFocusPoint.x - newAbsFocusPoint.x,
-                            mInitialAbsFocusPoint.y - newAbsFocusPoint.y)
+                    mCurrentAbsFocusOffset.set(mInitialAbsFocusPoint - newAbsFocusPoint)
                 }
 
                 val factor = detector.scaleFactor
@@ -787,29 +784,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 return true
             }
             return false
-        }
-
-        /**
-         * Calculates the scaled pan value for a view coordinate
-         *
-         * Example:
-         * When the viewport is 1000x1000 and the [ZoomLayout] content is 3000x3000 and exactly centered
-         * and you call [viewCoordinateToAbsolutePan(500,500)] the result will be -1500x-1500
-         *
-         * @param x x-axis screen value
-         * @param y y-axis screen value
-         * @return scaled pan point
-         */
-        private fun viewCoordinateToAbsolutePan(x: Float, y: Float): PointF {
-            @ScaledPan var scaledFocusX = -x
-            @ScaledPan var scaledFocusY = -y
-
-            // Account for current pan.
-            scaledFocusX += scaledPanX
-            scaledFocusY += scaledPanY
-
-            // Transform to an absolute, scale-independent value.
-            return PointF(unresolvePan(scaledFocusX), unresolvePan(scaledFocusY))
         }
 
         override fun onScaleEnd(detector: ScaleGestureDetector) {
@@ -1292,6 +1266,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      *
      * @param zoom        the new zoom value
      * @param allowOverPinch whether to overpinch
+     * @param zoomTargetX the x-axis zoom target
+     * @param zoomTargetY the y-axis zoom target
      */
     private fun applyZoom(@Zoom zoom: Float, allowOverPinch: Boolean, allowOverScroll: Boolean = false,
                           zoomTargetX: Float = mContainerWidth / 2f,
@@ -1370,6 +1346,52 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         mMatrix.mapRect(mTransformedRect, mContentRect)
         ensurePanBounds(allowOverScroll)
         dispatchOnMatrix()
+    }
+
+    /**
+     * Converts an [AbsolutePoint] to a [ScaledPoint]
+     */
+    private fun AbsolutePoint.toScaled(): ScaledPoint {
+        return ScaledPoint(resolvePan(this.x), resolvePan(this.y))
+    }
+
+    /**
+     * Converts a [ScaledPoint] to an [AbsolutePoint]
+     */
+    private fun ScaledPoint.toAbsolute(): AbsolutePoint {
+        return AbsolutePoint(unresolvePan(this.x), unresolvePan(this.y))
+    }
+
+    /**
+     * Calculates the [AbsolutePoint] value for a view coordinate
+     * This is the reverse operation to [AbsolutePoint.toViewCoordinate].
+     *
+     * Example:
+     * When the viewport is 1000x1000 and the [ZoomLayout] content is 3000x3000 and exactly centered
+     * and you call [viewCoordinateToAbsolutePoint(500,500)] the result will be -1500x-1500
+     *
+     * @param x x-axis screen value
+     * @param y y-axis screen value
+     * @return [AbsolutePoint]
+     */
+    private fun viewCoordinateToAbsolutePoint(x: Float, y: Float): AbsolutePoint {
+        val scaledPoint = ScaledPoint(-x, -y)
+        // Account for current pan.
+        scaledPoint.offset(scaledPanX, scaledPanY)
+        // Transform to an absolute, scale-independent value.
+        return scaledPoint.toAbsolute()
+    }
+
+    /**
+     * Calculates the view coordinate from an [AbsolutePoint]
+     * This is the reverse operation to [viewCoordinateToAbsolutePoint].
+     *
+     * @return view coordinate
+     */
+    private fun AbsolutePoint.toViewCoordinate(): PointF {
+        @ScaledPan val scaledX = resolvePan(this.x)
+        @ScaledPan val scaledY = resolvePan(this.y)
+        return PointF(scaledPanX - scaledX, scaledPanY - scaledY)
     }
 
     /**
