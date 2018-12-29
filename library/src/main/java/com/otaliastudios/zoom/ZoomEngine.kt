@@ -3,6 +3,7 @@ package com.otaliastudios.zoom
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Matrix
+import android.graphics.PointF
 import android.graphics.RectF
 import android.os.Build
 import android.view.*
@@ -739,20 +740,14 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
     private inner class PinchListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
 
-        @AbsolutePan
-        private var mInitialAbsTargetX = Float.NaN
-        @AbsolutePan
-        private var mInitialAbsTargetY = Float.NaN
-
-        @AbsolutePan
-        private var mCurrentAbsTargetX = Float.NaN
-        @AbsolutePan
-        private var mCurrentAbsTargetY = Float.NaN
-
-        @ScaledPan
-        private var scaledFocusX = Float.NaN
-        @ScaledPan
-        private var scaledFocusY = Float.NaN
+        /**
+         * Point holding a [AbsolutePan] coordinate
+         */
+        private var mInitialAbsFocusPoint: PointF = PointF(Float.NaN, Float.NaN)
+        /**
+         * Indicating the current pan offset introduced by a pinch focus shift as [AbsolutePan] values
+         */
+        private var mCurrentAbsFocusOffset: PointF = PointF(0F, 0F)
 
         override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
             return true
@@ -764,36 +759,29 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             }
 
             if (setState(PINCHING)) {
-                // We want to interpret this as a scaled value, to work with the *actual* zoom.
-                scaledFocusX = -detector.focusX
-                scaledFocusY = -detector.focusY
-                LOG.i("onScale:", "Setting focus.", "detectorFocusX:", scaledFocusX, "detectorFocusX:", scaledFocusY)
+                // get the absolute pan position of the detector focus point
+                val newAbsFocusPoint = viewCoordinateToAbsolutePan(detector.focusX, detector.focusY)
 
-                // Account for current pan.
-                scaledFocusX += scaledPanX
-                scaledFocusY += scaledPanY
-
-                mCurrentAbsTargetX = panX
-                mCurrentAbsTargetY = panY
-                if (mInitialAbsTargetX.isNaN() || mInitialAbsTargetY.isNaN()) {
-                    // Transform to an absolute, scale-independent value.
-                    mInitialAbsTargetX = unresolvePan(scaledFocusX)
-                    mInitialAbsTargetY = unresolvePan(scaledFocusY)
-                    LOG.i("onScale:", "Setting initial focus.", "absTargetX:", mInitialAbsTargetX, "absTargetY:", mInitialAbsTargetY)
+                if (mInitialAbsFocusPoint.x.isNaN()) {
+                    mInitialAbsFocusPoint.set(newAbsFocusPoint.x, newAbsFocusPoint.y)
+                    LOG.i("onScale:", "Setting initial focus.",
+                            "absTargetX:", mInitialAbsFocusPoint.x,
+                            "absTargetY:", mInitialAbsFocusPoint.y)
                 } else {
                     // when the initial focus point is set, use it to
                     // calculate the location difference to the current focus point
-                    mCurrentAbsTargetX += mInitialAbsTargetX - unresolvePan(scaledFocusX)
-                    mCurrentAbsTargetY += mInitialAbsTargetY - unresolvePan(scaledFocusY)
+                    mCurrentAbsFocusOffset.set(
+                            mInitialAbsFocusPoint.x - newAbsFocusPoint.x,
+                            mInitialAbsFocusPoint.y - newAbsFocusPoint.y)
                 }
 
-                // Having both overPinch and overScroll is hard to manage, there are lots of bugs if we do.
                 val factor = detector.scaleFactor
                 val newZoom = zoom * factor
 
-                // apply the new zoom and pan values accordingly
                 applyZoomAndAbsolutePan(newZoom,
-                        mCurrentAbsTargetX, mCurrentAbsTargetY,
+                        panX + mCurrentAbsFocusOffset.x, panY + mCurrentAbsFocusOffset.y,
+                        zoomTargetX = detector.focusX,
+                        zoomTargetY = detector.focusY,
                         allowOverScroll = true,
                         allowOverPinch = true)
                 return true
@@ -801,10 +789,33 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             return false
         }
 
+        /**
+         * Calculates the scaled pan value for a view coordinate
+         *
+         * Example:
+         * When the viewport is 1000x1000 and the [ZoomLayout] content is 3000x3000 and exactly centered
+         * and you call [viewCoordinateToAbsolutePan(500,500)] the result will be -1500x-1500
+         *
+         * @param x x-axis screen value
+         * @param y y-axis screen value
+         * @return scaled pan point
+         */
+        private fun viewCoordinateToAbsolutePan(x: Float, y: Float): PointF {
+            @ScaledPan var scaledFocusX = -x
+            @ScaledPan var scaledFocusY = -y
+
+            // Account for current pan.
+            scaledFocusX += scaledPanX
+            scaledFocusY += scaledPanY
+
+            // Transform to an absolute, scale-independent value.
+            return PointF(unresolvePan(scaledFocusX), unresolvePan(scaledFocusY))
+        }
+
         override fun onScaleEnd(detector: ScaleGestureDetector) {
             LOG.i("onScaleEnd:",
-                    "mInitialAbsTargetX:", mInitialAbsTargetX,
-                    "mInitialAbsTargetY:", mInitialAbsTargetY,
+                    "mInitialAbsFocusPoint.x:", mInitialAbsFocusPoint.x,
+                    "mInitialAbsFocusPoint.y:", mInitialAbsFocusPoint.y,
                     "mOverPinchable;", mOverPinchable)
 
             try {
@@ -886,11 +897,13 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 }
                 setState(NONE)
             } finally {
-                mInitialAbsTargetX = Float.NaN
-                mInitialAbsTargetY = Float.NaN
-                mCurrentAbsTargetX = Float.NaN
-                mCurrentAbsTargetY = Float.NaN
+                resetState()
             }
+        }
+
+        private fun resetState() {
+            mInitialAbsFocusPoint.set(Float.NaN, Float.NaN)
+            mCurrentAbsFocusOffset.set(0F, 0F)
         }
 
         /**
