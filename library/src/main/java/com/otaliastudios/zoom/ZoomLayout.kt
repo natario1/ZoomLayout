@@ -3,7 +3,6 @@ package com.otaliastudios.zoom
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Matrix
-import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.MotionEvent
@@ -51,6 +50,8 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
         val verticalPanEnabled = a.getBoolean(R.styleable.ZoomEngine_verticalPanEnabled, true)
         val overPinchable = a.getBoolean(R.styleable.ZoomEngine_overPinchable, true)
         val zoomEnabled = a.getBoolean(R.styleable.ZoomEngine_zoomEnabled, true)
+        val flingEnabled = a.getBoolean(R.styleable.ZoomEngine_flingEnabled, true)
+        val allowFlingInOverscroll = a.getBoolean(R.styleable.ZoomEngine_allowFlingInOverscroll, true)
         val hasChildren = a.getBoolean(R.styleable.ZoomEngine_hasClickableChildren, false)
         val minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, -1f)
         val maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, -1f)
@@ -70,6 +71,8 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
         setVerticalPanEnabled(verticalPanEnabled)
         setOverPinchable(overPinchable)
         setZoomEnabled(zoomEnabled)
+        setFlingEnabled(flingEnabled)
+        setAllowFlingInOverscroll(allowFlingInOverscroll)
         setAnimationDuration(animationDuration)
         if (minZoom > -1) setMinZoom(minZoom, minZoomMode)
         if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode)

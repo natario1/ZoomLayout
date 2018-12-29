@@ -1,27 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <declare-styleable name="ZoomEngine">
-        <attr name="hasClickableChildren" format="boolean"/>
-        <attr name="overScrollHorizontal" format="boolean"/>
-        <attr name="overScrollVertical" format="boolean"/>
-        <attr name="overPinchable" format="boolean"/>
+        <attr name="hasClickableChildren" format="boolean" />
+        <attr name="overScrollHorizontal" format="boolean" />
+        <attr name="overScrollVertical" format="boolean" />
+        <attr name="overPinchable" format="boolean" />
         <attr name="zoomEnabled" format="boolean" />
+        <attr name="flingEnabled" format="boolean" />
+        <attr name="allowFlingInOverscroll" format="boolean" />
         <attr name="verticalPanEnabled" format="boolean" />
         <attr name="horizontalPanEnabled" format="boolean" />
-        <attr name="minZoom" format="float"/>
-        <attr name="maxZoom" format="float"/>
+        <attr name="minZoom" format="float" />
+        <attr name="maxZoom" format="float" />
         <attr name="minZoomType" format="enum">
-            <enum name="zoom" value="0"/>
-            <enum name="realZoom" value="1"/>
+            <enum name="zoom" value="0" />
+            <enum name="realZoom" value="1" />
         </attr>
         <attr name="maxZoomType" format="enum">
-            <enum name="zoom" value="0"/>
-            <enum name="realZoom" value="1"/>
+            <enum name="zoom" value="0" />
+            <enum name="realZoom" value="1" />
         </attr>
         <attr name="transformation" format="enum">
-            <enum name="centerInside" value="0"/>
-            <enum name="centerCrop" value="1"/>
-            <enum name="none" value="2"/>
+            <enum name="centerInside" value="0" />
+            <enum name="centerCrop" value="1" />
+            <enum name="none" value="2" />
         </attr>
         <attr name="transformationGravity">
             <flag name="top" value="0x30" />
