@@ -378,6 +378,11 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         mFlingEnabled = enabled
     }
 
+    /**
+     * Controls whether fling events are allowed when the view is in an overscrolled state.
+     *
+     * @param allow true allows fling in overscroll, false disables it
+     */
     override fun setAllowFlingInOverscroll(allow: Boolean) {
         mAllowFlingInOverscroll = allow
     }
