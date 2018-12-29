@@ -153,6 +153,12 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         get() = zoom * mBaseZoom
 
     /**
+     * The current pan as an [AbsolutePoint]
+     */
+    private val pan: AbsolutePoint
+        get() = AbsolutePoint(panX, panY)
+
+    /**
      * Returns the current horizontal pan value, in content coordinates
      * (that is, as if there was no zoom at all) referring to what was passed
      * to [setContentSize].
@@ -174,6 +180,12 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     @AbsolutePan
     override val panY: Float
         get() = scaledPanY / realZoom
+
+    /**
+     * The current pan as a [ScaledPoint]
+     */
+    private val scaledPan: ScaledPoint
+        get() = ScaledPoint(scaledPanX, scaledPanY)
 
     @ScaledPan
     private val scaledPanX: Float
@@ -1375,9 +1387,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * @return [AbsolutePoint]
      */
     private fun viewCoordinateToAbsolutePoint(x: Float, y: Float): AbsolutePoint {
-        val scaledPoint = ScaledPoint(-x, -y)
+        var scaledPoint = ScaledPoint(-x, -y)
         // Account for current pan.
-        scaledPoint.offset(scaledPanX, scaledPanY)
+        scaledPoint += scaledPan
         // Transform to an absolute, scale-independent value.
         return scaledPoint.toAbsolute()
     }

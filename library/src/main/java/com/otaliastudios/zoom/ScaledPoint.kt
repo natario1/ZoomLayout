@@ -20,4 +20,43 @@ data class ScaledPoint(
         this.y += offsetY
     }
 
+    /**
+     * Set new coordinates
+     *
+     * @param x x-axis value
+     * @param y y-axis value
+     */
+    @JvmOverloads
+    fun set(@ZoomApi.ScaledPan x: Float = this.x, @ZoomApi.ScaledPan y: Float = this.y) {
+        this.x = x
+        this.y = y
+    }
+
+    /**
+     * Set new coordinates
+     *
+     * @param p the [ScaledPoint] to copy values from
+     */
+    fun set(p: ScaledPoint) {
+        set(p.x, p.y)
+    }
+
+    /**
+     * Substract a point from another point
+     *
+     * @param scaledPoint the point to substract
+     */
+    operator fun minus(scaledPoint: ScaledPoint): ScaledPoint {
+        return ScaledPoint(this.x - scaledPoint.x, this.y - scaledPoint.y)
+    }
+
+    /**
+     * Add a point to another point
+     *
+     * @param scaledPoint the point to add
+     */
+    operator fun plus(scaledPoint: ScaledPoint): ScaledPoint {
+        return ScaledPoint(this.x + scaledPoint.x, this.y + scaledPoint.y)
+    }
+
 }
