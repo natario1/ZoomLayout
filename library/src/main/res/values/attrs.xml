@@ -22,6 +22,7 @@
             <enum name="centerInside" value="0"/>
             <enum name="centerCrop" value="1"/>
             <enum name="none" value="2"/>
+            <enum name="gravity" value="3"/>
         </attr>
         <attr name="transformationGravity">
             <flag name="top" value="0x30" />

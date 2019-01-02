@@ -105,7 +105,7 @@ interface ZoomApi {
      * Defines the available transvormation types
      */
     @Retention(AnnotationRetention.SOURCE)
-    @IntDef(TRANSFORMATION_CENTER_INSIDE, TRANSFORMATION_CENTER_CROP, TRANSFORMATION_NONE)
+    @IntDef(TRANSFORMATION_CENTER_INSIDE, TRANSFORMATION_CENTER_CROP, TRANSFORMATION_NONE, TRANSFORMATION_GRAVITY)
     annotation class Transformation
 
     /**
@@ -310,5 +310,12 @@ interface ZoomApi {
          * [ZoomApi.realZoom] will return the same value.
          */
         const val TRANSFORMATION_NONE = 2
+
+        /**
+         * Constant for [ZoomApi.setTransformation].
+         * The content will not be centered or zoomed, even when it fits completely within the container.
+         * Instead, it will use the gravity flags to determine it's base position.
+         */
+        const val TRANSFORMATION_GRAVITY = 3
     }
 }
