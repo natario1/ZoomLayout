@@ -94,7 +94,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * @see realZoom
      */
     @Zoom
-    @get:Zoom
     override var zoom = 1f // Not necessarily equal to the matrix scale.
         private set
     private var mBaseZoom = 0.toFloat() // mZoom * mBaseZoom matches the matrix scale.
@@ -138,7 +137,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
     @Zoom
     private val maxOverPinch: Float
-        @Zoom
         get() = 0.1f * (resolveZoom(mMaxZoom, mMaxZoomMode) - resolveZoom(mMinZoom, mMinZoomMode))
 
     /**
@@ -151,7 +149,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      */
     @RealZoom
     override val realZoom: Float
-        @RealZoom
         get() = zoom * mBaseZoom
 
     /**
@@ -169,7 +166,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      */
     @AbsolutePan
     override val panX: Float
-        @AbsolutePan
         get() = scaledPanX / realZoom
 
     /**
@@ -1252,7 +1248,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * @param deltaY          a scaled delta
      * @param allowOverScroll whether to overscroll
      */
-    private fun animateScaledPan(@ScaledPan deltaX: Float, @ScaledPan deltaY: Float,
+    private fun animateScaledPan(@AbsolutePan deltaX: Float, @ScaledPan deltaY: Float,
                                  allowOverScroll: Boolean) {
         if (setState(ANIMATING)) {
             mClearAnimation = false

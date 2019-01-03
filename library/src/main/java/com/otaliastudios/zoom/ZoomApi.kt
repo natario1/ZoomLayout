@@ -60,6 +60,7 @@ interface ZoomApi {
      *
      * @see realZoom
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     annotation class RealZoom
 
@@ -68,6 +69,7 @@ interface ZoomApi {
      *
      * @see zoom
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     annotation class Zoom
 
@@ -78,6 +80,7 @@ interface ZoomApi {
      * @see panY
      * @see ScaledPan
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     annotation class AbsolutePan
 
@@ -88,6 +91,7 @@ interface ZoomApi {
      * @see panY
      * @see AbsolutePan
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     annotation class ScaledPan
 
@@ -97,6 +101,7 @@ interface ZoomApi {
      * @see zoom
      * @see realZoom
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     @IntDef(TYPE_ZOOM, TYPE_REAL_ZOOM)
     annotation class ZoomType
