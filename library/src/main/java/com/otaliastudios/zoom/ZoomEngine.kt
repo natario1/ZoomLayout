@@ -898,14 +898,15 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
          *
          * @param fixPanX the amount of pan to apply to get into a valid state (no overscroll)
          * @param fixPanY the amount of pan to apply to get into a valid state (no overscroll)
+         * @return x-axis and y-axis view coordinates
          */
         private fun calculateZoomPivotPoint(@AbsolutePan fixPanX: Float, @AbsolutePan fixPanY: Float): PointF {
             if (zoom <= 1F) {
                 // The zoom pivot point here should be based on the gravity that is used
                 // to initially transform the content.
                 // Currently this is always [View.Gravity.CENTER] as indicated by [mTransformationGravity]
-                // but this might be changed by the user
-                return PointF(mContainerWidth / 2F, mContainerHeight / 2F)
+                // but this might be changed by the user.
+                return AbsolutePoint(-mContentRect.width() / 2F, -mContentRect.height() / 2F).toViewCoordinate()
             }
 
             val x = when {
