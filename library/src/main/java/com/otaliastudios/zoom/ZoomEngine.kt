@@ -105,6 +105,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private var mVerticalPanEnabled = true
     private var mOverPinchable = true
     private var mZoomEnabled = true
+    private var mFlingEnabled = true
+    private var mAllowFlingInOverscroll = false
     private var mClearAnimation = false
     private val mFlingScroller = OverScroller(context)
     private var mAnimationDuration = DEFAULT_ANIMATION_DURATION
@@ -365,6 +367,24 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      */
     override fun setZoomEnabled(enabled: Boolean) {
         mZoomEnabled = enabled
+    }
+
+    /**
+     * Controls whether fling gesture is enabled or not.
+     *
+     * @param enabled true enables fling gesture, false disables it
+     */
+    override fun setFlingEnabled(enabled: Boolean) {
+        mFlingEnabled = enabled
+    }
+
+    /**
+     * Controls whether fling events are allowed when the view is in an overscrolled state.
+     *
+     * @param allow true allows fling in overscroll, false disables it
+     */
+    override fun setAllowFlingInOverscroll(allow: Boolean) {
+        mAllowFlingInOverscroll = allow
     }
 
     //endregion
@@ -809,6 +829,11 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         }
 
         override fun onFling(e1: MotionEvent, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+            if (!mFlingEnabled) {
+                // fling is disabled, so we just ignore the event
+                return false
+            }
+
             val vX = (if (mHorizontalPanEnabled) velocityX else 0F).toInt()
             val vY = (if (mVerticalPanEnabled) velocityY else 0F).toInt()
             return startFling(vX, vY)
@@ -1316,8 +1341,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         @ScaledPan val minY = mScrollerValuesY.minValue
         @ScaledPan val startY = mScrollerValuesY.startValue
         @ScaledPan val maxY = mScrollerValuesY.maxValue
-        if (mScrollerValuesX.isInOverScroll || mScrollerValuesY.isInOverScroll) {
-            // Don't accept new flings when in overscroll. This causes artifacts.
+        if (!mAllowFlingInOverscroll && (mScrollerValuesX.isInOverScroll || mScrollerValuesY.isInOverScroll)) {
+            // Only allow new flings while overscrolled if explicitly enabled as this might causes artifacts.
             return false
         }
         if (minX >= maxX && minY >= maxY && !mOverScrollVertical && !mOverScrollHorizontal) {
