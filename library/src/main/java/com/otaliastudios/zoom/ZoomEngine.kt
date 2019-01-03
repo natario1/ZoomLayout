@@ -1257,18 +1257,15 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         if (setState(ANIMATING)) {
             mClearAnimation = false
             val startTime = System.currentTimeMillis()
-            @ScaledPan val startX = scaledPanX
-            @ScaledPan val startY = scaledPanY
-            @ScaledPan val endX = startX + deltaX
-            @ScaledPan val endY = startY + deltaY
+            val startPan = scaledPan
+            val endPan = startPan + ScaledPoint(deltaX, deltaY)
             mContainer.post(object : Runnable {
                 override fun run() {
                     if (mClearAnimation) return
                     val progress = interpolateAnimationTime(System.currentTimeMillis() - startTime)
                     LOG.v("animateScaledPan:", "animationStep:", progress)
-                    @ScaledPan val x = startX + progress * (endX - startX)
-                    @ScaledPan val y = startY + progress * (endY - startY)
-                    applyScaledPan(x - scaledPanX, y - scaledPanY, allowOverScroll)
+                    val currentPan = startPan + ((endPan - startPan) * progress) - scaledPan
+                    applyScaledPan(currentPan.x, currentPan.y, allowOverScroll)
                     if (progress >= 1f) {
                         setState(NONE)
                     } else {
