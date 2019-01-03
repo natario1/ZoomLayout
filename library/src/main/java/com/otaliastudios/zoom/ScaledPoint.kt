@@ -10,26 +10,15 @@ data class ScaledPoint(
         @ZoomApi.ScaledPan var y: Float = 0F) {
 
     /**
-     * Add the given values to this point
-     *
-     * @param x x-axis offset
-     * @param y y-axis offset
-     */
-    fun offset(@ZoomApi.ScaledPan offsetX: Float = 0F, @ZoomApi.ScaledPan offsetY: Float = 0F) {
-        this.x += offsetX
-        this.y += offsetY
-    }
-
-    /**
      * Set new coordinates
      *
      * @param x x-axis value
      * @param y y-axis value
      */
     @JvmOverloads
-    fun set(@ZoomApi.ScaledPan x: Float = this.x, @ZoomApi.ScaledPan y: Float = this.y) {
-        this.x = x
-        this.y = y
+    fun set(@ZoomApi.ScaledPan x: Number = this.x, @ZoomApi.ScaledPan y: Number = this.y) {
+        this.x = x.toFloat()
+        this.y = y.toFloat()
     }
 
     /**
@@ -66,6 +55,16 @@ data class ScaledPoint(
      */
     operator fun plus(scaledPoint: ScaledPoint): ScaledPoint {
         return ScaledPoint(this.x + scaledPoint.x, this.y + scaledPoint.y)
+    }
+
+    /**
+     * Multiply every value in the point by a given factor
+     *
+     * @param factor the factor to use
+     * @return the multiplied point
+     */
+    operator fun times(factor: Number): ScaledPoint {
+        return ScaledPoint(factor.toFloat() * this.x, factor.toFloat() * this.y)
     }
 
 }

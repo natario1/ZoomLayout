@@ -842,8 +842,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                     }
 
                     // select zoom pivot point based on what edge of the screen is currently overscrolled
-                    val zoomTargetX = calculateZoomPivotPoint(true, fixPanX)
-                    val zoomTargetY = calculateZoomPivotPoint(false, fixPanY)
+                    val zoomTarget = calculateZoomPivotPoint(fixPanX, fixPanY)
 
                     // calculate the new pan position
                     var newPanX = panX + fixPanX
@@ -858,7 +857,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                         val oldZoom = zoom
 
                         // apply the target zoom with the currently known pivot point
-                        applyZoom(newZoom, true, true, zoomTargetX, zoomTargetY)
+                        applyZoom(newZoom, true, true, zoomTarget.x, zoomTarget.y)
 
                         // recalculate pan fix to account for additional borders that might overscroll when zooming out
                         fixPanX = checkPanBounds(horizontal = true, allowOverScroll = false).toAbsolute()
@@ -869,7 +868,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                         newPanY = panY + fixPanY
 
                         // revert simulation
-                        applyZoom(oldZoom, true, true, zoomTargetX, zoomTargetY)
+                        applyZoom(oldZoom, true, true, zoomTarget.x, zoomTarget.y)
                     }
 
                     if (fixPanX == 0F && fixPanY == 0F) {
@@ -880,8 +879,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                         // fix overscroll (overpinch is also corrected in here if necessary)
                         animateZoomAndAbsolutePan(newZoom,
                                 newPanX, newPanY,
-                                zoomTargetX = zoomTargetX,
-                                zoomTargetY = zoomTargetY,
+                                zoomTargetX = zoomTarget.x,
+                                zoomTargetY = zoomTarget.y,
                                 allowOverScroll = true, allowOverPinch = true)
                     }
                     // return here because new state will be ANIMATING
@@ -901,20 +900,31 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         /**
          * Calculate pivot point to use for zoom based on pan fixes to be applied
          *
-         * @param horizontal true for x-axis, false for y-axis
-         * @param fixPan the amount of pan to apply to get into a valid state (no overscroll)
+         * @param fixPanX the amount of pan to apply to get into a valid state (no overscroll)
+         * @param fixPanY the amount of pan to apply to get into a valid state (no overscroll)
          */
-        private fun calculateZoomPivotPoint(horizontal: Boolean, @AbsolutePan fixPan: Float): Float {
-            val axisMax = when {
-                horizontal -> mContainerWidth
-                else -> mContainerHeight
+        private fun calculateZoomPivotPoint(@AbsolutePan fixPanX: Float, @AbsolutePan fixPanY: Float): PointF {
+            if (zoom <= 1F) {
+                // The zoom pivot point here should be based on the gravity that is used
+                // to initially transform the content.
+                // Currently this is always [View.Gravity.CENTER] as indicated by [mTransformationGravity]
+                // but this might be changed by the user
+                return PointF(mContainerWidth / 2F, mContainerHeight / 2F)
             }
 
-            return when {
-                fixPan > 0 -> axisMax // content needs to be moved left/up, use the right/bottom border as target
-                fixPan < 0 -> 0F // content needs to move right/down, use the left/top border as target
-                else -> axisMax / 2F // axis is not changed, use center as target
+            val x = when {
+                fixPanX > 0 -> mContainerWidth // content needs to be moved left, use the right border as target
+                fixPanX < 0 -> 0F // content needs to move right, use the left border as target
+                else -> mContainerWidth / 2F // axis is not changed, use center as target
             }
+
+            val y = when {
+                fixPanY > 0 -> mContainerHeight // content needs to be moved up, use the bottom border as target
+                fixPanY < 0 -> 0F // content needs to move down, use the top border as target
+                else -> mContainerHeight / 2F // axis is not changed, use center as target
+            }
+
+            return PointF(x, y)
         }
     }
 
@@ -1212,20 +1222,18 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             val startTime = System.currentTimeMillis()
             @Zoom val startZoom = this.zoom
             @Zoom val endZoom = checkZoomBounds(zoom, allowOverScroll)
-            @AbsolutePan val startX = panX
-            @AbsolutePan val startY = panY
-            LOG.i("animateZoomAndAbsolutePan:", "starting.", "startX:", startX, "endX:", x, "startY:", startY, "endY:", y)
+            val startPan = pan
+            val targetPan = AbsolutePoint(x, y)
+            LOG.i("animateZoomAndAbsolutePan:", "starting.", "startX:", startPan.x, "endX:", x, "startY:", startPan.y, "endY:", y)
             LOG.i("animateZoomAndAbsolutePan:", "starting.", "startZoom:", startZoom, "endZoom:", endZoom)
             mContainer.post(object : Runnable {
                 override fun run() {
                     if (mClearAnimation) return
                     val progress = interpolateAnimationTime(System.currentTimeMillis() - startTime)
                     LOG.v("animateZoomAndAbsolutePan:", "animationStep:", progress)
-                    @Zoom val newZoom = startZoom + progress * (endZoom - startZoom)
-                    @AbsolutePan val targetX = startX + progress * (x - startX)
-                    @AbsolutePan val targetY = startY + progress * (y - startY)
-
-                    applyZoomAndAbsolutePan(newZoom, targetX, targetY, allowOverScroll, allowOverPinch, zoomTargetX, zoomTargetY)
+                    @Zoom val newZoom = startZoom + (endZoom - startZoom) * progress
+                    val currentPan = startPan + (targetPan - startPan) * progress
+                    applyZoomAndAbsolutePan(newZoom, currentPan.x, currentPan.y, allowOverScroll, allowOverPinch, zoomTargetX, zoomTargetY)
                     if (progress >= 1f) {
                         setState(NONE)
                     } else {
@@ -1290,7 +1298,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * @param zoomTargetX the x-axis zoom target
      * @param zoomTargetY the y-axis zoom target
      */
-    private fun applyZoom(@Zoom zoom: Float, allowOverPinch: Boolean, allowOverScroll: Boolean = false,
+    private fun applyZoom(@Zoom zoom: Float,
+                          allowOverPinch: Boolean,
+                          allowOverScroll: Boolean = false,
                           zoomTargetX: Float = mContainerWidth / 2f,
                           zoomTargetY: Float = mContainerHeight / 2f) {
         val newZoom = checkZoomBounds(zoom, allowOverPinch)
@@ -1327,9 +1337,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                                         zoomTargetX: Float? = null,
                                         zoomTargetY: Float? = null) {
         // Translation
-        @AbsolutePan val deltaX = x - panX
-        @AbsolutePan val deltaY = y - panY
-        mMatrix.preTranslate(deltaX, deltaY)
+        val delta = AbsolutePoint(x, y) - pan
+        mMatrix.preTranslate(delta.x, delta.y)
         mMatrix.mapRect(mTransformedRect, mContentRect)
 
         // Scale

@@ -14,9 +14,9 @@ data class AbsolutePoint(
      * @param y y-axis value
      */
     @JvmOverloads
-    fun set(@ZoomApi.AbsolutePan x: Float = this.x, @ZoomApi.AbsolutePan y: Float = this.y) {
-        this.x = x
-        this.y = y
+    fun set(@ZoomApi.AbsolutePan x: Number = this.x, @ZoomApi.AbsolutePan y: Number = this.y) {
+        this.x = x.toFloat()
+        this.y = y.toFloat()
     }
 
     /**
@@ -53,6 +53,16 @@ data class AbsolutePoint(
      */
     operator fun plus(absolutePoint: AbsolutePoint): AbsolutePoint {
         return AbsolutePoint(this.x + absolutePoint.x, this.y + absolutePoint.y)
+    }
+
+    /**
+     * Multiply every value in the point by a given factor
+     *
+     * @param factor the factor to use
+     * @return the multiplied point
+     */
+    operator fun times(factor: Number): AbsolutePoint {
+        return AbsolutePoint(factor.toFloat() * this.x, factor.toFloat() * this.y)
     }
 
 }
