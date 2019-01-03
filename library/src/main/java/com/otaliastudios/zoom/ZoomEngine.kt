@@ -946,39 +946,37 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
          */
         override fun onScroll(e1: MotionEvent, e2: MotionEvent,
                               @AbsolutePan distanceX: Float, @AbsolutePan distanceY: Float): Boolean {
-            var distanceX = distanceX
-            var distanceY = distanceY
+            var delta = AbsolutePoint(distanceX, distanceY)
             if (setState(SCROLLING)) {
                 // Change sign, since we work with opposite values.
-                distanceX = -distanceX
-                distanceY = -distanceY
+                delta = -delta
 
                 // See if we are overscrolling.
                 val fixX = checkPanBounds(true, false)
                 val fixY = checkPanBounds(false, false)
 
                 // If we are overscrolling AND scrolling towards the overscroll direction...
-                if (fixX < 0 && distanceX > 0 || fixX > 0 && distanceX < 0) {
+                if (fixX < 0 && delta.x > 0 || fixX > 0 && delta.x < 0) {
                     // Compute friction: a factor for distances. Must be 1 if we are not overscrolling,
                     // and 0 if we are at the end of the available overscroll. This works:
                     val overScrollX = Math.abs(fixX) / maxOverScroll // 0 ... 1
                     val frictionX = 0.6f * (1f - Math.pow(overScrollX.toDouble(), 0.4).toFloat()) // 0 ... 0.6
                     LOG.i("onScroll", "applying friction X:", frictionX)
-                    distanceX *= frictionX
+                    delta.x *= frictionX
                 }
-                if (fixY < 0 && distanceY > 0 || fixY > 0 && distanceY < 0) {
+                if (fixY < 0 && delta.y > 0 || fixY > 0 && delta.y < 0) {
                     val overScrollY = Math.abs(fixY) / maxOverScroll // 0 ... 1
                     val frictionY = 0.6f * (1f - Math.pow(overScrollY.toDouble(), 0.4).toFloat()) // 0 ... 10.6
                     LOG.i("onScroll", "applying friction Y:", frictionY)
-                    distanceY *= frictionY
+                    delta.y *= frictionY
                 }
 
                 // If disabled, reset to 0.
-                if (!mHorizontalPanEnabled) distanceX = 0f
-                if (!mVerticalPanEnabled) distanceY = 0f
+                if (!mHorizontalPanEnabled) delta.x = 0f
+                if (!mVerticalPanEnabled) delta.y = 0f
 
-                if (distanceX != 0f || distanceY != 0f) {
-                    applyScaledPan(distanceX, distanceY, true)
+                if (delta.x != 0f || delta.y != 0f) {
+                    applyScaledPan(delta.x, delta.y, true)
                 }
                 return true
             }
