@@ -702,16 +702,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         return -1f
     }
 
-    @ScaledPan
-    private fun resolvePan(@AbsolutePan pan: Float): Float {
-        return pan * realZoom
-    }
-
-    @AbsolutePan
-    private fun unresolvePan(@ScaledPan pan: Float): Float {
-        return pan / realZoom
-    }
-
     /**
      * This is required when the content is a View that has clickable hierarchies inside.
      * If true is returned, implementors should not pass the call to super.
@@ -842,8 +832,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
                     // check what pan needs to be applied
                     // to get into a non-overscrolled state
-                    @AbsolutePan var fixPanX = unresolvePan(checkPanBounds(horizontal = true, allowOverScroll = false))
-                    @AbsolutePan var fixPanY = unresolvePan(checkPanBounds(horizontal = false, allowOverScroll = false))
+                    @AbsolutePan var fixPanX = checkPanBounds(horizontal = true, allowOverScroll = false).toAbsolute()
+                    @AbsolutePan var fixPanY = checkPanBounds(horizontal = false, allowOverScroll = false).toAbsolute()
 
                     if (fixPanX == 0F && fixPanY == 0F && newZoom.compareTo(zoom) == 0) {
                         // nothing to correct, we can stop right here
@@ -871,8 +861,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                         applyZoom(newZoom, true, true, zoomTargetX, zoomTargetY)
 
                         // recalculate pan fix to account for additional borders that might overscroll when zooming out
-                        fixPanX = unresolvePan(checkPanBounds(horizontal = true, allowOverScroll = false))
-                        fixPanY = unresolvePan(checkPanBounds(horizontal = false, allowOverScroll = false))
+                        fixPanX = checkPanBounds(horizontal = true, allowOverScroll = false).toAbsolute()
+                        fixPanY = checkPanBounds(horizontal = false, allowOverScroll = false).toAbsolute()
 
                         // recalculate new pan location using the simulated target zoom level
                         newPanX = panX + fixPanX
@@ -1382,17 +1372,35 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     }
 
     /**
+     * Converts a [AbsolutePan] value to an [ScaledPan] value
+     * @return the [ScaledPan] value
+     */
+    @ScaledPan
+    private fun Float.toScaled(): Float {
+        return this * realZoom
+    }
+
+    /**
+     * Converts a [ScaledPan] value to an [AbsolutePan] value
+     * @return the [AbsolutePan] value
+     */
+    @AbsolutePan
+    private fun Float.toAbsolute(): Float {
+        return this / realZoom
+    }
+
+    /**
      * Converts an [AbsolutePoint] to a [ScaledPoint]
      */
     private fun AbsolutePoint.toScaled(): ScaledPoint {
-        return ScaledPoint(resolvePan(this.x), resolvePan(this.y))
+        return ScaledPoint(this.x.toScaled(), this.y.toScaled())
     }
 
     /**
      * Converts a [ScaledPoint] to an [AbsolutePoint]
      */
     private fun ScaledPoint.toAbsolute(): AbsolutePoint {
-        return AbsolutePoint(unresolvePan(this.x), unresolvePan(this.y))
+        return AbsolutePoint(this.x.toAbsolute(), this.y.toAbsolute())
     }
 
     /**
@@ -1422,9 +1430,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * @return view coordinate
      */
     private fun AbsolutePoint.toViewCoordinate(): PointF {
-        @ScaledPan val scaledX = resolvePan(this.x)
-        @ScaledPan val scaledY = resolvePan(this.y)
-        return PointF(scaledPanX - scaledX, scaledPanY - scaledY)
+        val scaledPoint = this.toScaled()
+        return PointF(scaledPanX - scaledPoint.x, scaledPanY - scaledPoint.y)
     }
 
     /**
@@ -1446,8 +1453,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         // The right coordinates to use are the view coordinates.
         // This means we should use scaled coordinates, but remove the current pan.
 
-        @ScaledPan val scaledX = resolvePan(targetX)
-        @ScaledPan val scaledY = resolvePan(targetY)
+        @ScaledPan val scaledX = targetX.toScaled()
+        @ScaledPan val scaledY = targetY.toScaled()
         val newZoom = checkZoomBounds(zoom, allowOverPinch)
         val scaleFactor = newZoom / this.zoom
         mMatrix.postScale(scaleFactor, scaleFactor,

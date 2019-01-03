@@ -6,8 +6,8 @@ package com.otaliastudios.zoom
  * Note that these values depend on the current zoomlevel
  */
 data class ScaledPoint(
-        @ZoomApi.ScaledPan var x: Float,
-        @ZoomApi.ScaledPan var y: Float) {
+        @ZoomApi.ScaledPan var x: Float = 0F,
+        @ZoomApi.ScaledPan var y: Float = 0F) {
 
     /**
      * Add the given values to this point
@@ -48,6 +48,15 @@ data class ScaledPoint(
      */
     operator fun minus(scaledPoint: ScaledPoint): ScaledPoint {
         return ScaledPoint(this.x - scaledPoint.x, this.y - scaledPoint.y)
+    }
+
+    /**
+     * Negate a point
+     *
+     * @return the negative value of this point
+     */
+    operator fun unaryMinus(): ScaledPoint {
+        return ScaledPoint(-this.x, -this.y)
     }
 
     /**
