@@ -1,5 +1,8 @@
 package com.otaliastudios.zoom
 
+import android.animation.Animator
+import android.animation.TypeEvaluator
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Matrix
@@ -642,7 +645,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      *
      * @return the scaled pan fix values for x- and y-axis
      */
-    private fun calculateOverscrollCorrection(): ScaledPoint {
+    private fun getPanCorrection(): ScaledPoint {
         return ScaledPoint(
                 checkPanBounds(horizontal = true, allowOverScroll = false),
                 checkPanBounds(horizontal = false, allowOverScroll = false)
@@ -856,7 +859,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
                     // check what pan needs to be applied
                     // to get into a non-overscrolled state
-                    val panFix = calculateOverscrollCorrection().toAbsolute()
+                    val panFix = getPanCorrection().toAbsolute()
 
                     if (panFix.x == 0F && panFix.y == 0F && newZoom.compareTo(zoom) == 0) {
                         // nothing to correct, we can stop right here
@@ -882,7 +885,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                         applyZoom(newZoom, true, true, zoomTarget.x, zoomTarget.y, notifyListeners = false)
 
                         // recalculate pan fix to account for additional borders that might overscroll when zooming out
-                        panFix.set(calculateOverscrollCorrection().toAbsolute())
+                        panFix.set(getPanCorrection().toAbsolute())
 
                         // recalculate new pan location using the simulated target zoom level
                         newPan.set(pan + panFix)
@@ -968,6 +971,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private inner class FlingScrollListener : GestureDetector.SimpleOnGestureListener() {
 
         override fun onDown(e: MotionEvent): Boolean {
+            // cancel any animation that might still be running
+            setState(NONE)
             return true // We are interested in the gesture.
         }
 
@@ -999,7 +1004,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 delta = -delta
 
                 // See if we are overscrolling.
-                val panFix = calculateOverscrollCorrection()
+                val panFix = getPanCorrection()
 
                 // If we are overscrolling AND scrolling towards the overscroll direction...
                 if (panFix.x < 0 && delta.x > 0 || panFix.x > 0 && delta.x < 0) {
@@ -1033,7 +1038,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private fun onScrollEnd() {
         if (mOverScrollHorizontal || mOverScrollVertical) {
             // We might have over scrolled. Animate back to reasonable value.
-            val panFix = calculateOverscrollCorrection()
+            val panFix = getPanCorrection()
             if (panFix.x != 0f || panFix.y != 0f) {
                 animateScaledPan(panFix.x, panFix.y, true)
                 return
@@ -1208,6 +1213,30 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
     //region Apply values
 
+    private val mCancelAnimationListener = object : Animator.AnimatorListener {
+        override fun onAnimationStart(animation: Animator?) {
+        }
+
+        override fun onAnimationEnd(animation: Animator?) {
+            setState(NONE)
+        }
+
+        override fun onAnimationCancel(animation: Animator?) {
+        }
+
+        override fun onAnimationRepeat(animation: Animator?) {
+        }
+    }
+
+    /**
+     * Prepares a [ValueAnimator] for a new run
+     */
+    private fun ValueAnimator.prepare() {
+        this.duration = mAnimationDuration
+        this.addListener(mCancelAnimationListener)
+        this.interpolator = ANIMATION_INTERPOLATOR
+    }
+
     /**
      * Calls [applyZoom] repeatedly
      * until the final zoom is reached, interpolating.
@@ -1218,23 +1247,21 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private fun animateZoom(@Zoom zoom: Float, allowOverPinch: Boolean) {
         if (setState(ANIMATING)) {
             mClearAnimation = false
-            val startTime = System.currentTimeMillis()
             @Zoom val startZoom = this.zoom
             @Zoom val endZoom = checkZoomBounds(zoom, allowOverPinch)
-            mContainer.post(object : Runnable {
-                override fun run() {
-                    if (mClearAnimation) return
-                    val progress = interpolateAnimationTime(System.currentTimeMillis() - startTime)
-                    LOG.v("animateZoomAndAbsolutePan:", "animationStep:", progress)
-                    @Zoom val currentZoom = startZoom + progress * (endZoom - startZoom)
-                    applyZoom(currentZoom, allowOverPinch)
-                    if (progress >= 1f) {
-                        setState(NONE)
-                    } else {
-                        mContainer.postOnAnimation(this)
-                    }
+            val zoomAnimator = ValueAnimator.ofFloat(startZoom, endZoom)
+            zoomAnimator.prepare()
+            zoomAnimator.addUpdateListener {
+                LOG.v("animateZoom:", "animationStep:", it.animatedFraction)
+                if (mClearAnimation) {
+                    it.cancel()
                 }
-            })
+                mContainer.postOnAnimation {
+                    applyZoom(it.animatedValue as Float, allowOverPinch)
+                }
+            }
+
+            zoomAnimator.start()
         }
     }
 
@@ -1258,28 +1285,41 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                                           zoomTargetY: Float? = null) {
         if (setState(ANIMATING)) {
             mClearAnimation = false
-            val startTime = System.currentTimeMillis()
             @Zoom val startZoom = this.zoom
             @Zoom val endZoom = checkZoomBounds(zoom, allowOverScroll)
             val startPan = pan
             val targetPan = AbsolutePoint(x, y)
             LOG.i("animateZoomAndAbsolutePan:", "starting.", "startX:", startPan.x, "endX:", x, "startY:", startPan.y, "endY:", y)
             LOG.i("animateZoomAndAbsolutePan:", "starting.", "startZoom:", startZoom, "endZoom:", endZoom)
-            mContainer.post(object : Runnable {
-                override fun run() {
-                    if (mClearAnimation) return
-                    val progress = interpolateAnimationTime(System.currentTimeMillis() - startTime)
-                    LOG.v("animateZoomAndAbsolutePan:", "animationStep:", progress)
-                    @Zoom val newZoom = startZoom + (endZoom - startZoom) * progress
-                    val currentPan = startPan + (targetPan - startPan) * progress
-                    applyZoomAndAbsolutePan(newZoom, currentPan.x, currentPan.y, allowOverScroll, allowOverPinch, zoomTargetX, zoomTargetY)
-                    if (progress >= 1f) {
-                        setState(NONE)
-                    } else {
-                        mContainer.postOnAnimation(this)
-                    }
+
+            val panAnimator = ValueAnimator.ofObject(TypeEvaluator { fraction, startValue: AbsolutePoint, endValue: AbsolutePoint ->
+                startValue + (endValue - startValue) * fraction
+            }, startPan, targetPan)
+            panAnimator.prepare()
+            panAnimator.addUpdateListener {
+                if (mClearAnimation) {
+                    it.cancel()
                 }
-            })
+                mContainer.postOnAnimation {
+                    val newZoom = zoom
+                    val currentPan = it.animatedValue as AbsolutePoint
+                    applyZoomAndAbsolutePan(newZoom, currentPan.x, currentPan.y, allowOverScroll, allowOverPinch, zoomTargetX, zoomTargetY)
+                }
+            }
+
+            val zoomAnimator = ValueAnimator.ofFloat(startZoom, endZoom)
+            zoomAnimator.prepare()
+            zoomAnimator.addUpdateListener {
+                if (mClearAnimation) {
+                    it.cancel()
+                }
+                mContainer.postOnAnimation {
+                    applyZoom(it.animatedValue as Float, allowOverScroll, allowOverPinch, zoomTargetX = zoomTargetX, zoomTargetY = zoomTargetY)
+                }
+            }
+
+            panAnimator.start()
+            zoomAnimator.start()
         }
     }
 
@@ -1295,33 +1335,30 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                                  allowOverScroll: Boolean) {
         if (setState(ANIMATING)) {
             mClearAnimation = false
-            val startTime = System.currentTimeMillis()
             val startPan = scaledPan
             val endPan = startPan + ScaledPoint(deltaX, deltaY)
-            mContainer.post(object : Runnable {
-                override fun run() {
-                    if (mClearAnimation) return
-                    val progress = interpolateAnimationTime(System.currentTimeMillis() - startTime)
-                    LOG.v("animateScaledPan:", "animationStep:", progress)
-                    val currentPan = startPan + ((endPan - startPan) * progress) - scaledPan
-                    applyScaledPan(currentPan.x, currentPan.y, allowOverScroll)
-                    if (progress >= 1f) {
-                        setState(NONE)
-                    } else {
-                        mContainer.postOnAnimation(this)
-                    }
+
+            val panAnimator = ValueAnimator.ofObject(TypeEvaluator { fraction, startValue: ScaledPoint, endValue: ScaledPoint ->
+                startValue + (endValue - startValue) * fraction - scaledPan
+            }, startPan, endPan)
+            panAnimator.prepare()
+            panAnimator.addUpdateListener {
+                LOG.v("animateScaledPan:", "animationStep:", it.animatedFraction)
+                if (mClearAnimation) {
+                    it.cancel()
                 }
-            })
+                mContainer.postOnAnimation {
+                    val currentPan = it.animatedValue as ScaledPoint
+                    applyScaledPan(currentPan.x, currentPan.y, allowOverScroll)
+                }
+            }
+
+            panAnimator.start()
         }
     }
 
     override fun setAnimationDuration(duration: Long) {
         mAnimationDuration = duration
-    }
-
-    private fun interpolateAnimationTime(delta: Long): Float {
-        val time = Math.min(1f, delta.toFloat() / mAnimationDuration.toFloat())
-        return ANIMATION_INTERPOLATOR.getInterpolation(time)
     }
 
     /**
@@ -1337,13 +1374,14 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private fun applyZoom(@Zoom zoom: Float,
                           allowOverPinch: Boolean,
                           allowOverScroll: Boolean = false,
-                          zoomTargetX: Float = mContainerWidth / 2f,
-                          zoomTargetY: Float = mContainerHeight / 2f,
+                          zoomTargetX: Float? = null,
+                          zoomTargetY: Float? = null,
                           notifyListeners: Boolean = true) {
         val newZoom = checkZoomBounds(zoom, allowOverPinch)
         val scaleFactor = newZoom / this.zoom
+
         mMatrix.postScale(scaleFactor, scaleFactor,
-                zoomTargetX, zoomTargetY)
+                zoomTargetX ?: mContainerWidth / 2f, zoomTargetY ?: mContainerHeight / 2f)
         mMatrix.mapRect(mTransformedRect, mContentRect)
         this.zoom = newZoom
         ensurePanBounds(allowOverScroll)
