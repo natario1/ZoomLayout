@@ -1227,7 +1227,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     }
 
     /**
-     * Prepares a [ValueAnimator] for a new run
+     * Prepares a [ValueAnimator] for the first run
      */
     private fun ValueAnimator.prepare() {
         this.duration = mAnimationDuration
