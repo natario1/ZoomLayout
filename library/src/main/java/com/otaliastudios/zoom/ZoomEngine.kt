@@ -893,11 +893,16 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 }
                 setState(NONE)
             } finally {
-                resetState()
+                resetPinchListenerState()
             }
         }
 
-        private fun resetState() {
+        /**
+         * Resets the fields of this pinch gesture listener
+         * to prepare it for the next pinch gesture detection
+         * and remove any remaining data from the previous gesture.
+         */
+        private fun resetPinchListenerState() {
             mInitialAbsFocusPoint.set(Float.NaN, Float.NaN)
             mCurrentAbsFocusOffset.set(0F, 0F)
         }
