@@ -497,7 +497,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             LOG.i("onSizeChanged: newBaseZoom:", mBaseZoom, "newZoom:", zoom)
             @Zoom val newZoom = checkZoomBounds(zoom, false)
             LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", newZoom - zoom)
-            if (newZoom != zoom) applyZoom(newZoom, false)
+            if (newZoom != zoom) applyZoom(newZoom, allowOverPinch = false)
 
             // pan based on transformation gravity.
             @ScaledPan val newPan = computeBasePan()
@@ -505,7 +505,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             @ScaledPan val deltaY = newPan[1] - scaledPanY
             if (deltaX != 0f || deltaY != 0f) applyScaledPan(deltaX, deltaY, false)
 
-            ensurePanBounds(false)
+            ensurePanBounds(allowOverScroll = false)
             dispatchOnMatrix()
             if (!mInitialized) {
                 mInitialized = true
@@ -530,12 +530,12 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             // This is a possible matrix update.
             @Zoom val newZoom = checkZoomBounds(zoom, false)
             LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", newZoom - zoom)
-            if (newZoom != zoom) applyZoom(newZoom, false)
+            if (newZoom != zoom) applyZoom(newZoom, allowOverPinch = false)
 
             // If there was any, pan should be kept. I think there's nothing to do here:
             // If the matrix is kept, and real zoom is kept, then also the real pan is kept.
             // I am not 100% sure of this though, so I prefer to call a useless dispatch.
-            ensurePanBounds(false)
+            ensurePanBounds(allowOverScroll = false)
             dispatchOnMatrix()
         }
     }
@@ -808,10 +808,10 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
                 applyZoomAndAbsolutePan(newZoom,
                         panX + mCurrentAbsFocusOffset.x, panY + mCurrentAbsFocusOffset.y,
-                        zoomTargetX = detector.focusX,
-                        zoomTargetY = detector.focusY,
                         allowOverScroll = true,
-                        allowOverPinch = true)
+                        allowOverPinch = true,
+                        zoomTargetX = detector.focusX,
+                        zoomTargetY = detector.focusY)
                 return true
             }
             return false
@@ -864,7 +864,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                         val oldZoom = zoom
 
                         // apply the target zoom with the currently known pivot point
-                        applyZoom(newZoom, true, true, zoomTarget.x, zoomTarget.y)
+                        applyZoom(newZoom, true, true, zoomTarget.x, zoomTarget.y, notifyListeners = false)
 
                         // recalculate pan fix to account for additional borders that might overscroll when zooming out
                         panFix.set(calculateOverscrollCorrection().toAbsolute())
@@ -873,7 +873,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                         newPan.set(pan + panFix)
 
                         // revert simulation
-                        applyZoomAndAbsolutePan(oldZoom, oldPan.x, oldPan.y, true, true)
+                        applyZoomAndAbsolutePan(oldZoom, oldPan.x, oldPan.y, true, true, notifyListeners = false)
                     }
 
                     if (panFix.x == 0F && panFix.y == 0F) {
@@ -1033,9 +1033,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     override fun moveTo(@Zoom zoom: Float, @AbsolutePan x: Float, @AbsolutePan y: Float, animate: Boolean) {
         if (!mInitialized) return
         if (animate) {
-            animateZoomAndAbsolutePan(zoom, x, y, false)
+            animateZoomAndAbsolutePan(zoom, x, y, allowOverScroll = false)
         } else {
-            applyZoomAndAbsolutePan(zoom, x, y, false)
+            applyZoomAndAbsolutePan(zoom, x, y, allowOverScroll = false)
         }
     }
 
@@ -1068,9 +1068,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     override fun panBy(@AbsolutePan dx: Float, @AbsolutePan dy: Float, animate: Boolean) {
         if (!mInitialized) return
         if (animate) {
-            animateZoomAndAbsolutePan(zoom, panX + dx, panY + dy, false)
+            animateZoomAndAbsolutePan(zoom, panX + dx, panY + dy, allowOverScroll = false)
         } else {
-            applyZoomAndAbsolutePan(zoom, panX + dx, panY + dy, false)
+            applyZoomAndAbsolutePan(zoom, panX + dx, panY + dy, allowOverScroll = false)
         }
     }
 
@@ -1084,9 +1084,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     override fun zoomTo(@Zoom zoom: Float, animate: Boolean) {
         if (!mInitialized) return
         if (animate) {
-            animateZoom(zoom, false)
+            animateZoom(zoom, allowOverPinch = false)
         } else {
-            applyZoom(zoom, false)
+            applyZoom(zoom, allowOverPinch = false)
         }
     }
 
@@ -1107,7 +1107,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * Shorthand for [zoomBy] with factor 1.3.
      */
     override fun zoomIn() {
-        zoomBy(1.3f, true)
+        zoomBy(1.3f, animate = true)
     }
 
     /**
@@ -1115,7 +1115,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * Shorthand for [zoomBy] with factor 0.7.
      */
     override fun zoomOut() {
-        zoomBy(0.7f, true)
+        zoomBy(0.7f, animate = true)
     }
 
     /**
@@ -1148,7 +1148,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         mMaxZoom = maxZoom
         mMaxZoomMode = type
         if (zoom > resolveZoom(maxZoom, type)) {
-            zoomTo(resolveZoom(maxZoom, type), true)
+            zoomTo(resolveZoom(maxZoom, type), animate = true)
         }
     }
 
@@ -1195,8 +1195,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                     if (mClearAnimation) return
                     val progress = interpolateAnimationTime(System.currentTimeMillis() - startTime)
                     LOG.v("animateZoomAndAbsolutePan:", "animationStep:", progress)
-                    @Zoom val zoom = startZoom + progress * (endZoom - startZoom)
-                    applyZoom(zoom, allowOverPinch)
+                    @Zoom val currentZoom = startZoom + progress * (endZoom - startZoom)
+                    applyZoom(currentZoom, allowOverPinch)
                     if (progress >= 1f) {
                         setState(NONE)
                     } else {
@@ -1307,7 +1307,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                           allowOverPinch: Boolean,
                           allowOverScroll: Boolean = false,
                           zoomTargetX: Float = mContainerWidth / 2f,
-                          zoomTargetY: Float = mContainerHeight / 2f) {
+                          zoomTargetY: Float = mContainerHeight / 2f,
+                          notifyListeners: Boolean = true) {
         val newZoom = checkZoomBounds(zoom, allowOverPinch)
         val scaleFactor = newZoom / this.zoom
         mMatrix.postScale(scaleFactor, scaleFactor,
@@ -1315,7 +1316,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         mMatrix.mapRect(mTransformedRect, mContentRect)
         this.zoom = newZoom
         ensurePanBounds(allowOverScroll)
-        dispatchOnMatrix()
+        if (notifyListeners) {
+            dispatchOnMatrix()
+        }
     }
 
     /**
@@ -1334,13 +1337,15 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * @param allowOverPinch  true if overpinch is allowed, false otherwise
      * @param zoomTargetX     the x-axis zoom target
      * @param zoomTargetY     the y-axis zoom target
+     * @param notifyListeners when true listeners are informed about this zoom/pan, otherwise they wont
      */
     private fun applyZoomAndAbsolutePan(@Zoom zoom: Float,
                                         @AbsolutePan x: Float, @AbsolutePan y: Float,
                                         allowOverScroll: Boolean,
                                         allowOverPinch: Boolean = false,
                                         zoomTargetX: Float? = null,
-                                        zoomTargetY: Float? = null) {
+                                        zoomTargetY: Float? = null,
+                                        notifyListeners: Boolean = true) {
         // Translation
         val delta = AbsolutePoint(x, y) - pan
         mMatrix.preTranslate(delta.x, delta.y)
@@ -1362,7 +1367,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         this.zoom = newZoom
 
         ensurePanBounds(allowOverScroll)
-        dispatchOnMatrix()
+        if (notifyListeners) {
+            dispatchOnMatrix()
+        }
     }
 
     /**
@@ -1465,17 +1472,15 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         // The right coordinates to use are the view coordinates.
         // This means we should use scaled coordinates, but remove the current pan.
 
-        @ScaledPan val scaledX = targetX.toScaled()
-        @ScaledPan val scaledY = targetY.toScaled()
+        val targetPan = scaledPan - AbsolutePoint(targetX, targetY).toScaled()
         val newZoom = checkZoomBounds(zoom, allowOverPinch)
         val scaleFactor = newZoom / this.zoom
         mMatrix.postScale(scaleFactor, scaleFactor,
-                scaledPanX - scaledX,
-                scaledPanY - scaledY)
+                targetPan.x, targetPan.y)
 
         mMatrix.mapRect(mTransformedRect, mContentRect)
         this.zoom = newZoom
-        ensurePanBounds(false)
+        ensurePanBounds(allowOverScroll = false)
         dispatchOnMatrix()
     }
 

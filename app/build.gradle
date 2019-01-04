@@ -23,6 +23,6 @@ android {
 }
 
 dependencies {
-    implementation "androidx.appcompat:appcompat:$supportLibVersion"
+    implementation "androidx.appcompat:appcompat:1.0.2"
     implementation project(':library')
 }

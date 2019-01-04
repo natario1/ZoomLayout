@@ -31,7 +31,7 @@ android {
 }
 
 dependencies {
-    api "androidx.annotation:annotation:$supportLibVersion"
+    api "androidx.annotation:annotation:1.0.1"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.3.1"
