@@ -637,6 +637,19 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     }
 
     /**
+     * Uses [checkPanBounds] to calculate the pan correction that
+     * needs to be applied to get into a valid state.
+     *
+     * @return the scaled pan fix values for x- and y-axis
+     */
+    private fun calculateOverscrollCorrection(): ScaledPoint {
+        return ScaledPoint(
+                checkPanBounds(horizontal = true, allowOverScroll = false),
+                checkPanBounds(horizontal = false, allowOverScroll = false)
+        )
+    }
+
+    /**
      * Checks the current pan state.
      *
      * @param horizontal true when checking horizontal pan, false for vertical
@@ -828,10 +841,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
                     // check what pan needs to be applied
                     // to get into a non-overscrolled state
-                    val panFix = ScaledPoint(
-                            checkPanBounds(horizontal = true, allowOverScroll = false),
-                            checkPanBounds(horizontal = false, allowOverScroll = false)
-                    ).toAbsolute()
+                    val panFix = calculateOverscrollCorrection().toAbsolute()
 
                     if (panFix.x == 0F && panFix.y == 0F && newZoom.compareTo(zoom) == 0) {
                         // nothing to correct, we can stop right here
@@ -857,10 +867,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                         applyZoom(newZoom, true, true, zoomTarget.x, zoomTarget.y)
 
                         // recalculate pan fix to account for additional borders that might overscroll when zooming out
-                        panFix.set(ScaledPoint(
-                                checkPanBounds(horizontal = true, allowOverScroll = false),
-                                checkPanBounds(horizontal = false, allowOverScroll = false)
-                        ).toAbsolute())
+                        panFix.set(calculateOverscrollCorrection().toAbsolute())
 
                         // recalculate new pan location using the simulated target zoom level
                         newPan.set(pan + panFix)
@@ -960,20 +967,19 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 delta = -delta
 
                 // See if we are overscrolling.
-                val fixX = checkPanBounds(true, false)
-                val fixY = checkPanBounds(false, false)
+                val panFix = calculateOverscrollCorrection()
 
                 // If we are overscrolling AND scrolling towards the overscroll direction...
-                if (fixX < 0 && delta.x > 0 || fixX > 0 && delta.x < 0) {
+                if (panFix.x < 0 && delta.x > 0 || panFix.x > 0 && delta.x < 0) {
                     // Compute friction: a factor for distances. Must be 1 if we are not overscrolling,
                     // and 0 if we are at the end of the available overscroll. This works:
-                    val overScrollX = Math.abs(fixX) / maxOverScroll // 0 ... 1
+                    val overScrollX = Math.abs(panFix.x) / maxOverScroll // 0 ... 1
                     val frictionX = 0.6f * (1f - Math.pow(overScrollX.toDouble(), 0.4).toFloat()) // 0 ... 0.6
                     LOG.i("onScroll", "applying friction X:", frictionX)
                     delta.x *= frictionX
                 }
-                if (fixY < 0 && delta.y > 0 || fixY > 0 && delta.y < 0) {
-                    val overScrollY = Math.abs(fixY) / maxOverScroll // 0 ... 1
+                if (panFix.y < 0 && delta.y > 0 || panFix.y > 0 && delta.y < 0) {
+                    val overScrollY = Math.abs(panFix.y) / maxOverScroll // 0 ... 1
                     val frictionY = 0.6f * (1f - Math.pow(overScrollY.toDouble(), 0.4).toFloat()) // 0 ... 10.6
                     LOG.i("onScroll", "applying friction Y:", frictionY)
                     delta.y *= frictionY
@@ -995,10 +1001,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private fun onScrollEnd() {
         if (mOverScrollHorizontal || mOverScrollVertical) {
             // We might have over scrolled. Animate back to reasonable value.
-            @ScaledPan val fixX = checkPanBounds(true, false)
-            @ScaledPan val fixY = checkPanBounds(false, false)
-            if (fixX != 0f || fixY != 0f) {
-                animateScaledPan(fixX, fixY, true)
+            val panFix = calculateOverscrollCorrection()
+            if (panFix.x != 0f || panFix.y != 0f) {
+                animateScaledPan(panFix.x, panFix.y, true)
                 return
             }
         }
