@@ -254,7 +254,7 @@ interface ZoomApi {
      * @param realZoom the new real zoom value
      * @param animate  whether to animate the transition
      */
-    fun realZoomTo(realZoom: Float, animate: Boolean)
+    fun realZoomTo(@RealZoom realZoom: Float, animate: Boolean)
 
     /**
      * Which is the max zoom that should be allowed.

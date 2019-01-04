@@ -137,7 +137,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
     @Zoom
     private val maxOverPinch: Float
-        get() = 0.1f * (resolveZoom(mMaxZoom, mMaxZoomMode) - resolveZoom(mMinZoom, mMinZoomMode))
+        get() = 0.1f * (getMaxZoom() - getMinZoom())
 
     /**
      * Gets the current zoom value, including the base zoom that was eventually applied during
@@ -626,8 +626,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      */
     @Zoom
     private fun checkZoomBounds(@Zoom value: Float, allowOverPinch: Boolean): Float {
-        var minZoom = resolveZoom(mMinZoom, mMinZoomMode)
-        var maxZoom = resolveZoom(mMaxZoom, mMaxZoomMode)
+        var minZoom = getMinZoom()
+        var maxZoom = getMaxZoom()
         if (allowOverPinch && mOverPinchable) {
             minZoom -= maxOverPinch
             maxZoom += maxOverPinch
@@ -702,13 +702,28 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         }
     }
 
+    /**
+     * Converts a [RealZoom] value to a [Zoom] value
+     */
     @Zoom
-    private fun resolveZoom(zoom: Float, @ZoomType mode: Int): Float {
-        when (mode) {
-            ZoomApi.TYPE_ZOOM -> return zoom
-            ZoomApi.TYPE_REAL_ZOOM -> return zoom / mBaseZoom
+    private fun Float.toZoom(@ZoomType inputZoomType: Int): Float {
+        when (inputZoomType) {
+            ZoomApi.TYPE_ZOOM -> return this
+            ZoomApi.TYPE_REAL_ZOOM -> return this / mBaseZoom
         }
-        return -1f
+        throw IllegalArgumentException("Unknown ZoomType $inputZoomType")
+    }
+
+    /**
+     * Converts a [Zoom] value to a [RealZoom] value
+     */
+    @RealZoom
+    private fun Float.toRealZoom(@ZoomType inputZoomType: Int): Float {
+        when (inputZoomType) {
+            ZoomApi.TYPE_ZOOM -> return this * mBaseZoom
+            ZoomApi.TYPE_REAL_ZOOM -> return this
+        }
+        throw IllegalArgumentException("Unknown ZoomType $inputZoomType")
     }
 
     /**
@@ -826,8 +841,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             try {
                 if (mOverPinchable || mOverScrollVertical || mOverScrollHorizontal) {
                     // We might have over pinched/scrolled. Animate back to reasonable value.
-                    @Zoom val maxZoom = resolveZoom(mMaxZoom, mMaxZoomMode)
-                    @Zoom val minZoom = resolveZoom(mMinZoom, mMinZoomMode)
+                    @Zoom val maxZoom = getMaxZoom()
+                    @Zoom val minZoom = getMinZoom()
 
                     // check what zoom needs to be applied
                     // to get into a non-overpinched state
@@ -937,6 +952,18 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             return PointF(x, y)
         }
     }
+
+    /**
+     * @return the currently set upper boundary for maximum zoom value
+     */
+    @Zoom
+    private fun getMaxZoom(): Float = mMaxZoom.toZoom(mMaxZoomMode)
+
+    /**
+     * @return the currently set lower boundary for minimum zoom value
+     */
+    @Zoom
+    private fun getMinZoom(): Float = mMinZoom.toZoom(mMinZoomMode)
 
     private inner class FlingScrollListener : GestureDetector.SimpleOnGestureListener() {
 
@@ -1124,8 +1151,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * @param realZoom the new real zoom value
      * @param animate  whether to animate the transition
      */
-    override fun realZoomTo(realZoom: Float, animate: Boolean) {
-        zoomTo(resolveZoom(realZoom, ZoomApi.TYPE_REAL_ZOOM), animate)
+    override fun realZoomTo(@RealZoom realZoom: Float, animate: Boolean) {
+        val zoom = realZoom.toZoom(ZoomApi.TYPE_REAL_ZOOM)
+        zoomTo(zoom, animate)
     }
 
     /**
@@ -1147,8 +1175,11 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         }
         mMaxZoom = maxZoom
         mMaxZoomMode = type
-        if (zoom > resolveZoom(maxZoom, type)) {
-            zoomTo(resolveZoom(maxZoom, type), animate = true)
+
+        // check if current zoomlevel is within bounds
+        if (zoom > getMaxZoom()) {
+            // correct to the exact new boundary if necessary
+            zoomTo(getMaxZoom(), animate = true)
         }
     }
 
@@ -1168,8 +1199,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         }
         mMinZoom = minZoom
         mMinZoomMode = type
-        if (zoom <= resolveZoom(minZoom, type)) {
-            zoomTo(resolveZoom(minZoom, type), true)
+        if (zoom <= getMinZoom()) {
+            zoomTo(getMinZoom(), animate = true)
         }
     }
 
