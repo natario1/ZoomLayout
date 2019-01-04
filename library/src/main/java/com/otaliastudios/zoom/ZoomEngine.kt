@@ -1,8 +1,6 @@
 package com.otaliastudios.zoom
 
-import android.animation.Animator
-import android.animation.TypeEvaluator
-import android.animation.ValueAnimator
+import android.animation.*
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Matrix
@@ -1292,34 +1290,28 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             LOG.i("animateZoomAndAbsolutePan:", "starting.", "startX:", startPan.x, "endX:", x, "startY:", startPan.y, "endY:", y)
             LOG.i("animateZoomAndAbsolutePan:", "starting.", "startZoom:", startZoom, "endZoom:", endZoom)
 
-            val panAnimator = ValueAnimator.ofObject(TypeEvaluator { fraction, startValue: AbsolutePoint, endValue: AbsolutePoint ->
-                startValue + (endValue - startValue) * fraction
-            }, startPan, targetPan)
-            panAnimator.prepare()
-            panAnimator.addUpdateListener {
+            val animator = ObjectAnimator.ofPropertyValuesHolder(mContainer,
+                    PropertyValuesHolder.ofObject(
+                            "pan",
+                            TypeEvaluator { fraction: Float, startValue: AbsolutePoint, endValue: AbsolutePoint ->
+                                startValue + (endValue - startValue) * fraction
+                            }, startPan, targetPan),
+                    PropertyValuesHolder.ofFloat(
+                            "zoom",
+                            startZoom, endZoom)
+            )
+            animator.prepare()
+            animator.addUpdateListener {
                 if (mClearAnimation) {
                     it.cancel()
                 }
                 mContainer.postOnAnimation {
-                    val newZoom = zoom
-                    val currentPan = it.animatedValue as AbsolutePoint
+                    val newZoom = it.getAnimatedValue("zoom") as Float
+                    val currentPan = it.getAnimatedValue("pan") as AbsolutePoint
                     applyZoomAndAbsolutePan(newZoom, currentPan.x, currentPan.y, allowOverScroll, allowOverPinch, zoomTargetX, zoomTargetY)
                 }
             }
-
-            val zoomAnimator = ValueAnimator.ofFloat(startZoom, endZoom)
-            zoomAnimator.prepare()
-            zoomAnimator.addUpdateListener {
-                if (mClearAnimation) {
-                    it.cancel()
-                }
-                mContainer.postOnAnimation {
-                    applyZoom(it.animatedValue as Float, allowOverScroll, allowOverPinch, zoomTargetX = zoomTargetX, zoomTargetY = zoomTargetY)
-                }
-            }
-
-            panAnimator.start()
-            zoomAnimator.start()
+            animator.start()
         }
     }
 
