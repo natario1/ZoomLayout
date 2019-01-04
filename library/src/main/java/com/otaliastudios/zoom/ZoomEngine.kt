@@ -828,53 +828,55 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
                     // check what pan needs to be applied
                     // to get into a non-overscrolled state
-                    @AbsolutePan var fixPanX = checkPanBounds(horizontal = true, allowOverScroll = false).toAbsolute()
-                    @AbsolutePan var fixPanY = checkPanBounds(horizontal = false, allowOverScroll = false).toAbsolute()
+                    val panFix = ScaledPoint(
+                            checkPanBounds(horizontal = true, allowOverScroll = false),
+                            checkPanBounds(horizontal = false, allowOverScroll = false)
+                    ).toAbsolute()
 
-                    if (fixPanX == 0F && fixPanY == 0F && newZoom.compareTo(zoom) == 0) {
+                    if (panFix.x == 0F && panFix.y == 0F && newZoom.compareTo(zoom) == 0) {
                         // nothing to correct, we can stop right here
                         setState(NONE)
                         return
                     }
 
                     // select zoom pivot point based on what edge of the screen is currently overscrolled
-                    val zoomTarget = calculateZoomPivotPoint(fixPanX, fixPanY)
+                    val zoomTarget = calculateZoomPivotPoint(panFix)
 
                     // calculate the new pan position
-                    var newPanX = panX + fixPanX
-                    var newPanY = panY + fixPanY
-
+                    val newPan = pan + panFix
                     if (newZoom.compareTo(zoom) != 0) {
                         // we have overpinched. to calculate how much pan needs to be applied
                         // to fix overscrolling we need to simulate the target zoom (when overpinching has been corrected)
                         // to calculate the needed pan correction for that zoom level
 
-                        // remember current zoom value to reset to that state later
+                        // remember current pan and zoom value to reset to that state later
+                        val oldPan = pan
                         val oldZoom = zoom
 
                         // apply the target zoom with the currently known pivot point
                         applyZoom(newZoom, true, true, zoomTarget.x, zoomTarget.y)
 
                         // recalculate pan fix to account for additional borders that might overscroll when zooming out
-                        fixPanX = checkPanBounds(horizontal = true, allowOverScroll = false).toAbsolute()
-                        fixPanY = checkPanBounds(horizontal = false, allowOverScroll = false).toAbsolute()
+                        panFix.set(ScaledPoint(
+                                checkPanBounds(horizontal = true, allowOverScroll = false),
+                                checkPanBounds(horizontal = false, allowOverScroll = false)
+                        ).toAbsolute())
 
                         // recalculate new pan location using the simulated target zoom level
-                        newPanX = panX + fixPanX
-                        newPanY = panY + fixPanY
+                        newPan.set(pan + panFix)
 
                         // revert simulation
-                        applyZoom(oldZoom, true, true, zoomTarget.x, zoomTarget.y)
+                        applyZoomAndAbsolutePan(oldZoom, oldPan.x, oldPan.y, true, true)
                     }
 
-                    if (fixPanX == 0F && fixPanY == 0F) {
+                    if (panFix.x == 0F && panFix.y == 0F) {
                         // no overscroll to correct
                         // only fix overpinch
                         animateZoom(newZoom, allowOverPinch = true)
                     } else {
                         // fix overscroll (overpinch is also corrected in here if necessary)
                         animateZoomAndAbsolutePan(newZoom,
-                                newPanX, newPanY,
+                                newPan.x, newPan.y,
                                 zoomTargetX = zoomTarget.x,
                                 zoomTargetY = zoomTarget.y,
                                 allowOverScroll = true, allowOverPinch = true)
@@ -896,11 +898,10 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         /**
          * Calculate pivot point to use for zoom based on pan fixes to be applied
          *
-         * @param fixPanX the amount of pan to apply to get into a valid state (no overscroll)
-         * @param fixPanY the amount of pan to apply to get into a valid state (no overscroll)
+         * @param fixPan the amount of pan to apply to get into a valid state (no overscroll)
          * @return x-axis and y-axis view coordinates
          */
-        private fun calculateZoomPivotPoint(@AbsolutePan fixPanX: Float, @AbsolutePan fixPanY: Float): PointF {
+        private fun calculateZoomPivotPoint(fixPan: AbsolutePoint): PointF {
             if (zoom <= 1F) {
                 // The zoom pivot point here should be based on the gravity that is used
                 // to initially transform the content.
@@ -910,14 +911,14 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             }
 
             val x = when {
-                fixPanX > 0 -> mContainerWidth // content needs to be moved left, use the right border as target
-                fixPanX < 0 -> 0F // content needs to move right, use the left border as target
+                fixPan.x > 0 -> mContainerWidth // content needs to be moved left, use the right border as target
+                fixPan.x < 0 -> 0F // content needs to move right, use the left border as target
                 else -> mContainerWidth / 2F // axis is not changed, use center as target
             }
 
             val y = when {
-                fixPanY > 0 -> mContainerHeight // content needs to be moved up, use the bottom border as target
-                fixPanY < 0 -> 0F // content needs to move down, use the top border as target
+                fixPan.y > 0 -> mContainerHeight // content needs to be moved up, use the bottom border as target
+                fixPan.y < 0 -> 0F // content needs to move down, use the top border as target
                 else -> mContainerHeight / 2F // axis is not changed, use center as target
             }
 
