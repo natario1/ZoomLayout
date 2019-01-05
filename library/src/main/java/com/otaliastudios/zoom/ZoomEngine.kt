@@ -166,7 +166,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * The current pan as an [AbsolutePoint].
      * This field will be updated according to current pan when accessed.
      */
-    val pan = AbsolutePoint()
+    override val pan = AbsolutePoint()
         get() {
             field.set(panX, panY)
             return field

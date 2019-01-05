@@ -37,6 +37,13 @@ interface ZoomApi {
     @RealZoom
     val realZoom: Float
 
+
+    /**
+     * The current pan as an [AbsolutePoint].
+     * This field will be updated according to current pan when accessed.
+     */
+    val pan: AbsolutePoint
+
     /**
      * Returns the current horizontal pan value, in content coordinates
      * (that is, as if there was no zoom at all).
