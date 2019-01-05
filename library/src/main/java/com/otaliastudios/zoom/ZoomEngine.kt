@@ -1257,6 +1257,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 LOG.v("animateZoom:", "animationStep:", it.animatedFraction)
                 if (mClearAnimation) {
                     it.cancel()
+                    return@addUpdateListener
                 }
                 applyZoom(it.animatedValue as Float, allowOverPinch)
             }
@@ -1308,6 +1309,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             animator.addUpdateListener {
                 if (mClearAnimation) {
                     it.cancel()
+                    return@addUpdateListener
                 }
                 val newZoom = it.getAnimatedValue("zoom") as Float
                 val currentPan = it.getAnimatedValue("pan") as AbsolutePoint
@@ -1340,6 +1342,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 LOG.v("animateScaledPan:", "animationStep:", it.animatedFraction)
                 if (mClearAnimation) {
                     it.cancel()
+                    return@addUpdateListener
                 }
                 val currentPan = it.animatedValue as ScaledPoint
                 applyScaledPan(currentPan.x, currentPan.y, allowOverScroll)
