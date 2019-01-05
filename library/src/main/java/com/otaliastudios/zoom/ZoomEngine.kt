@@ -974,8 +974,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private inner class FlingScrollListener : GestureDetector.SimpleOnGestureListener() {
 
         override fun onDown(e: MotionEvent): Boolean {
-            // cancel any animation that might still be running
-            setState(NONE)
             return true // We are interested in the gesture.
         }
 
@@ -1225,6 +1223,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         }
 
         override fun onAnimationCancel(animation: Animator?) {
+            setState(NONE)
         }
 
         override fun onAnimationRepeat(animation: Animator?) {
