@@ -98,6 +98,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         private set
     private var mBaseZoom = 0.toFloat() // mZoom * mBaseZoom matches the matrix scale.
     private var mTransformation = ZoomApi.TRANSFORMATION_CENTER_INSIDE
+    private var mSmallerPolicy = ZoomApi.SMALLER_POLICY_CENTER
     private var mTransformationGravity = Gravity.CENTER
     private var mOverScrollHorizontal = true
     private var mOverScrollVertical = true
@@ -384,6 +385,10 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         mTransformationGravity = gravity
     }
 
+    override fun setSmallerPolicy(@SmallerPolicy policy: Int) {
+        mSmallerPolicy = policy
+    }
+
     override fun onGlobalLayout() {
         setContainerSize(mContainer.width.toFloat(), mContainer.height.toFloat())
     }
@@ -542,7 +547,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 return Math.max(scaleX, scaleY)
             }
             ZoomApi.TRANSFORMATION_NONE -> return 1f
-            ZoomApi.TRANSFORMATION_GRAVITY -> return 1f
             else -> return 1f
         }
     }
@@ -554,7 +558,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         val result = floatArrayOf(0f, 0f)
         val widthOffset = mTransformedRect.width() - mContainerWidth
         val heightOffset = mTransformedRect.height() - mContainerHeight
-        if (widthOffset > 0 || mTransformation == ZoomApi.TRANSFORMATION_GRAVITY) {
+        if (widthOffset > 0 || mSmallerPolicy == ZoomApi.SMALLER_POLICY_FROM_TRANSFORMATION) {
             // Honour the horizontal gravity indication.
             when (mTransformationGravity and Gravity.HORIZONTAL_GRAVITY_MASK) {
                 Gravity.LEFT -> result[0] = 0f
@@ -562,7 +566,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 Gravity.RIGHT -> result[0] = -widthOffset
             }
         }
-        if (heightOffset > 0 || mTransformation == ZoomApi.TRANSFORMATION_GRAVITY) {
+        if (heightOffset > 0 || mSmallerPolicy == ZoomApi.SMALLER_POLICY_FROM_TRANSFORMATION) {
             // Honour the vertical gravity indication.
             when (mTransformationGravity and Gravity.VERTICAL_GRAVITY_MASK) {
                 Gravity.TOP -> result[1] = 0f
@@ -631,7 +635,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         var min: Float
         var max: Float
         if (contentSize <= viewSize) {
-            if(mTransformation == ZoomApi.TRANSFORMATION_GRAVITY) {
+            if(mSmallerPolicy == ZoomApi.SMALLER_POLICY_FROM_TRANSFORMATION) {
                 min = basePanValue
                 max = basePanValue
             } else {
