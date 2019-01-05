@@ -10,6 +10,13 @@ data class ScaledPoint(
         @ZoomApi.ScaledPan var y: Float = 0F) {
 
     /**
+     * Copy constructor
+     *
+     * @param point point to duplicate
+     */
+    constructor(point: ScaledPoint) : this(point.x, point.y)
+
+    /**
      * Set new coordinates
      *
      * @param x x-axis value
