@@ -31,7 +31,7 @@ import com.otaliastudios.zoom.ZoomApi.*
  * When the scaling makes the content smaller than our viewport, the engine will always try
  * to keep the content centered.
  */
-class ZoomEngine
+open class ZoomEngine
 /**
  * Constructs an helper instance.
  *
@@ -95,7 +95,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     @Zoom
     @get:Zoom
     override var zoom = 1f // Not necessarily equal to the matrix scale.
-        private set
+        internal set
     private var mBaseZoom = 0.toFloat() // mZoom * mBaseZoom matches the matrix scale.
     private var mTransformation = ZoomApi.TRANSFORMATION_CENTER_INSIDE
     private var mTransformationGravity = Gravity.CENTER

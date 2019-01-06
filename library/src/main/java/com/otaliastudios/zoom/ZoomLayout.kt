@@ -30,7 +30,7 @@ import com.otaliastudios.zoom.ZoomApi.ZoomType
  * TODO: support padding (from inside ZoomEngine that gets the view)
  * TODO: support layout_margin (here)
  */
-class ZoomLayout
+open class ZoomLayout
 private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAttr: Int, val engine: ZoomEngine = ZoomEngine(context))
     : FrameLayout(context, attrs, defStyleAttr), ZoomEngine.Listener, ZoomApi by engine {
 
