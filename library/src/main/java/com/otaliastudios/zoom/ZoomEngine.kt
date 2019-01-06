@@ -635,14 +635,16 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         var min: Float
         var max: Float
         if (contentSize <= viewSize) {
-            if(mSmallerPolicy == ZoomApi.SMALLER_POLICY_FROM_TRANSFORMATION) {
-                min = basePanValue
-                max = basePanValue
-            } else {
-                // If contentSize <= viewSize, we want to stay centered.
-                // Need a positive translation, that shows some background.
-                min = (viewSize - contentSize) / 2f
-                max = (viewSize - contentSize) / 2f
+            when(mSmallerPolicy) {
+                ZoomApi.SMALLER_POLICY_FROM_TRANSFORMATION -> {
+                    min = basePanValue
+                    max = basePanValue
+                } else  -> {
+                    // If contentSize <= viewSize, we want to stay centered.
+                    // Need a positive translation, that shows some background.
+                    min = (viewSize - contentSize) / 2f
+                    max = (viewSize - contentSize) / 2f
+                }
             }
         } else {
             // If contentSize is bigger, we just don't want to go outside.

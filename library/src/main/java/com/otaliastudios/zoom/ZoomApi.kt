@@ -335,7 +335,7 @@ interface ZoomApi {
 
         /**
          * Constant for [ZoomApi.setSmallerPolicy].
-         * Content will be respect the transformationGravity when it is smaller than it's container
+         * Content will respect the transformationGravity when it is smaller than it's container
          */
         const val SMALLER_POLICY_FROM_TRANSFORMATION = 1
     }
