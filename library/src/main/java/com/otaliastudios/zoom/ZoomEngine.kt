@@ -98,6 +98,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         internal set
     private var mBaseZoom = 0.toFloat() // mZoom * mBaseZoom matches the matrix scale.
     private var mTransformation = ZoomApi.TRANSFORMATION_CENTER_INSIDE
+    private var mSmallerPolicy = ZoomApi.SMALLER_POLICY_CENTER
     private var mTransformationGravity = Gravity.CENTER
     private var mOverScrollHorizontal = true
     private var mOverScrollVertical = true
@@ -404,6 +405,10 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         mTransformationGravity = gravity
     }
 
+    override fun setSmallerPolicy(@SmallerPolicy policy: Int) {
+        mSmallerPolicy = policy
+    }
+
     override fun onGlobalLayout() {
         setContainerSize(mContainer.width.toFloat(), mContainer.height.toFloat())
     }
@@ -571,22 +576,22 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     @ScaledPan
     private fun computeBasePan(): FloatArray {
         val result = floatArrayOf(0f, 0f)
-        val extraWidth = mTransformedRect.width() - mContainerWidth
-        val extraHeight = mTransformedRect.height() - mContainerHeight
-        if (extraWidth > 0) {
+        val widthOffset = mTransformedRect.width() - mContainerWidth
+        val heightOffset = mTransformedRect.height() - mContainerHeight
+        if (widthOffset > 0 || mSmallerPolicy == ZoomApi.SMALLER_POLICY_FROM_TRANSFORMATION) {
             // Honour the horizontal gravity indication.
             when (mTransformationGravity and Gravity.HORIZONTAL_GRAVITY_MASK) {
                 Gravity.LEFT -> result[0] = 0f
-                Gravity.CENTER_HORIZONTAL -> result[0] = -0.5f * extraWidth
-                Gravity.RIGHT -> result[0] = -extraWidth
+                Gravity.CENTER_HORIZONTAL -> result[0] = -0.5f * widthOffset
+                Gravity.RIGHT -> result[0] = -widthOffset
             }
         }
-        if (extraHeight > 0) {
+        if (heightOffset > 0 || mSmallerPolicy == ZoomApi.SMALLER_POLICY_FROM_TRANSFORMATION) {
             // Honour the vertical gravity indication.
             when (mTransformationGravity and Gravity.VERTICAL_GRAVITY_MASK) {
                 Gravity.TOP -> result[1] = 0f
-                Gravity.CENTER_VERTICAL -> result[1] = -0.5f * extraHeight
-                Gravity.BOTTOM -> result[1] = -extraHeight
+                Gravity.CENTER_VERTICAL -> result[1] = -0.5f * heightOffset
+                Gravity.BOTTOM -> result[1] = -heightOffset
             }
         }
         return result
@@ -635,23 +640,32 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         @ScaledPan val value = if (horizontal) scaledPanX else scaledPanY
         val viewSize = if (horizontal) mContainerWidth else mContainerHeight
         @ScaledPan val contentSize = if (horizontal) mTransformedRect.width() else mTransformedRect.height()
+        @ScaledPan val basePanValue = computeBasePan()[(if (horizontal) 0 else 1)]
 
         val overScrollable = if (horizontal) mOverScrollHorizontal else mOverScrollVertical
         @ScaledPan val overScroll = (if (overScrollable && allowOverScroll) maxOverScroll else 0).toFloat()
-        return getPanCorrection(value, viewSize, contentSize, overScroll)
+        return getPanCorrection(value, viewSize, contentSize, overScroll, basePanValue)
     }
 
     @ScaledPan
     private fun getPanCorrection(@ScaledPan value: Float, viewSize: Float,
-                                 @ScaledPan contentSize: Float, @ScaledPan overScroll: Float): Float {
+                                 @ScaledPan contentSize: Float, @ScaledPan overScroll: Float,
+                                 @ScaledPan basePanValue: Float): Float {
         @ScaledPan val tolerance = overScroll.toInt()
         var min: Float
         var max: Float
         if (contentSize <= viewSize) {
-            // If contentSize <= viewSize, we want to stay centered.
-            // Need a positive translation, that shows some background.
-            min = (viewSize - contentSize) / 2f
-            max = (viewSize - contentSize) / 2f
+            when(mSmallerPolicy) {
+                ZoomApi.SMALLER_POLICY_FROM_TRANSFORMATION -> {
+                    min = basePanValue
+                    max = basePanValue
+                } else  -> {
+                    // If contentSize <= viewSize, we want to stay centered.
+                    // Need a positive translation, that shows some background.
+                    min = (viewSize - contentSize) / 2f
+                    max = (viewSize - contentSize) / 2f
+                }
+            }
         } else {
             // If contentSize is bigger, we just don't want to go outside.
             // Need a negative translation, that hides content.

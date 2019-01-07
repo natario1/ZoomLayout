@@ -109,6 +109,13 @@ interface ZoomApi {
     annotation class Transformation
 
     /**
+     * Defines the available smaller policies
+     */
+    @Retention(AnnotationRetention.SOURCE)
+    @IntDef(SMALLER_POLICY_CENTER, SMALLER_POLICY_FROM_TRANSFORMATION)
+    annotation class SmallerPolicy
+
+    /**
      * Controls whether the content should be over-scrollable horizontally.
      * If it is, drag and fling horizontal events can scroll the content outside the safe area,
      * then return to safe values.
@@ -179,6 +186,15 @@ interface ZoomApi {
      * @param gravity        the transformation gravity. Might be ignored for some transformations
      */
     fun setTransformation(@Transformation transformation: Int, gravity: Int)
+
+    /**
+     * Sets the policy to use when content is smaller than the container.
+     * Defaults to [SMALLER_POLICY_CENTER]
+     * which means that the content will be centered.
+     *
+     * @param policy the policy
+     */
+    fun setSmallerPolicy(@SmallerPolicy policy: Int)
 
     /**
      * A low level API that can animate both zoom and pan at the same time.
@@ -324,5 +340,17 @@ interface ZoomApi {
          * [ZoomApi.realZoom] will return the same value.
          */
         const val TRANSFORMATION_NONE = 2
+
+        /**
+         * Constant for [ZoomApi.setSmallerPolicy].
+         * Content will be centered when it is smaller than it's container
+         */
+        const val SMALLER_POLICY_CENTER = 0
+
+        /**
+         * Constant for [ZoomApi.setSmallerPolicy].
+         * Content will respect the transformationGravity when it is smaller than it's container
+         */
+        const val SMALLER_POLICY_FROM_TRANSFORMATION = 1
     }
 }
