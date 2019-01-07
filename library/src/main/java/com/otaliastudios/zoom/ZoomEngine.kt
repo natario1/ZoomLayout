@@ -571,30 +571,42 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         }
     }
 
-    // TODO support START and END correctly.
-    @SuppressLint("RtlHardcoded")
+    /**
+     * Computes the starting pan coordinates, given the current content dimensions and container
+     * dimensions. We will start from [0, 0], unless content is bigger than the container, in which
+     * case the transformation gravity should apply.
+     *
+     * Note: after this is computed and applied, the pan correction will take care of respecting the
+     * SmallerPolicy if needed.
+     */
     @ScaledPan
     private fun computeBasePan(): FloatArray {
         val result = floatArrayOf(0f, 0f)
-        val widthOffset = mTransformedRect.width() - mContainerWidth
-        val heightOffset = mTransformedRect.height() - mContainerHeight
-        if (widthOffset > 0 || mSmallerPolicy == ZoomApi.SMALLER_POLICY_FROM_TRANSFORMATION) {
-            // Honour the horizontal gravity indication.
-            when (mTransformationGravity and Gravity.HORIZONTAL_GRAVITY_MASK) {
-                Gravity.LEFT -> result[0] = 0f
-                Gravity.CENTER_HORIZONTAL -> result[0] = -0.5f * widthOffset
-                Gravity.RIGHT -> result[0] = -widthOffset
-            }
+        val extraWidth = mTransformedRect.width() - mContainerWidth
+        val extraHeight = mTransformedRect.height() - mContainerHeight
+        if (extraWidth > 0) {
+            result[0] = applyGravity(mTransformationGravity, extraWidth, true)
         }
-        if (heightOffset > 0 || mSmallerPolicy == ZoomApi.SMALLER_POLICY_FROM_TRANSFORMATION) {
-            // Honour the vertical gravity indication.
-            when (mTransformationGravity and Gravity.VERTICAL_GRAVITY_MASK) {
-                Gravity.TOP -> result[1] = 0f
-                Gravity.CENTER_VERTICAL -> result[1] = -0.5f * heightOffset
-                Gravity.BOTTOM -> result[1] = -heightOffset
-            }
+        if (extraHeight > 0) {
+            result[1] = applyGravity(mTransformationGravity, extraHeight, false)
         }
         return result
+    }
+
+    @SuppressLint("RtlHardcoded")
+    private fun applyGravity(gravity: Int, extraSpace: Float, horizontal: Boolean): Float {
+        val resolved = if (horizontal) {
+            // TODO support START and END correctly.
+            gravity and Gravity.HORIZONTAL_GRAVITY_MASK
+        } else {
+            gravity and Gravity.VERTICAL_GRAVITY_MASK
+        }
+        return when (resolved) {
+            Gravity.TOP, Gravity.LEFT -> 0F
+            Gravity.BOTTOM, Gravity.RIGHT -> -extraSpace
+            Gravity.CENTER_VERTICAL, Gravity.CENTER_HORIZONTAL -> -0.5F * extraSpace
+            else -> 0F // Can't happen
+        }
     }
 
     //endregion
@@ -638,42 +650,51 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     @ScaledPan
     private fun checkPanBounds(horizontal: Boolean, allowOverScroll: Boolean): Float {
         @ScaledPan val value = if (horizontal) scaledPanX else scaledPanY
-        val viewSize = if (horizontal) mContainerWidth else mContainerHeight
+        val containerSize = if (horizontal) mContainerWidth else mContainerHeight
         @ScaledPan val contentSize = if (horizontal) mTransformedRect.width() else mTransformedRect.height()
-        @ScaledPan val basePanValue = computeBasePan()[(if (horizontal) 0 else 1)]
 
         val overScrollable = if (horizontal) mOverScrollHorizontal else mOverScrollVertical
         @ScaledPan val overScroll = (if (overScrollable && allowOverScroll) maxOverScroll else 0).toFloat()
-        return getPanCorrection(value, viewSize, contentSize, overScroll, basePanValue)
+        return getPanCorrection(value, containerSize, contentSize, overScroll, horizontal)
     }
 
     @ScaledPan
-    private fun getPanCorrection(@ScaledPan value: Float, viewSize: Float,
+    private fun getPanCorrection(@ScaledPan value: Float, containerSize: Float,
                                  @ScaledPan contentSize: Float, @ScaledPan overScroll: Float,
-                                 @ScaledPan basePanValue: Float): Float {
-        @ScaledPan val tolerance = overScroll.toInt()
+                                 horizontal: Boolean): Float {
         var min: Float
         var max: Float
-        if (contentSize <= viewSize) {
-            when(mSmallerPolicy) {
+        if (contentSize <= containerSize) {
+            // If content is smaller than container, act according to the smaller policy.
+            // Expect the output to be >= 0, we will show part of the container background.
+            val extraSpace = containerSize - contentSize // > 0
+            when (mSmallerPolicy) {
                 ZoomApi.SMALLER_POLICY_FROM_TRANSFORMATION -> {
-                    min = basePanValue
-                    max = basePanValue
-                } else  -> {
-                    // If contentSize <= viewSize, we want to stay centered.
-                    // Need a positive translation, that shows some background.
-                    min = (viewSize - contentSize) / 2f
-                    max = (viewSize - contentSize) / 2f
+                    // Apply the transformation gravity. Pass a negative space so we get positive result.
+                    val correction = applyGravity(mTransformation, -extraSpace, horizontal)
+                    min = correction
+                    max = correction
                 }
+                ZoomApi.SMALLER_POLICY_CENTER  -> {
+                    // Stay centered. Need a positive translation, that shows some background.
+                    min = extraSpace / 2f
+                    max = extraSpace / 2f
+                }
+                ZoomApi.SMALLER_POLICY_NONE -> {
+                    // Everything is fine, just don't exit the container boundaries.
+                    min = 0f
+                    max = extraSpace
+                }
+                else -> throw IllegalStateException("Unsupported policy: $mSmallerPolicy")
             }
         } else {
             // If contentSize is bigger, we just don't want to go outside.
             // Need a negative translation, that hides content.
-            min = viewSize - contentSize
+            min = containerSize - contentSize
             max = 0f
         }
-        min -= tolerance.toFloat()
-        max += tolerance.toFloat()
+        min -= overScroll
+        max += overScroll
         var desired = value
         if (desired < min) desired = min
         if (desired > max) desired = max
