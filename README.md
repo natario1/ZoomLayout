@@ -166,6 +166,15 @@ cropped along some dimension, the engine will also apply a translation according
 
 You can always trigger a new transformation to be applied by using the `setContentSize` or `setContainerSize` APIs.
 
+#### Smaller policy
+
+You can also control how the content will be positioned when it is smaller than the container size through the `setSmallerPolicy(int)` method or by using the `smallerPolicy` attribute on the `ZoomLayout`.  By default, content will be centered when it is smaller than it's container.
+
+|Policy|Description|
+|------|-----------|
+|`center`|The content will be centered within the container.|
+|`from_transformation`|The content will respect the gravity parameter of the transformation as set using the above methods.|
+
 #### Zoom Types
 
 The base transformation makes the difference between **zoom** and **realZoom**. Since we have silently applied
