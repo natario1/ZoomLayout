@@ -20,7 +20,7 @@ import com.otaliastudios.zoom.ZoomApi.ZoomType
  * TODO: support padding (from inside ZoomEngine that gets the view)
  */
 @SuppressLint("AppCompatCustomView")
-class ZoomImageView
+open class ZoomImageView
 private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAttr: Int, val engine: ZoomEngine = ZoomEngine(context))
     : ImageView(context, attrs, defStyleAttr), ZoomEngine.Listener, ZoomApi by engine {
 
