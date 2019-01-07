@@ -164,6 +164,20 @@ interface ZoomApi {
     fun setZoomEnabled(enabled: Boolean)
 
     /**
+     * Controls whether fling gesture is enabled or not.
+     *
+     * @param enabled true enables fling gesture, false disables it
+     */
+    fun setFlingEnabled(enabled: Boolean)
+
+    /**
+     * Controls whether fling events are allowed when the view is in an overscrolled state.
+     *
+     * @param allow true allows fling in overscroll, false disables it
+     */
+    fun setAllowFlingInOverscroll(allow: Boolean)
+
+    /**
      * Sets the base transformation to be applied to the content.
      * Defaults to [TRANSFORMATION_CENTER_INSIDE] with [android.view.Gravity.CENTER],
      * which means that the content will be zoomed so that it fits completely inside the container.

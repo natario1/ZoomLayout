@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Matrix
-import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.Gravity
@@ -21,7 +20,7 @@ import com.otaliastudios.zoom.ZoomApi.ZoomType
  * TODO: support padding (from inside ZoomEngine that gets the view)
  */
 @SuppressLint("AppCompatCustomView")
-class ZoomImageView
+open class ZoomImageView
 private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAttr: Int, val engine: ZoomEngine = ZoomEngine(context))
     : ImageView(context, attrs, defStyleAttr), ZoomEngine.Listener, ZoomApi by engine {
 
@@ -46,6 +45,8 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
         val verticalPanEnabled = a.getBoolean(R.styleable.ZoomEngine_verticalPanEnabled, true)
         val overPinchable = a.getBoolean(R.styleable.ZoomEngine_overPinchable, true)
         val zoomEnabled = a.getBoolean(R.styleable.ZoomEngine_zoomEnabled, true)
+        val flingEnabled = a.getBoolean(R.styleable.ZoomEngine_flingEnabled, true)
+        val allowFlingInOverscroll = a.getBoolean(R.styleable.ZoomEngine_allowFlingInOverscroll, true)
         val minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, -1f)
         val maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, -1f)
         @ZoomType val minZoomMode = a.getInteger(R.styleable.ZoomEngine_minZoomType, ZoomApi.TYPE_ZOOM)
@@ -64,6 +65,8 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
         setVerticalPanEnabled(verticalPanEnabled)
         setOverPinchable(overPinchable)
         setZoomEnabled(zoomEnabled)
+        setFlingEnabled(flingEnabled)
+        setAllowFlingInOverscroll(allowFlingInOverscroll)
         setAnimationDuration(animationDuration)
         if (minZoom > -1) setMinZoom(minZoom, minZoomMode)
         if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode)

@@ -231,6 +231,8 @@ In any case the current scale is not considered, so your system won't change if 
 |`setOverScrollVertical(boolean)`|If true, the content will be allowed to pan outside its vertical bounds, then return to its position.|`true`|
 |`setHorizontalPanEnabled(boolean)`|If true, the content will be allowed to pan **horizontally** by user input.|`true`|
 |`setVerticalPanEnabled(boolean)`|If true, the content will be allowed to pan **vertically** by user input.|`true`|
+|`setFlingEnabled(boolean)`|If true, fling gestures will be detected.|`true`|
+|`setAllowFlingInOverscroll(boolean)`|If true, fling gestures will be allowed even when detected while overscrolled. This might cause artifacts so it is disabled by default.|`false`|
 |`panTo(float, float, boolean)`|Pans to the given values, animating if needed.|`-`|
 |`panBy(float, float, boolean)`|Applies the given deltas to the current pan, animating if needed.|`-`|
 
