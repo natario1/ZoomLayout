@@ -584,15 +584,19 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         val result = floatArrayOf(0f, 0f)
         val extraWidth = mTransformedRect.width() - mContainerWidth
         val extraHeight = mTransformedRect.height() - mContainerHeight
-        if (extraWidth > 0) {
-            result[0] = applyGravity(mTransformationGravity, extraWidth, true)
+        if (extraWidth > 0) { // Got to change sign to have a negative result.
+            result[0] = -applyGravity(mTransformationGravity, extraWidth, true)
         }
         if (extraHeight > 0) {
-            result[1] = applyGravity(mTransformationGravity, extraHeight, false)
+            result[1] = -applyGravity(mTransformationGravity, extraHeight, false)
         }
         return result
     }
 
+    /**
+     * Returns 0 for 'start' gravities, [extraSpace] for 'end' gravities, and half of it
+     * for 'center' gravities.
+     */
     @SuppressLint("RtlHardcoded")
     private fun applyGravity(gravity: Int, extraSpace: Float, horizontal: Boolean): Float {
         val resolved = if (horizontal) {
@@ -603,8 +607,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         }
         return when (resolved) {
             Gravity.TOP, Gravity.LEFT -> 0F
-            Gravity.BOTTOM, Gravity.RIGHT -> -extraSpace
-            Gravity.CENTER_VERTICAL, Gravity.CENTER_HORIZONTAL -> -0.5F * extraSpace
+            Gravity.BOTTOM, Gravity.RIGHT -> extraSpace
+            Gravity.CENTER_VERTICAL, Gravity.CENTER_HORIZONTAL -> 0.5F * extraSpace
             else -> 0F // Can't happen
         }
     }
@@ -670,8 +674,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             val extraSpace = containerSize - contentSize // > 0
             when (mSmallerPolicy) {
                 ZoomApi.SMALLER_POLICY_FROM_TRANSFORMATION -> {
-                    // Apply the transformation gravity. Pass a negative space so we get positive result.
-                    val correction = applyGravity(mTransformation, -extraSpace, horizontal)
+                    // Apply the transformation gravity.
+                    val correction = applyGravity(mTransformation, extraSpace, horizontal)
                     min = correction
                     max = correction
                 }
