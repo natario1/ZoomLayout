@@ -675,7 +675,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         @ScaledPan val basePanValue = computeBasePan()[(if (horizontal) 0 else 1)]
 
         val overScrollable = if (horizontal) mOverScrollHorizontal else mOverScrollVertical
-        @ScaledPan val overScroll = if (overScrollable && allowOverScroll) maxOverScroll else 0
+        @ScaledPan val overScroll = (if (overScrollable && allowOverScroll) maxOverScroll else 0).toFloat()
         return getPanCorrection(value, viewSize, contentSize, overScroll, basePanValue)
     }
 
@@ -686,11 +686,12 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         var min: Float
         var max: Float
         if (contentSize <= viewSize) {
-            when(mSmallerPolicy) {
+            when (mSmallerPolicy) {
                 ZoomApi.SMALLER_POLICY_FROM_TRANSFORMATION -> {
                     min = basePanValue
                     max = basePanValue
-                } else  -> {
+                }
+                else -> {
                     // If contentSize <= viewSize, we want to stay centered.
                     // Need a positive translation, that shows some background.
                     min = (viewSize - contentSize) / 2f
