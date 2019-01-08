@@ -37,6 +37,13 @@ interface ZoomApi {
     @RealZoom
     val realZoom: Float
 
+
+    /**
+     * The current pan as an [AbsolutePoint].
+     * This field will be updated according to current pan when accessed.
+     */
+    val pan: AbsolutePoint
+
     /**
      * Returns the current horizontal pan value, in content coordinates
      * (that is, as if there was no zoom at all).
@@ -60,6 +67,7 @@ interface ZoomApi {
      *
      * @see realZoom
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     annotation class RealZoom
 
@@ -68,6 +76,7 @@ interface ZoomApi {
      *
      * @see zoom
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     annotation class Zoom
 
@@ -78,6 +87,7 @@ interface ZoomApi {
      * @see panY
      * @see ScaledPan
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     annotation class AbsolutePan
 
@@ -88,6 +98,7 @@ interface ZoomApi {
      * @see panY
      * @see AbsolutePan
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     annotation class ScaledPan
 
@@ -97,6 +108,7 @@ interface ZoomApi {
      * @see zoom
      * @see realZoom
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     @IntDef(TYPE_ZOOM, TYPE_REAL_ZOOM)
     annotation class ZoomType
@@ -265,7 +277,7 @@ interface ZoomApi {
      * @param realZoom the new real zoom value
      * @param animate  whether to animate the transition
      */
-    fun realZoomTo(realZoom: Float, animate: Boolean)
+    fun realZoomTo(@RealZoom realZoom: Float, animate: Boolean)
 
     /**
      * Which is the max zoom that should be allowed.
