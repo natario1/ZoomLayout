@@ -30,7 +30,7 @@ import com.otaliastudios.zoom.ZoomApi.ZoomType
  * TODO: support padding (from inside ZoomEngine that gets the view)
  * TODO: support layout_margin (here)
  */
-class ZoomLayout
+open class ZoomLayout
 private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAttr: Int, val engine: ZoomEngine = ZoomEngine(context))
     : FrameLayout(context, attrs, defStyleAttr), ZoomEngine.Listener, ZoomApi by engine {
 
@@ -59,12 +59,14 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
         @ZoomType val maxZoomMode = a.getInteger(R.styleable.ZoomEngine_maxZoomType, ZoomApi.TYPE_ZOOM)
         val transformation = a.getInteger(R.styleable.ZoomEngine_transformation, ZoomApi.TRANSFORMATION_CENTER_INSIDE)
         val transformationGravity = a.getInt(R.styleable.ZoomEngine_transformationGravity, Gravity.CENTER)
+        val smallerPolicy = a.getInt(R.styleable.ZoomEngine_smallerPolicy, ZoomApi.SMALLER_POLICY_CENTER)
         val animationDuration = a.getInt(R.styleable.ZoomEngine_animationDuration, ZoomEngine.DEFAULT_ANIMATION_DURATION.toInt()).toLong()
         a.recycle()
 
         engine.setContainer(this)
         engine.addListener(this)
         setTransformation(transformation, transformationGravity)
+        setSmallerPolicy(smallerPolicy)
         setOverScrollHorizontal(overScrollHorizontal)
         setOverScrollVertical(overScrollVertical)
         setHorizontalPanEnabled(horizontalPanEnabled)
