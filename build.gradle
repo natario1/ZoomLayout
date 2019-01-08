@@ -26,7 +26,6 @@ allprojects {
 ext {
     // Updating? Update travis.yml.
     compileSdkVersion = 28
-    supportLibVersion = '1.0.0'
     minSdkVersion = 16
     targetSdkVersion = 28
 }
