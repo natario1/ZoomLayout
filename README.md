@@ -154,8 +154,10 @@ By default it is applied only once, and defines the starting viewport over our c
 |`centerCrop`|The content is scaled down or up so that its smaller side fits exactly inside the view bounds. The larger side will be cropped.|
 |`none`|No transformation is applied.|
 
-If, after applying the transformation (and any minZoom / maxZoom constraint), the content is partially
-cropped along some dimension, the engine will also apply a translation according to the given transformation gravity.
+The engine applies the given transformation, and any minZoom and maxZoom constraints.
+
+If, after this process, the content is bigger than the container, the engine will also apply a
+translation according to the given transformation gravity.
 
 |Transformation Gravity|Description|
 |----------------------|-----------|
@@ -164,16 +166,22 @@ cropped along some dimension, the engine will also apply a translation according
 |`left`|If the content is wider than the view, translate it so that we see the left part.|
 |`right`|If the content is wider than the view, translate it so that we see the right part.|
 
-You can always trigger a new transformation to be applied by using the `setContentSize` or `setContainerSize` APIs.
+If, after this process, the content is smaller than the container, note that the current
+[Smaller Policy](#smaller-policy) applies.
+
+Note: you can always trigger a new transformation to be applied by using the `setContentSize` or `setContainerSize` APIs.
 
 #### Smaller policy
 
-You can also control how the content will be positioned when it is smaller than the container size through the `setSmallerPolicy(int)` method or by using the `smallerPolicy` attribute on the `ZoomLayout`.  By default, content will be centered when it is smaller than it's container.
+You can control how the content will be positioned when it is smaller than the container through 
+the `setSmallerPolicy(int)` method or by using the `smallerPolicy` XML attribute of `ZoomLayout` and `ZoomImageView`.
+By default, content is always centered when it is smaller than its container.
 
 |Policy|Description|
 |------|-----------|
 |`center`|The content will be centered within the container.|
-|`from_transformation`|The content will respect the gravity parameter of the transformation as set using the above methods.|
+|`fromTransformation`|The content will respect the gravity parameter of the transformation (which defaults to `Gravity.CENTER` as well).|
+|`none`|The content is free to be moved around inside the container bounds.|
 
 #### Zoom Types
 

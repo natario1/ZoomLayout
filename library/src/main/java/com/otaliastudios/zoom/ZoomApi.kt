@@ -124,7 +124,7 @@ interface ZoomApi {
      * Defines the available smaller policies
      */
     @Retention(AnnotationRetention.SOURCE)
-    @IntDef(SMALLER_POLICY_CENTER, SMALLER_POLICY_FROM_TRANSFORMATION)
+    @IntDef(SMALLER_POLICY_CENTER, SMALLER_POLICY_FROM_TRANSFORMATION, SMALLER_POLICY_NONE)
     annotation class SmallerPolicy
 
     /**
@@ -355,14 +355,22 @@ interface ZoomApi {
 
         /**
          * Constant for [ZoomApi.setSmallerPolicy].
-         * Content will be centered when it is smaller than it's container
+         * When smaller than its container, the content will be centered.
          */
         const val SMALLER_POLICY_CENTER = 0
 
         /**
          * Constant for [ZoomApi.setSmallerPolicy].
-         * Content will respect the transformationGravity when it is smaller than it's container
+         * When smaller than its container, the content will be bound to the container
+         * according to the transformation gravity.
          */
         const val SMALLER_POLICY_FROM_TRANSFORMATION = 1
+
+        /**
+         * Constant for [ZoomApi.setSmallerPolicy].
+         * When smaller than its container, the content is free to be moved around.
+         * It will just stay inside the container bounds.
+         */
+        const val SMALLER_POLICY_NONE = 2
     }
 }

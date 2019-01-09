@@ -36,7 +36,8 @@
         </attr>
         <attr name="smallerPolicy" format="enum">
             <enum name="center" value="0"/>
-            <enum name="from_transformation" value="1"/>
+            <enum name="fromTransformation" value="1"/>
+            <enum name="none" value="2"/>
         </attr>
         <attr name="animationDuration" format="integer" />
     </declare-styleable>
