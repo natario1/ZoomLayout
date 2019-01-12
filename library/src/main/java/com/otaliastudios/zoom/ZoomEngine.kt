@@ -625,9 +625,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * Computes the starting pan coordinates, given the current content dimensions and container
      * dimensions. We will start from [0, 0], unless content is bigger than the container, in which
      * case the transformation gravity should apply.
-     *
-     * Note: after this is computed and applied, the pan correction will take care of respecting the
-     * SmallerPolicy if needed.
      */
     @ScaledPan
     private fun computeBasePan(): FloatArray {
