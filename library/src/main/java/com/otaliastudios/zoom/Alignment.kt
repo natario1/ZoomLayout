@@ -2,24 +2,23 @@ package com.otaliastudios.zoom
 
 object Alignment {
 
-    // A shift of 4 means each axis can have 16 values.
-    internal const val SHIFT = 4
-    internal const val MASK = 0xF0 // 11110000
+    // Will use one hexadecimal value for each axis, so 16 possible values.
+    internal const val MASK = 0xF0     // 1111 0000
 
     // A special value meaning that the flag for some axis was not set.
     internal const val NO_VALUE = 0x0
 
     // Vertical
-    const val TOP = 0x1             // 0000 0001
-    const val BOTTOM = 0x2          // 0000 0010
-    const val CENTER_VERTICAL = 0x3 // 0000 0011
-    const val NONE_VERTICAL = 0x4   // 0000 0100
+    const val TOP = 0x01               // 0000 0001
+    const val BOTTOM = 0x02            // 0000 0010
+    const val CENTER_VERTICAL = 0x03   // 0000 0011
+    const val NONE_VERTICAL = 0x04     // 0000 0100
 
     // Horizontal
-    const val LEFT = 0x1 shl SHIFT              // 0001 0000
-    const val RIGHT = 0x2 shl SHIFT             // 0010 0000
-    const val CENTER_HORIZONTAL = 0x3 shl SHIFT // 0011 0000
-    const val NONE_HORIZONTAL = 0x4 shl SHIFT   // 0100 0000
+    const val LEFT = 0x10              // 0001 0000
+    const val RIGHT = 0x20             // 0010 0000
+    const val CENTER_HORIZONTAL = 0x30 // 0011 0000
+    const val NONE_HORIZONTAL = 0x40   // 0100 0000
 
     // TODO support START and END
 

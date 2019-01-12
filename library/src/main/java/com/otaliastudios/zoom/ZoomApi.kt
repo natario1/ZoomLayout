@@ -121,11 +121,23 @@ interface ZoomApi {
     annotation class Transformation
 
     /**
-     * Defines the available smaller policies
+     * Defines the available alignments
      */
     @Retention(AnnotationRetention.SOURCE)
-    @IntDef(SMALLER_POLICY_CENTER, SMALLER_POLICY_FROM_TRANSFORMATION, SMALLER_POLICY_NONE)
-    annotation class SmallerPolicy
+    @IntDef(
+        com.otaliastudios.zoom.Alignment.BOTTOM,
+        com.otaliastudios.zoom.Alignment.CENTER_VERTICAL,
+        com.otaliastudios.zoom.Alignment.NONE_VERTICAL,
+        com.otaliastudios.zoom.Alignment.TOP,
+        com.otaliastudios.zoom.Alignment.LEFT,
+        com.otaliastudios.zoom.Alignment.CENTER_HORIZONTAL,
+        com.otaliastudios.zoom.Alignment.NONE_HORIZONTAL,
+        com.otaliastudios.zoom.Alignment.RIGHT,
+        com.otaliastudios.zoom.Alignment.CENTER,
+        com.otaliastudios.zoom.Alignment.NONE,
+        flag = true
+    )
+    annotation class Alignment
 
     /**
      * Controls whether the content should be over-scrollable horizontally.
@@ -210,13 +222,16 @@ interface ZoomApi {
     fun setTransformation(@Transformation transformation: Int, gravity: Int)
 
     /**
-     * Sets the policy to use when content is smaller than the container.
-     * Defaults to [SMALLER_POLICY_CENTER]
-     * which means that the content will be centered.
+     * Sets the content alignment. Can be any of the constants defined in [com.otaliastudios.zoom.Alignment].
+     * The content will be aligned and forced to the specified side of the container.
+     * Defaults to [com.otaliastudios.zoom.Alignment.CENTER].
      *
-     * @param policy the policy
+     * Of course, this is disabled when the content is larger than the container,
+     * because a forced alignment would mean making part of the content unreachable.
+     *
+     * @param alignment the new alignment
      */
-    fun setSmallerPolicy(@SmallerPolicy policy: Int)
+    fun setAlignment(@Alignment alignment: Int)
 
     /**
      * A low level API that can animate both zoom and pan at the same time.
@@ -371,26 +386,6 @@ interface ZoomApi {
         const val TRANSFORMATION_GRAVITY_AUTO = 0
 
         /**
-         * Constant for [ZoomApi.setSmallerPolicy].
-         * When smaller than its container, the content will be centered.
-         */
-        const val SMALLER_POLICY_CENTER = 0
-
-        /**
-         * Constant for [ZoomApi.setSmallerPolicy].
-         * When smaller than its container, the content will be bound to the container
-         * according to the transformation gravity.
-         */
-        const val SMALLER_POLICY_FROM_TRANSFORMATION = 1
-
-        /**
-         * Constant for [ZoomApi.setSmallerPolicy].
-         * When smaller than its container, the content is free to be moved around.
-         * It will just stay inside the container bounds.
-         */
-        const val SMALLER_POLICY_NONE = 2
-
-        /**
          * The default [setMinZoom] applied by the engine if none is specified.
          */
         const val MIN_ZOOM_DEFAULT = 0.8F
@@ -409,5 +404,10 @@ interface ZoomApi {
          * The default [setMaxZoom] type applied by the engine if none is specified.
          */
         const val MAX_ZOOM_DEFAULT_TYPE = TYPE_ZOOM
+
+        /**
+         * The default value for [setAlignment].
+         */
+        const val ALIGNMENT_DEFAULT = com.otaliastudios.zoom.Alignment.CENTER
     }
 }

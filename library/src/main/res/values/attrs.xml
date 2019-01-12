@@ -35,10 +35,17 @@
             <flag name="center_horizontal" value="0x01" />
             <flag name="center" value="0x11" />
         </attr>
-        <attr name="smallerPolicy" format="enum">
-            <enum name="center" value="0"/>
-            <enum name="fromTransformation" value="1"/>
-            <enum name="none" value="2"/>
+        <attr name="alignment">
+            <flag name="top" value="0x01" />
+            <flag name="bottom" value="0x02" />
+            <flag name="center_vertical" value="0x03" />
+            <flag name="none_vertical" value="0x04" />
+            <flag name="left" value="0x10" />
+            <flag name="right" value="0x20" />
+            <flag name="center_horizontal" value="0x30" />
+            <flag name="none_horizontal" value="0x40" />
+            <flag name="center" value="0x33" />
+            <flag name="none" value="0x44" />
         </attr>
         <attr name="animationDuration" format="integer" />
     </declare-styleable>
