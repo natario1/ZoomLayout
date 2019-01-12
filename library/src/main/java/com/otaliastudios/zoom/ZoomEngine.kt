@@ -72,7 +72,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private var mAllowFlingInOverscroll = false
     private var mTransformation = ZoomApi.TRANSFORMATION_CENTER_INSIDE
     private var mTransformationGravity = ZoomApi.TRANSFORMATION_GRAVITY_AUTO
-    private var mSmallerPolicy = ZoomApi.SMALLER_POLICY_CENTER
+    private var mAlignment = ZoomApi.ALIGNMENT_DEFAULT
 
     // Internal
     private val mListeners = mutableListOf<Listener>()
@@ -428,8 +428,18 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         mTransformationGravity = gravity
     }
 
-    override fun setSmallerPolicy(@SmallerPolicy policy: Int) {
-        mSmallerPolicy = policy
+    /**
+     * Sets the content alignment. Can be any of the constants defined in [Alignment].
+     * The content will be aligned and forced to the specified side of the container.
+     * Defaults to [Alignment.CENTER].
+     *
+     * Of course, this is disabled when the content is larger than the container,
+     * because a forced alignment would mean making part of the content unreachable.
+     *
+     * @param alignment the new alignment
+     */
+    override fun setAlignment(alignment: Int) {
+        mAlignment = alignment
     }
 
     //endregion
@@ -639,12 +649,26 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * which might also be [ZoomApi.TRANSFORMATION_GRAVITY_AUTO]. In this case we should
      * try to infer a [Gravity] from the alignment, then fallback to center.
      */
+    @SuppressLint("RtlHardcoded")
     private fun computeTransformationGravity(input: Int): Int {
         return if (input != ZoomApi.TRANSFORMATION_GRAVITY_AUTO) {
             input
         } else {
-            // TODO get from alignment if possible, then fallback to center.
-            input
+            val horizontalAlignment = Alignment.getHorizontal(mAlignment)
+            val verticalAlignment = Alignment.getVertical(mAlignment)
+            val horizontal = when (horizontalAlignment) {
+                Alignment.LEFT -> Gravity.LEFT
+                Alignment.RIGHT -> Gravity.RIGHT
+                Alignment.CENTER_HORIZONTAL, Alignment.NONE_HORIZONTAL -> Gravity.CENTER_HORIZONTAL
+                else -> Gravity.CENTER_HORIZONTAL
+            }
+            val vertical = when (verticalAlignment) {
+                Alignment.TOP -> Gravity.TOP
+                Alignment.BOTTOM -> Gravity.BOTTOM
+                Alignment.CENTER_VERTICAL, Alignment.NONE_VERTICAL -> Gravity.CENTER_VERTICAL
+                else -> Gravity.CENTER_VERTICAL
+            }
+            return horizontal or vertical
         }
     }
 
@@ -664,7 +688,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             Gravity.TOP, Gravity.LEFT -> 0F
             Gravity.BOTTOM, Gravity.RIGHT -> extraSpace
             Gravity.CENTER_VERTICAL, Gravity.CENTER_HORIZONTAL -> 0.5F * extraSpace
-            else -> 0F // Can't happen
+            else -> 0F // Includes Gravity.NO_GRAVITY and unsupported mixes like FILL
         }
     }
 
@@ -750,6 +774,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      *
      * @return the pan correction to be applied to get into a valid state (0 if valid already)
      */
+    @SuppressLint("RtlHardcoded")
     @ScaledPan
     private fun checkPanBounds(horizontal: Boolean, allowOverScroll: Boolean): Float {
         @ScaledPan val value = if (horizontal) scaledPanX else scaledPanY
@@ -757,31 +782,30 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         @ScaledPan val contentSize = if (horizontal) mContentScaledWidth else mContentScaledHeight
         val overScrollable = if (horizontal) mOverScrollHorizontal else mOverScrollVertical
         @ScaledPan val overScroll = (if (overScrollable && allowOverScroll) maxOverScroll else 0).toFloat()
+        val alignment = if (horizontal) Alignment.getHorizontal(mAlignment) else Alignment.getVertical(mAlignment)
 
         var min: Float
         var max: Float
         if (contentSize <= containerSize) {
-            // If content is smaller than container, act according to the smaller policy.
+            // If content is smaller than container, act according to the alignment.
             // Expect the output to be >= 0, we will show part of the container background.
             val extraSpace = containerSize - contentSize // > 0
-            when (mSmallerPolicy) {
-                ZoomApi.SMALLER_POLICY_FROM_TRANSFORMATION -> {
-                    // Apply the transformation gravity.
-                    val correction = applyGravity(mTransformation, extraSpace, horizontal)
-                    min = correction
-                    max = correction
-                }
-                ZoomApi.SMALLER_POLICY_CENTER  -> {
-                    // Stay centered. Need a positive translation, that shows some background.
-                    min = extraSpace / 2f
-                    max = extraSpace / 2f
-                }
-                ZoomApi.SMALLER_POLICY_NONE -> {
-                    // Everything is fine, just don't exit the container boundaries.
-                    min = 0f
-                    max = extraSpace
-                }
-                else -> throw IllegalStateException("Unsupported policy: $mSmallerPolicy")
+            val correction = when (alignment) {
+                Alignment.TOP -> applyGravity(Gravity.TOP, extraSpace, horizontal)
+                Alignment.BOTTOM -> applyGravity(Gravity.BOTTOM, extraSpace, horizontal)
+                Alignment.LEFT -> applyGravity(Gravity.LEFT, extraSpace, horizontal)
+                Alignment.RIGHT -> applyGravity(Gravity.RIGHT, extraSpace, horizontal)
+                Alignment.CENTER_VERTICAL -> applyGravity(Gravity.CENTER_VERTICAL, extraSpace, horizontal)
+                Alignment.CENTER_HORIZONTAL -> applyGravity(Gravity.CENTER_HORIZONTAL, extraSpace, horizontal)
+                else -> null
+            }
+            if (correction != null) {
+                min = correction
+                max = correction
+            } else {
+                // This is Alignment.NONE. Don't force a value, just stay in the container boundaries.
+                min = 0F
+                max = extraSpace
             }
         } else {
             // If contentSize is bigger, we just don't want to go outside.
