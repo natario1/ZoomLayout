@@ -623,8 +623,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
     /**
      * Computes the starting pan coordinates, given the current content dimensions and container
-     * dimensions. We will start from [0, 0], unless content is bigger than the container, in which
-     * case the transformation gravity should apply.
+     * dimensions. This means applying the transformation gravity.
      */
     @ScaledPan
     private fun computeBasePan(): FloatArray {
@@ -632,12 +631,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         val extraWidth = mContentScaledWidth - mContainerWidth
         val extraHeight = mContentScaledHeight - mContainerHeight
         val gravity = computeTransformationGravity(mTransformationGravity)
-        if (extraWidth > 0) { // Got to change sign to have a negative result.
-            result[0] = -applyGravity(gravity, extraWidth, true)
-        }
-        if (extraHeight > 0) {
-            result[1] = -applyGravity(gravity, extraHeight, false)
-        }
+        result[0] = -applyGravity(gravity, extraWidth, true)
+        result[1] = -applyGravity(gravity, extraHeight, false)
         return result
     }
 
