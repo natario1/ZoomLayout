@@ -114,7 +114,7 @@ interface ZoomApi {
     annotation class ZoomType
 
     /**
-     * Defines the available transvormation types
+     * Defines the available transformation types
      */
     @Retention(AnnotationRetention.SOURCE)
     @IntDef(TRANSFORMATION_CENTER_INSIDE, TRANSFORMATION_CENTER_CROP, TRANSFORMATION_NONE)
