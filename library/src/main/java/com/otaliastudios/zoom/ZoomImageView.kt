@@ -47,12 +47,12 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
         val zoomEnabled = a.getBoolean(R.styleable.ZoomEngine_zoomEnabled, true)
         val flingEnabled = a.getBoolean(R.styleable.ZoomEngine_flingEnabled, true)
         val allowFlingInOverscroll = a.getBoolean(R.styleable.ZoomEngine_allowFlingInOverscroll, true)
-        val minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, -1f)
-        val maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, -1f)
-        @ZoomType val minZoomMode = a.getInteger(R.styleable.ZoomEngine_minZoomType, ZoomApi.TYPE_ZOOM)
-        @ZoomType val maxZoomMode = a.getInteger(R.styleable.ZoomEngine_maxZoomType, ZoomApi.TYPE_ZOOM)
+        val minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, ZoomApi.MIN_ZOOM_DEFAULT)
+        val maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, ZoomApi.MAX_ZOOM_DEFAULT)
+        @ZoomType val minZoomMode = a.getInteger(R.styleable.ZoomEngine_minZoomType, ZoomApi.MIN_ZOOM_DEFAULT_TYPE)
+        @ZoomType val maxZoomMode = a.getInteger(R.styleable.ZoomEngine_maxZoomType, ZoomApi.MAX_ZOOM_DEFAULT_TYPE)
         val transformation = a.getInteger(R.styleable.ZoomEngine_transformation, ZoomApi.TRANSFORMATION_CENTER_INSIDE)
-        val transformationGravity = a.getInt(R.styleable.ZoomEngine_transformationGravity, Gravity.CENTER)
+        val transformationGravity = a.getInt(R.styleable.ZoomEngine_transformationGravity, ZoomApi.TRANSFORMATION_GRAVITY_AUTO)
         val smallerPolicy = a.getInt(R.styleable.ZoomEngine_smallerPolicy, ZoomApi.SMALLER_POLICY_CENTER)
         val animationDuration = a.getInt(R.styleable.ZoomEngine_animationDuration, ZoomEngine.DEFAULT_ANIMATION_DURATION.toInt()).toLong()
         a.recycle()
@@ -70,8 +70,8 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
         setFlingEnabled(flingEnabled)
         setAllowFlingInOverscroll(allowFlingInOverscroll)
         setAnimationDuration(animationDuration)
-        if (minZoom > -1) setMinZoom(minZoom, minZoomMode)
-        if (maxZoom > -1) setMaxZoom(maxZoom, maxZoomMode)
+        setMinZoom(minZoom, minZoomMode)
+        setMaxZoom(maxZoom, maxZoomMode)
 
         imageMatrix = mMatrix
         scaleType = ImageView.ScaleType.MATRIX

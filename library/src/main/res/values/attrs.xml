@@ -26,6 +26,7 @@
             <enum name="none" value="2" />
         </attr>
         <attr name="transformationGravity">
+            <flag name="auto" value="0" />
             <flag name="top" value="0x30" />
             <flag name="bottom" value="0x50" />
             <flag name="left" value="0x03" />

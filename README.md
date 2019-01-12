@@ -40,7 +40,9 @@ A container for view hierarchies that can be panned or zoomed.
 <com.otaliastudios.zoom.ZoomLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:scrollbars="vertical|horizontal"                               
+    android:scrollbars="vertical|horizontal"   
+    app:transformation="centerInside"                                
+    app:transformationGravity="auto"
     app:overScrollHorizontal="true"
     app:overScrollVertical="true"
     app:overPinchable="true"
@@ -89,7 +91,9 @@ An `ImageView` implementation to control pan and zoom over its Drawable or Bitma
 <com.otaliastudios.zoom.ZoomImageView
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:scrollbars="vertical|horizontal"                                                                 
+    android:scrollbars="vertical|horizontal"  
+    app:transformation="centerInside"    
+    app:transformationGravity="auto"                                                                                                                          
     app:overScrollHorizontal="true"
     app:overScrollVertical="true"
     app:overPinchable="true"

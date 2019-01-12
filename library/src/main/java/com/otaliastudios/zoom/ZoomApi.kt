@@ -191,6 +191,16 @@ interface ZoomApi {
 
     /**
      * Sets the base transformation to be applied to the content.
+     * See [setTransformation].
+     *
+     * @param transformation the transformation type
+     */
+    fun setTransformation(@Transformation transformation: Int) {
+        setTransformation(transformation, TRANSFORMATION_GRAVITY_AUTO)
+    }
+
+    /**
+     * Sets the base transformation to be applied to the content.
      * Defaults to [TRANSFORMATION_CENTER_INSIDE] with [android.view.Gravity.CENTER],
      * which means that the content will be zoomed so that it fits completely inside the container.
      *
@@ -354,6 +364,13 @@ interface ZoomApi {
         const val TRANSFORMATION_NONE = 2
 
         /**
+         * Constant for [ZoomApi.setTransformation] gravity.
+         * This currently means that the gravity will be inferred from the alignment or
+         * fallback to a reasonable default.
+         */
+        const val TRANSFORMATION_GRAVITY_AUTO = 0
+
+        /**
          * Constant for [ZoomApi.setSmallerPolicy].
          * When smaller than its container, the content will be centered.
          */
@@ -372,5 +389,25 @@ interface ZoomApi {
          * It will just stay inside the container bounds.
          */
         const val SMALLER_POLICY_NONE = 2
+
+        /**
+         * The default [setMinZoom] applied by the engine if none is specified.
+         */
+        const val MIN_ZOOM_DEFAULT = 0.8F
+
+        /**
+         * The default [setMinZoom] type applied by the engine if none is specified.
+         */
+        const val MIN_ZOOM_DEFAULT_TYPE = TYPE_ZOOM
+
+        /**
+         * The default [setMaxZoom] applied by the engine if none is specified.
+         */
+        const val MAX_ZOOM_DEFAULT = 2.5F
+
+        /**
+         * The default [setMaxZoom] type applied by the engine if none is specified.
+         */
+        const val MAX_ZOOM_DEFAULT_TYPE = TYPE_ZOOM
     }
 }

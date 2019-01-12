@@ -58,10 +58,10 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     }
 
     // Options
-    private var mMinZoom = 0.8f
-    private var mMinZoomMode = ZoomApi.TYPE_ZOOM
-    private var mMaxZoom = 2.5f
-    private var mMaxZoomMode = ZoomApi.TYPE_ZOOM
+    private var mMinZoom = ZoomApi.MIN_ZOOM_DEFAULT
+    private var mMinZoomMode = ZoomApi.MIN_ZOOM_DEFAULT_TYPE
+    private var mMaxZoom = ZoomApi.MAX_ZOOM_DEFAULT
+    private var mMaxZoomMode = ZoomApi.MAX_ZOOM_DEFAULT_TYPE
     private var mOverScrollHorizontal = true
     private var mOverScrollVertical = true
     private var mHorizontalPanEnabled = true
@@ -71,7 +71,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private var mFlingEnabled = true
     private var mAllowFlingInOverscroll = false
     private var mTransformation = ZoomApi.TRANSFORMATION_CENTER_INSIDE
-    private var mTransformationGravity = Gravity.CENTER
+    private var mTransformationGravity = ZoomApi.TRANSFORMATION_GRAVITY_AUTO
     private var mSmallerPolicy = ZoomApi.SMALLER_POLICY_CENTER
 
     // Internal
@@ -624,13 +624,23 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         val result = floatArrayOf(0f, 0f)
         val extraWidth = mContentScaledWidth - mContainerWidth
         val extraHeight = mContentScaledHeight - mContainerHeight
+        val gravity = computeTransformationGravity(mTransformationGravity)
         if (extraWidth > 0) { // Got to change sign to have a negative result.
-            result[0] = -applyGravity(mTransformationGravity, extraWidth, true)
+            result[0] = -applyGravity(gravity, extraWidth, true)
         }
         if (extraHeight > 0) {
-            result[1] = -applyGravity(mTransformationGravity, extraHeight, false)
+            result[1] = -applyGravity(gravity, extraHeight, false)
         }
         return result
+    }
+
+    private fun computeTransformationGravity(input: Int): Int {
+        return if (input != ZoomApi.TRANSFORMATION_GRAVITY_AUTO) {
+            input
+        } else {
+            // TODO get from alignment if possible, then fallback to center.
+            input
+        }
     }
 
     /**
