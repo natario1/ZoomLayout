@@ -795,7 +795,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 min = correction
                 max = correction
             } else {
-                // This is Alignment.NONE. Don't force a value, just stay in the container boundaries.
+                // This is Alignment.NONE or NO_VALUE. Don't force a value, just stay in the container boundaries.
                 min = 0F
                 max = extraSpace
             }
@@ -1533,32 +1533,38 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     // while max values are related to top-left.
     private fun computeScrollerValues(horizontal: Boolean, output: ScrollerValues) {
         @ScaledPan val currentPan = (if (horizontal) scaledPanX else scaledPanY).toInt()
-        val viewDim = (if (horizontal) mContainerWidth else mContainerHeight).toInt()
+        val containerDim = (if (horizontal) mContainerWidth else mContainerHeight).toInt()
         @ScaledPan val contentDim = (if (horizontal) mContentScaledWidth else mContentScaledHeight).toInt()
         val fix = checkPanBounds(horizontal, false).toInt()
-        if (viewDim >= contentDim) {
-            // Content is smaller, we are showing some boundary.
-            // We can't move in any direction (but we can overScroll).
-            output.minValue = currentPan + fix
-            output.startValue = currentPan
-            output.maxValue = currentPan + fix
-        } else {
-            // Content is bigger, we can move.
-            // in this case minPan + viewDim = contentDim
-            output.minValue = -(contentDim - viewDim)
-            output.startValue = currentPan
+        val alignment = if (horizontal) Alignment.getHorizontal(mAlignment) else Alignment.getVertical(mAlignment)
+        if (contentDim > containerDim) {
+            // Content is bigger. We can move between 0 and extraSpace, but since our pans
+            // are negative, we must invert the sign.
+            val extraSpace = contentDim - containerDim
+            output.minValue = -extraSpace
             output.maxValue = 0
+        } else if (alignment == Alignment.NO_VALUE
+                || alignment == Alignment.NONE_VERTICAL
+                || alignment == Alignment.NONE_HORIZONTAL) {
+            // Content is free to be moved, although smaller than the container. We can move
+            // between 0 and extraSpace (and when content is smaller, pan is positive).
+            val extraSpace = containerDim - contentDim
+            output.minValue = 0
+            output.maxValue = extraSpace
+        } else {
+            // Content can't move in this dimensions. Go back to the correct value.
+            val finalValue = currentPan + fix
+            output.minValue = finalValue
+            output.maxValue = finalValue
         }
+        output.startValue = currentPan
         output.isInOverScroll = fix != 0
     }
 
     private class ScrollerValues {
-        @ScaledPan
-        internal var minValue: Int = 0
-        @ScaledPan
-        internal var startValue: Int = 0
-        @ScaledPan
-        internal var maxValue: Int = 0
+        @ScaledPan internal var minValue: Int = 0
+        @ScaledPan internal var startValue: Int = 0
+        @ScaledPan internal var maxValue: Int = 0
         internal var isInOverScroll: Boolean = false
     }
 
