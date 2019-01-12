@@ -77,13 +77,13 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     // Internal
     private val mListeners = mutableListOf<Listener>()
     private var mMatrix = Matrix()
-    private var mBaseZoom = 0F // mZoom * mBaseZoom matches the matrix scale.
+    private var mTransformationZoom = 0F // mZoom * mTransformationZoom matches the matrix scale.
     @State private var mState = NONE
     private lateinit var mContainer: View
     private var mContainerWidth = 0F
     private var mContainerHeight = 0F
     private var mInitialized = false
-    private var mTransformedRect = RectF()
+    private var mContentScaledRect = RectF()
     private var mContentRect = RectF()
     private var mClearAnimation = false
     private var mAnimationDuration = DEFAULT_ANIMATION_DURATION
@@ -97,11 +97,11 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
     @ScaledPan
     private val mContentScaledWidth: Float
-        get() = mTransformedRect.width()
+        get() = mContentScaledRect.width()
 
     @ScaledPan
     private val mContentScaledHeight: Float
-        get() = mTransformedRect.height()
+        get() = mContentScaledRect.height()
 
     @AbsolutePan
     private val mContentWidth: Float
@@ -170,7 +170,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      */
     @RealZoom
     override val realZoom: Float
-        get() = zoom * mBaseZoom
+        get() = zoom * mTransformationZoom
 
     /**
      * The current pan as an [AbsolutePoint].
@@ -224,7 +224,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      */
     @ScaledPan
     private val scaledPanX: Float
-        get() = mTransformedRect.left
+        get() = mContentScaledRect.left
 
     /**
      * The current vertical scaled pan, which is the pan position of the content
@@ -232,7 +232,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      */
     @ScaledPan
     private val scaledPanY: Float
-        get() = mTransformedRect.top
+        get() = mContentScaledRect.top
 
     @Retention(AnnotationRetention.SOURCE)
     @IntDef(NONE, SCROLLING, PINCHING, ANIMATING, FLINGING)
@@ -513,7 +513,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
     private fun onSizeChanged(applyTransformation: Boolean) {
         // We will sync them later using matrix.mapRect.
-        mTransformedRect.set(mContentRect)
+        mContentScaledRect.set(mContentRect)
 
         if (mContentWidth <= 0
                 || mContentHeight <= 0
@@ -533,17 +533,17 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         LOG.w("onSizeChanged: will apply?", apply, "transformation?", mTransformation)
         if (apply) {
             // First time. Apply base zoom, dispatch first event and return.
-            mBaseZoom = computeBaseZoom()
-            mMatrix.setScale(mBaseZoom, mBaseZoom)
-            mMatrix.mapRect(mTransformedRect, mContentRect)
+            mTransformationZoom = computeTransformationZoom()
+            mMatrix.setScale(mTransformationZoom, mTransformationZoom)
+            mMatrix.mapRect(mContentScaledRect, mContentRect)
             zoom = 1f
-            LOG.i("onSizeChanged: newBaseZoom:", mBaseZoom, "newZoom:", zoom)
+            LOG.i("onSizeChanged: newTransformationZoom:", mTransformationZoom, "newZoom:", zoom)
             @Zoom val newZoom = checkZoomBounds(zoom, false)
             LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", newZoom - zoom)
             if (newZoom != zoom) applyZoom(newZoom, allowOverPinch = false)
 
             // pan based on transformation gravity.
-            @ScaledPan val newPan = computeBasePan()
+            @ScaledPan val newPan = computeTransformationPan()
             @ScaledPan val deltaX = newPan[0] - scaledPanX
             @ScaledPan val deltaY = newPan[1] - scaledPanY
             if (deltaX != 0f || deltaY != 0f) applyScaledPan(deltaX, deltaY, false)
@@ -555,19 +555,19 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             }
         } else {
             // We were initialized, but some size changed. Since applyTransformation is false,
-            // we must do extra work: recompute the baseZoom (since size changed, it makes no sense)
+            // we must do extra work: recompute the transformationZoom (since size changed, it makes no sense)
             // but also compute a new zoom such that the real zoom is kept unchanged.
             // So, this method triggers no Matrix updates.
             LOG.i("onSizeChanged: Trying to keep real zoom to", realZoom)
-            LOG.i("onSizeChanged: oldBaseZoom:", mBaseZoom, "oldZoom:$zoom")
+            LOG.i("onSizeChanged: oldTransformationZoom:", mTransformationZoom, "oldZoom:$zoom")
             @RealZoom val realZoom = realZoom
-            mBaseZoom = computeBaseZoom()
-            zoom = realZoom / mBaseZoom
-            LOG.i("onSizeChanged: newBaseZoom:", mBaseZoom, "newZoom:", zoom)
+            mTransformationZoom = computeTransformationZoom()
+            zoom = realZoom / mTransformationZoom
+            LOG.i("onSizeChanged: newTransformationZoom:", mTransformationZoom, "newZoom:", zoom)
 
             // Now sync the content rect with the current matrix since we are trying to keep it.
             // This is to have consistent values for other calls here.
-            mMatrix.mapRect(mTransformedRect, mContentRect)
+            mMatrix.mapRect(mContentScaledRect, mContentRect)
 
             // If the new zoom value is invalid, though, we must bring it to the valid place.
             // This is a possible matrix update.
@@ -592,8 +592,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         mContainerHeight = 0f
         mContainerWidth = 0f
         zoom = 1f
-        mBaseZoom = 0f
-        mTransformedRect = RectF()
+        mTransformationZoom = 0f
+        mContentScaledRect = RectF()
         mContentRect = RectF()
         mMatrix = Matrix()
         mInitialized = false
@@ -602,18 +602,18 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     /**
      * Computes the starting zoom, which means applying the transformation.
      */
-    private fun computeBaseZoom(): Float {
+    private fun computeTransformationZoom(): Float {
         when (mTransformation) {
             ZoomApi.TRANSFORMATION_CENTER_INSIDE -> {
                 val scaleX = mContainerWidth / mContentScaledWidth
                 val scaleY = mContainerHeight / mContentScaledHeight
-                LOG.v("computeBaseZoom", "centerInside", "scaleX:", scaleX, "scaleY:", scaleY)
+                LOG.v("computeTransformationZoom", "centerInside", "scaleX:", scaleX, "scaleY:", scaleY)
                 return Math.min(scaleX, scaleY)
             }
             ZoomApi.TRANSFORMATION_CENTER_CROP -> {
                 val scaleX = mContainerWidth / mContentScaledWidth
                 val scaleY = mContainerHeight / mContentScaledHeight
-                LOG.v("computeBaseZoom", "centerCrop", "scaleX:", scaleX, "scaleY:", scaleY)
+                LOG.v("computeTransformationZoom", "centerCrop", "scaleX:", scaleX, "scaleY:", scaleY)
                 return Math.max(scaleX, scaleY)
             }
             ZoomApi.TRANSFORMATION_NONE -> return 1f
@@ -626,7 +626,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * dimensions. This means applying the transformation gravity.
      */
     @ScaledPan
-    private fun computeBasePan(): FloatArray {
+    private fun computeTransformationPan(): FloatArray {
         val result = floatArrayOf(0f, 0f)
         val extraWidth = mContentScaledWidth - mContainerWidth
         val extraHeight = mContentScaledHeight - mContainerHeight
@@ -740,7 +740,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         @ScaledPan val fixY = checkPanBounds(false, allowOverScroll)
         if (fixX != 0f || fixY != 0f) {
             mMatrix.postTranslate(fixX, fixY)
-            mMatrix.mapRect(mTransformedRect, mContentRect)
+            mMatrix.mapRect(mContentScaledRect, mContentRect)
         }
     }
 
@@ -1449,7 +1449,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
         mMatrix.postScale(scaleFactor, scaleFactor,
                 zoomTargetX ?: mContainerWidth / 2f, zoomTargetY ?: mContainerHeight / 2f)
-        mMatrix.mapRect(mTransformedRect, mContentRect)
+        mMatrix.mapRect(mContentScaledRect, mContentRect)
         this.zoom = newZoom
         ensurePanBounds(allowOverScroll)
         if (notifyListeners) {
@@ -1484,7 +1484,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         // Translation
         val delta = AbsolutePoint(x, y) - pan
         mMatrix.preTranslate(delta.x, delta.y)
-        mMatrix.mapRect(mTransformedRect, mContentRect)
+        mMatrix.mapRect(mContentScaledRect, mContentRect)
 
         // Scale
         val newZoom = checkZoomBounds(zoom, allowOverPinch)
@@ -1498,7 +1498,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         val pivotY = zoomTargetY ?: 0F
 
         mMatrix.postScale(scaleFactor, scaleFactor, pivotX, pivotY)
-        mMatrix.mapRect(mTransformedRect, mContentRect)
+        mMatrix.mapRect(mContentScaledRect, mContentRect)
         this.zoom = newZoom
 
         ensurePanBounds(allowOverScroll)
@@ -1519,7 +1519,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      */
     private fun applyScaledPan(@ScaledPan deltaX: Float, @ScaledPan deltaY: Float, allowOverScroll: Boolean) {
         mMatrix.postTranslate(deltaX, deltaY)
-        mMatrix.mapRect(mTransformedRect, mContentRect)
+        mMatrix.mapRect(mContentScaledRect, mContentRect)
         ensurePanBounds(allowOverScroll)
         dispatchOnMatrix()
     }
@@ -1675,7 +1675,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private fun Float.toZoom(@ZoomType inputZoomType: Int): Float {
         when (inputZoomType) {
             ZoomApi.TYPE_ZOOM -> return this
-            ZoomApi.TYPE_REAL_ZOOM -> return this / mBaseZoom
+            ZoomApi.TYPE_REAL_ZOOM -> return this / mTransformationZoom
         }
         throw IllegalArgumentException("Unknown ZoomType $inputZoomType")
     }
@@ -1686,7 +1686,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     @RealZoom
     private fun Float.toRealZoom(@ZoomType inputZoomType: Int): Float {
         when (inputZoomType) {
-            ZoomApi.TYPE_ZOOM -> return this * mBaseZoom
+            ZoomApi.TYPE_ZOOM -> return this * mTransformationZoom
             ZoomApi.TYPE_REAL_ZOOM -> return this
         }
         throw IllegalArgumentException("Unknown ZoomType $inputZoomType")
