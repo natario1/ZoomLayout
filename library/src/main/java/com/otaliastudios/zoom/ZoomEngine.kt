@@ -634,6 +634,11 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         return result
     }
 
+    /**
+     * Computes an actual [Gravity] value from the input gravity,
+     * which might also be [ZoomApi.TRANSFORMATION_GRAVITY_AUTO]. In this case we should
+     * try to infer a [Gravity] from the alignment, then fallback to center.
+     */
     private fun computeTransformationGravity(input: Int): Int {
         return if (input != ZoomApi.TRANSFORMATION_GRAVITY_AUTO) {
             input
