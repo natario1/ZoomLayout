@@ -431,14 +431,14 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     /**
      * Sets the content alignment. Can be any of the constants defined in [Alignment].
      * The content will be aligned and forced to the specified side of the container.
-     * Defaults to [Alignment.CENTER].
+     * Defaults to [ZoomApi.ALIGNMENT_DEFAULT].
      *
-     * Of course, this is disabled when the content is larger than the container,
-     * because a forced alignment would mean making part of the content unreachable.
+     * Keep in mind that this is disabled when the content is larger than the container,
+     * because a forced alignment in this case would result in part of the content being unreachable.
      *
      * @param alignment the new alignment
      */
-    override fun setAlignment(alignment: Int) {
+    override fun setAlignment(@ZoomApi.Alignment alignment: Int) {
         mAlignment = alignment
     }
 
@@ -643,24 +643,13 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      */
     @SuppressLint("RtlHardcoded")
     private fun computeTransformationGravity(input: Int): Int {
-        return if (input != ZoomApi.TRANSFORMATION_GRAVITY_AUTO) {
-            input
-        } else {
-            val horizontalAlignment = Alignment.getHorizontal(mAlignment)
-            val verticalAlignment = Alignment.getVertical(mAlignment)
-            val horizontal = when (horizontalAlignment) {
-                Alignment.LEFT -> Gravity.LEFT
-                Alignment.RIGHT -> Gravity.RIGHT
-                Alignment.CENTER_HORIZONTAL, Alignment.NONE_HORIZONTAL -> Gravity.CENTER_HORIZONTAL
-                else -> Gravity.CENTER_HORIZONTAL
+        return when (input) {
+            ZoomApi.TRANSFORMATION_GRAVITY_AUTO -> {
+                val horizontal = Alignment.toHorizontalGravity(mAlignment, Gravity.CENTER_HORIZONTAL)
+                val vertical = Alignment.toVerticalGravity(mAlignment, Gravity.CENTER_VERTICAL)
+                return horizontal or vertical
             }
-            val vertical = when (verticalAlignment) {
-                Alignment.TOP -> Gravity.TOP
-                Alignment.BOTTOM -> Gravity.BOTTOM
-                Alignment.CENTER_VERTICAL, Alignment.NONE_VERTICAL -> Gravity.CENTER_VERTICAL
-                else -> Gravity.CENTER_VERTICAL
-            }
-            return horizontal or vertical
+            else -> input
         }
     }
 
@@ -774,7 +763,11 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         @ScaledPan val contentSize = if (horizontal) mContentScaledWidth else mContentScaledHeight
         val overScrollable = if (horizontal) mOverScrollHorizontal else mOverScrollVertical
         @ScaledPan val overScroll = (if (overScrollable && allowOverScroll) maxOverScroll else 0).toFloat()
-        val alignment = if (horizontal) Alignment.getHorizontal(mAlignment) else Alignment.getVertical(mAlignment)
+        val alignmentGravity = if (horizontal) {
+            Alignment.toHorizontalGravity(mAlignment, Gravity.NO_GRAVITY)
+        } else {
+            Alignment.toVerticalGravity(mAlignment, Gravity.NO_GRAVITY)
+        }
 
         var min: Float
         var max: Float
@@ -782,16 +775,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             // If content is smaller than container, act according to the alignment.
             // Expect the output to be >= 0, we will show part of the container background.
             val extraSpace = containerSize - contentSize // > 0
-            val correction = when (alignment) {
-                Alignment.TOP -> applyGravity(Gravity.TOP, extraSpace, horizontal)
-                Alignment.BOTTOM -> applyGravity(Gravity.BOTTOM, extraSpace, horizontal)
-                Alignment.LEFT -> applyGravity(Gravity.LEFT, extraSpace, horizontal)
-                Alignment.RIGHT -> applyGravity(Gravity.RIGHT, extraSpace, horizontal)
-                Alignment.CENTER_VERTICAL -> applyGravity(Gravity.CENTER_VERTICAL, extraSpace, horizontal)
-                Alignment.CENTER_HORIZONTAL -> applyGravity(Gravity.CENTER_HORIZONTAL, extraSpace, horizontal)
-                else -> null
-            }
-            if (correction != null) {
+            if (alignmentGravity != Gravity.NO_GRAVITY) {
+                val correction = applyGravity(alignmentGravity, extraSpace, horizontal)
                 min = correction
                 max = correction
             } else {
@@ -1543,9 +1528,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             val extraSpace = contentDim - containerDim
             output.minValue = -extraSpace
             output.maxValue = 0
-        } else if (alignment == Alignment.NO_VALUE
-                || alignment == Alignment.NONE_VERTICAL
-                || alignment == Alignment.NONE_HORIZONTAL) {
+        } else if (Alignment.isNone(alignment)) {
             // Content is free to be moved, although smaller than the container. We can move
             // between 0 and extraSpace (and when content is smaller, pan is positive).
             val extraSpace = containerDim - contentDim

@@ -171,7 +171,7 @@ which can be controlled through `setTransformation(int, int)` or `app:transforma
 |`none`|No transformation is applied.|
 
 After transformation is applied, the transformation gravity will reposition the content with
-the specified value. Supported values are most of the Android `Gravity` flags, plus `TRANSFORMATION_GRAVITY_AUTO`.
+the specified value. Supported values are most of the `android.view.Gravity` flags like `Gravity.TOP`, plus `TRANSFORMATION_GRAVITY_AUTO`.
 
 |Transformation Gravity|Description|
 |----------------------|-----------|
@@ -181,8 +181,8 @@ the specified value. Supported values are most of the Android `Gravity` flags, p
 **Note: after transformation and gravity are applied, the engine will apply - as always - all the active constraints,
 including minZoom, maxZoom, alignment. This means that the final position might be slightly (or completely) different.**
 
-For example, when `maxZoom == 1`, is forced to not be any larger than the container. This means that
-a `centerCrop` transformation will not work (will act just like a `centerInside`).
+For example, when `maxZoom == 1`, the content is forced to not be any larger than the container. This means that
+a `centerCrop` transformation will not have the desired effect: it will act just like a `centerInside`.
 
 #### Alignment
 
@@ -199,7 +199,7 @@ alignment (e.g. left) would mean making part of the content unreachable (e.g. th
 |`center_horizontal`, `center_vertical`|Force the content to be centered inside the container on that axis.|
 |`none_horizontal`, `none_vertical`|No alignment set: content is free to be moved on that axis.|
 
-You can use the or operation to mix the vertical and horizontal flags.
+You can use the `or` operation to mix the vertical and horizontal flags:
 
 ```kotlin
 engine.setAlignment(Alignment.TOP or Alignment.LEFT)

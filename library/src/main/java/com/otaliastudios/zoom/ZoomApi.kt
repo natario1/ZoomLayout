@@ -224,10 +224,10 @@ interface ZoomApi {
     /**
      * Sets the content alignment. Can be any of the constants defined in [com.otaliastudios.zoom.Alignment].
      * The content will be aligned and forced to the specified side of the container.
-     * Defaults to [com.otaliastudios.zoom.Alignment.CENTER].
+     * Defaults to [ALIGNMENT_DEFAULT].
      *
-     * Of course, this is disabled when the content is larger than the container,
-     * because a forced alignment would mean making part of the content unreachable.
+     * Keep in mind that this is disabled when the content is larger than the container,
+     * because a forced alignment in this case would result in part of the content being unreachable.
      *
      * @param alignment the new alignment
      */
@@ -380,7 +380,7 @@ interface ZoomApi {
 
         /**
          * Constant for [ZoomApi.setTransformation] gravity.
-         * This currently means that the gravity will be inferred from the alignment or
+         * This means that the gravity will be inferred from the alignment or
          * fallback to a reasonable default.
          */
         const val TRANSFORMATION_GRAVITY_AUTO = 0
