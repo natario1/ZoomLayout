@@ -1048,6 +1048,11 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
          */
         override fun onScroll(e1: MotionEvent, e2: MotionEvent,
                               @AbsolutePan distanceX: Float, @AbsolutePan distanceY: Float): Boolean {
+
+            if (!mHorizontalPanEnabled && !mVerticalPanEnabled) {
+                return false
+            }
+
             var delta = AbsolutePoint(distanceX, distanceY)
             if (setState(SCROLLING)) {
                 // Change sign, since we work with opposite values.
