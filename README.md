@@ -40,17 +40,22 @@ A container for view hierarchies that can be panned or zoomed.
 <com.otaliastudios.zoom.ZoomLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:scrollbars="vertical|horizontal"                               
+    android:scrollbars="vertical|horizontal"   
+    app:transformation="centerInside"                                
+    app:transformationGravity="auto"
+    app:alignment="center"
     app:overScrollHorizontal="true"
     app:overScrollVertical="true"
     app:overPinchable="true"
     app:horizontalPanEnabled="true"
     app:verticalPanEnabled="true"
     app:zoomEnabled="true"
+    app:flingEnabled="true"
     app:minZoom="0.7"
     app:minZoomType="zoom"
-    app:maxZoom="3.0"
+    app:maxZoom="2.5"
     app:maxZoomType="zoom"
+    app:animationDuration="280"
     app:hasClickableChildren="false">
 
     <!-- Content here. -->
@@ -89,24 +94,29 @@ An `ImageView` implementation to control pan and zoom over its Drawable or Bitma
 <com.otaliastudios.zoom.ZoomImageView
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:scrollbars="vertical|horizontal"                                                                 
+    android:scrollbars="vertical|horizontal"  
+    app:transformation="centerInside"    
+    app:transformationGravity="auto"  
+    app:alignment="center"                                                                                                                        
     app:overScrollHorizontal="true"
     app:overScrollVertical="true"
     app:overPinchable="true"
     app:horizontalPanEnabled="true"
     app:verticalPanEnabled="true"
     app:zoomEnabled="true"
+    app:flingEnabled="true"
     app:minZoom="0.7"
     app:minZoomType="zoom"
-    app:maxZoom="3.0"
-    app:maxZoomType="zoom"/>
+    app:maxZoom="2.5"
+    app:maxZoomType="zoom"
+    app:animationDuration="280"/>
 ```
 
 There is nothing surprising going on. Just call `setImageDrawable()` and you are done.
 
 Presumably ZoomImageView **won't** work if:
 
-- the drawable has no intrinsic dimensions
+- the drawable has no intrinsic dimensions (like a ColorDrawable)
 - the view has wrap_content as a dimension
 - you change the scaleType (read [later](#zoom) to know more)
 
@@ -142,11 +152,17 @@ There is no strict limit over what you can do with a `Matrix`,
 
 ### Zoom
 
-#### Transformations
+#### Transformation
 
-When the engine becomes aware of the content size, it will apply a base transformation to the content
-that can be controlled through `setTransformation(int, int)` or `app:transformation` and `app:transformationGravity`.
-By default it is applied only once, and defines the starting viewport over our content.
+The transformation defines the engine **resting position**. It is a keyframe that is reached at
+certain points, like at start-up or when explicitly requested through `setContentSize` or `setContainerSize`.
+
+The keyframe is defined by two elements: 
+
+- a `transformation` value (modifies zoom in a certain way)
+- a `transformationGravity` value (modifies pan in a certain way)
+
+which can be controlled through `setTransformation(int, int)` or `app:transformation` and `app:transformationGravity`.
 
 |Transformation|Description|
 |--------------|-----------|
@@ -154,34 +170,42 @@ By default it is applied only once, and defines the starting viewport over our c
 |`centerCrop`|The content is scaled down or up so that its smaller side fits exactly inside the view bounds. The larger side will be cropped.|
 |`none`|No transformation is applied.|
 
-The engine applies the given transformation, and any minZoom and maxZoom constraints.
-
-If, after this process, the content is bigger than the container, the engine will also apply a
-translation according to the given transformation gravity.
+After transformation is applied, the transformation gravity will reposition the content with
+the specified value. Supported values are most of the `android.view.Gravity` flags like `Gravity.TOP`, plus `TRANSFORMATION_GRAVITY_AUTO`.
 
 |Transformation Gravity|Description|
 |----------------------|-----------|
-|`top`|If the content is taller than the view, translate it so that we see the top part.|
-|`bottom`|If the content is taller than the view, translate it so that we see the bottom part.|
-|`left`|If the content is wider than the view, translate it so that we see the left part.|
-|`right`|If the content is wider than the view, translate it so that we see the right part.|
+|`top`, ...|The content is panned so that its *top* side matches teh container *top* side. Same for other values.|
+|`auto` (default)|The transformation gravity is taken from the engine [alignment](#alignment), defaults to `center` on both axes.|
 
-If, after this process, the content is smaller than the container, note that the current
-[Smaller Policy](#smaller-policy) applies.
+**Note: after transformation and gravity are applied, the engine will apply - as always - all the active constraints,
+including minZoom, maxZoom, alignment. This means that the final position might be slightly (or completely) different.**
 
-Note: you can always trigger a new transformation to be applied by using the `setContentSize` or `setContainerSize` APIs.
+For example, when `maxZoom == 1`, the content is forced to not be any larger than the container. This means that
+a `centerCrop` transformation will not have the desired effect: it will act just like a `centerInside`.
 
-#### Smaller policy
+#### Alignment
 
-You can control how the content will be positioned when it is smaller than the container through 
-the `setSmallerPolicy(int)` method or by using the `smallerPolicy` XML attribute of `ZoomLayout` and `ZoomImageView`.
-By default, content is always centered when it is smaller than its container.
+You can force the content position with respect to the container using the `setAlignment(int)` method
+or the `alignment` XML flag of `ZoomLayout` and `ZoomImageView`. 
+The default value is `Alignment.CENTER` which will center the content on both directions.
 
-|Policy|Description|
-|------|-----------|
-|`center`|The content will be centered within the container.|
-|`fromTransformation`|The content will respect the gravity parameter of the transformation (which defaults to `Gravity.CENTER` as well).|
-|`none`|The content is free to be moved around inside the container bounds.|
+**Note: alignment does not make sense when content is larger than the container, because forcing an 
+alignment (e.g. left) would mean making part of the content unreachable (e.g. the right part).**
+
+|Alignment|Description|
+|---------|-----------|
+|`top`, `bottom`, `left`, `right`|Force align the content to the same side of the container.|
+|`center_horizontal`, `center_vertical`|Force the content to be centered inside the container on that axis.|
+|`none_horizontal`, `none_vertical`|No alignment set: content is free to be moved on that axis.|
+
+You can use the `or` operation to mix the vertical and horizontal flags:
+
+```kotlin
+engine.setAlignment(Alignment.TOP or Alignment.LEFT)
+engine.setAlignment(Alignment.TOP) // Equals to Aligment.TOP or Alignment.NONE_HORIZONTAL
+engine.setAlignment(Alignment.NONE) // Remove any forced alignment
+```
 
 #### Zoom Types
 
