@@ -1043,10 +1043,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         }
 
         override fun onFling(e1: MotionEvent, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
-            if (!mFlingEnabled) {
-                // fling is disabled, so we just ignore the event
-                return false
-            }
+            // If disabled, don't start the gesture.
+            if (!mFlingEnabled) return false
+            if (!mHorizontalPanEnabled && !mVerticalPanEnabled) return false
 
             val vX = (if (mHorizontalPanEnabled) velocityX else 0F).toInt()
             val vY = (if (mVerticalPanEnabled) velocityY else 0F).toInt()
@@ -1064,15 +1063,11 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
          */
         override fun onScroll(e1: MotionEvent, e2: MotionEvent,
                               @AbsolutePan distanceX: Float, @AbsolutePan distanceY: Float): Boolean {
+            if (!mHorizontalPanEnabled && !mVerticalPanEnabled) return false
 
-            if (!mHorizontalPanEnabled && !mVerticalPanEnabled) {
-                return false
-            }
-
-            var delta = AbsolutePoint(distanceX, distanceY)
             if (setState(SCROLLING)) {
                 // Change sign, since we work with opposite values.
-                delta = -delta
+                val delta = AbsolutePoint(-distanceX, -distanceY)
 
                 // See if we are overscrolling.
                 val panFix = mCurrentPanCorrection
@@ -1376,7 +1371,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 }
                 val newZoom = it.getAnimatedValue("zoom") as Float
                 val currentPan = it.getAnimatedValue("pan") as AbsolutePoint
-                applyZoomAndAbsolutePan(newZoom, currentPan.x, currentPan.y, allowOverScroll, allowOverPinch, zoomTargetX, zoomTargetY)
+                applyZoomAndAbsolutePan(newZoom, currentPan.x, currentPan.y,
+                        allowOverScroll, allowOverPinch,
+                        zoomTargetX, zoomTargetY)
             }
             animator.start()
         }
@@ -1431,14 +1428,12 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private fun applyZoom(@Zoom zoom: Float,
                           allowOverPinch: Boolean,
                           allowOverScroll: Boolean = false,
-                          zoomTargetX: Float? = null,
-                          zoomTargetY: Float? = null,
+                          zoomTargetX: Float = mContainerWidth / 2f,
+                          zoomTargetY: Float = mContainerHeight / 2f,
                           notifyListeners: Boolean = true) {
         val newZoom = checkZoomBounds(zoom, allowOverPinch)
         val scaleFactor = newZoom / this.zoom
-
-        mMatrix.postScale(scaleFactor, scaleFactor,
-                zoomTargetX ?: mContainerWidth / 2f, zoomTargetY ?: mContainerHeight / 2f)
+        mMatrix.postScale(scaleFactor, scaleFactor, zoomTargetX, zoomTargetY)
         mMatrix.mapRect(mContentScaledRect, mContentRect)
         this.zoom = newZoom
         ensurePanBounds(allowOverScroll)
@@ -1483,10 +1478,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         // mMatrix.postScale(scaleFactor, scaleFactor, getScaledPanX(), getScaledPanY());
         // It keeps the pivot point at the scaled values 0, 0 (see applyPinch).
         // I think we should keep the current top, left.. Let's try:
-
         val pivotX = zoomTargetX ?: 0F
         val pivotY = zoomTargetY ?: 0F
-
         mMatrix.postScale(scaleFactor, scaleFactor, pivotX, pivotY)
         mMatrix.mapRect(mContentScaledRect, mContentRect)
         this.zoom = newZoom
