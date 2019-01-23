@@ -7,7 +7,7 @@ apply plugin: 'org.jetbrains.dokka-android'
 // Required by bintray
 // archivesBaseName is required if artifactId is different from gradle module name
 // or you can add baseName to each archive task (sources, javadoc, aar)
-version = '1.4.0'
+version = '1.5.0'
 group = 'com.otaliastudios'
 archivesBaseName = 'zoomlayout'
 
