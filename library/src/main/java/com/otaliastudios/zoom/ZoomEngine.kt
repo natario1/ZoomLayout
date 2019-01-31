@@ -1042,7 +1042,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             return true // We are interested in the gesture.
         }
 
-        override fun onFling(e1: MotionEvent, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+        override fun onFling(e1: MotionEvent?, e2: MotionEvent?, velocityX: Float, velocityY: Float): Boolean {
             // If disabled, don't start the gesture.
             if (!mFlingEnabled) return false
             if (!mHorizontalPanEnabled && !mVerticalPanEnabled) return false
@@ -1061,7 +1061,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
          *
          * TODO this this not true! ^
          */
-        override fun onScroll(e1: MotionEvent, e2: MotionEvent,
+        override fun onScroll(e1: MotionEvent?, e2: MotionEvent?,
                               @AbsolutePan distanceX: Float, @AbsolutePan distanceY: Float): Boolean {
             if (!mHorizontalPanEnabled && !mVerticalPanEnabled) return false
 
