@@ -2,7 +2,9 @@ package com.otaliastudios.zoom.demo;
 
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.GridView;
 
 import com.otaliastudios.zoom.ZoomImageView;
 import com.otaliastudios.zoom.ZoomLayout;
@@ -24,6 +26,18 @@ public class MainActivity extends AppCompatActivity {
         final ZoomLayout zoomLayout = findViewById(R.id.zoom_layout);
         final ZoomImageView zoomImage = findViewById(R.id.zoom_image);
         zoomImage.setImageDrawable(new ColorGridDrawable());
+
+        final GridView gridView = findViewById(R.id.gridview);
+        zoomLayout.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int left, int top, int right, int bottom, int oldLeft, int oldTop, int oldRight, int oldBottom) {
+                ViewGroup.LayoutParams params = gridView.getLayoutParams();
+                params.width = v.getWidth();
+                params.height = v.getHeight();
+                gridView.setLayoutParams(params);
+            }
+        });
+        gridView.setAdapter(new GridViewAdapter());
 
         buttonZoomLayout.setOnClickListener(new View.OnClickListener() {
             @Override
