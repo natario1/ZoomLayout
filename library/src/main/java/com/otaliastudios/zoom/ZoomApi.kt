@@ -336,6 +336,14 @@ interface ZoomApi {
      */
     fun setAnimationDuration(duration: Long)
 
+    /**
+     * Cancels all currently active code driven animations (including fling animations)
+     * If no animation is currently active this is a no-op.
+     *
+     * @return true if anything was cancelled, false otherwise
+     */
+    fun cancelAnimations(): Boolean
+
     companion object {
 
         /**
