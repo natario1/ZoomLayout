@@ -1290,7 +1290,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         private fun cleanup(animator: Animator) {
             animator.removeListener(this)
             mActiveAnimators.remove(animator)
-            setState(NONE)
+            if (mActiveAnimators.isEmpty()) setState(NONE)
         }
     }
 
