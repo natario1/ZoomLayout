@@ -1134,6 +1134,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         if (animate) {
             animateZoomAndAbsolutePan(zoom, x, y, allowOverScroll = false)
         } else {
+            cancelAnimations()
             applyZoomAndAbsolutePan(zoom, x, y, allowOverScroll = false)
         }
     }
@@ -1169,6 +1170,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         if (animate) {
             animateZoomAndAbsolutePan(zoom, panX + dx, panY + dy, allowOverScroll = false)
         } else {
+            cancelAnimations()
             applyZoomAndAbsolutePan(zoom, panX + dx, panY + dy, allowOverScroll = false)
         }
     }
@@ -1185,6 +1187,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         if (animate) {
             animateZoom(zoom, allowOverPinch = false)
         } else {
+            cancelAnimations()
             applyZoom(zoom, allowOverPinch = false)
         }
     }
