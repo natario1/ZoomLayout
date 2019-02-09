@@ -74,6 +74,15 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private var mTransformationGravity = ZoomApi.TRANSFORMATION_GRAVITY_AUTO
     private var mAlignment = ZoomApi.ALIGNMENT_DEFAULT
     private var mDoubleTapBehaviour = ZoomApi.DOUBLE_TAP_BEHAVIOUR_NONE
+        set(value) {
+            field = value
+
+            if (value == ZoomApi.DOUBLE_TAP_BEHAVIOUR_NONE) {
+                mFlingDragDetector.setOnDoubleTapListener(null)
+            } else {
+                mFlingDragDetector.setOnDoubleTapListener(mTapFlingScrollListener)
+            }
+        }
 
     // Internal
     private val mListeners = mutableListOf<Listener>()
@@ -91,7 +100,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
     // Gestures
     private val mScaleDetector = ScaleGestureDetector(context, PinchListener())
-    private val mFlingDragDetector = GestureDetector(context, FlingScrollListener())
+    private val mTapFlingScrollListener = TapFlingScrollListener()
+    private val mFlingDragDetector = GestureDetector(context, mTapFlingScrollListener)
     private val mFlingScroller = OverScroller(context)
     private val mScrollerValuesX = ScrollerValues()
     private val mScrollerValuesY = ScrollerValues()
@@ -240,7 +250,10 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private annotation class State
 
     init {
+        // disable quickScale because it doesn't play nice with childview taps (yet)
         if (Build.VERSION.SDK_INT >= 19) mScaleDetector.isQuickScaleEnabled = false
+
+        // disable double tab listener so it doesn't delay simple taps
         mFlingDragDetector.setOnDoubleTapListener(null)
     }
 
@@ -1041,7 +1054,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     @Zoom
     private fun getMinZoom(): Float = mMinZoom.toZoom(mMinZoomMode)
 
-    private inner class FlingScrollListener : GestureDetector.SimpleOnGestureListener() {
+    private inner class TapFlingScrollListener : GestureDetector.SimpleOnGestureListener() {
 
         override fun onDown(e: MotionEvent): Boolean {
             return true // We are interested in the gesture.
@@ -1053,7 +1066,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 // triggering on child views in addition to double taps on ZoomLayout(?)
             }
 
-            return super.onSingleTapConfirmed(e)
+            return false
         }
 
         override fun onDoubleTap(e: MotionEvent): Boolean {
