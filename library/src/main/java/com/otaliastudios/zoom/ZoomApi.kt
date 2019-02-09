@@ -120,6 +120,10 @@ interface ZoomApi {
     @IntDef(TRANSFORMATION_CENTER_INSIDE, TRANSFORMATION_CENTER_CROP, TRANSFORMATION_NONE)
     annotation class Transformation
 
+    @Retention(AnnotationRetention.SOURCE)
+    @IntDef(DOUBLE_TAP_BEHAVIOUR_NONE, DOUBLE_TAP_BEHAVIOUR_CENTER, DOUBLE_TAP_BEHAVIOUR_ZOOM)
+    annotation class DoubleTapBehaviour
+
     /**
      * Defines the available alignments
      */
@@ -232,6 +236,12 @@ interface ZoomApi {
      * @param alignment the new alignment
      */
     fun setAlignment(@Alignment alignment: Int)
+
+    /**
+     * Sets the behaviour for double taps. Can be any of the constants defined in [DoubleTapBehaviour].
+     * Defaults to [DOUBLE_TAP_BEHAVIOUR_NONE] wich will simply ignore double taps.
+     */
+    fun setDoubleTapBehaviour(@DoubleTapBehaviour behaviour: Int)
 
     /**
      * A low level API that can animate both zoom and pan at the same time.
@@ -359,6 +369,16 @@ interface ZoomApi {
         const val TYPE_REAL_ZOOM = 1
 
         /**
+         * Factor used for [zoomIn]
+         */
+        const val ZOOM_IN_FACTOR = 1.3f
+
+        /**
+         * Factor used for [zoomOut]
+         */
+        const val ZOOM_OUT_FACTOR = 0.7f
+
+        /**
          * Constant for [ZoomApi.setTransformation].
          * The content will be zoomed so that it fits completely inside the container.
          */
@@ -386,28 +406,38 @@ interface ZoomApi {
         const val TRANSFORMATION_GRAVITY_AUTO = 0
 
         /**
-         * The default [setMinZoom] applied by the engine if none is specified.
+         * Constant for [ZoomApi.setDoubleTapBehaviour].
+         * Double taps will be ignored.
          */
+        const val DOUBLE_TAP_BEHAVIOUR_NONE = 0
+
+        /**
+         * Constant for [ZoomApi.setDoubleTapBehaviour].
+         * A double tap will result in centering the zoomlayout on the tapped location while
+         * staying within overpan bounds.
+         */
+        const val DOUBLE_TAP_BEHAVIOUR_CENTER = 1
+
+        /**
+         * Constant for [ZoomApi.setDoubleTapBehaviour].
+         * A double tap will result in zooming in on the tapped location while
+         * staying within overpan and overscroll bounds.
+         */
+        const val DOUBLE_TAP_BEHAVIOUR_ZOOM = 2
+
+        /** The default [setMinZoom] applied by the engine if none is specified. */
         const val MIN_ZOOM_DEFAULT = 0.8F
 
-        /**
-         * The default [setMinZoom] type applied by the engine if none is specified.
-         */
+        /** The default [setMinZoom] type applied by the engine if none is specified. */
         const val MIN_ZOOM_DEFAULT_TYPE = TYPE_ZOOM
 
-        /**
-         * The default [setMaxZoom] applied by the engine if none is specified.
-         */
+        /** The default [setMaxZoom] applied by the engine if none is specified. */
         const val MAX_ZOOM_DEFAULT = 2.5F
 
-        /**
-         * The default [setMaxZoom] type applied by the engine if none is specified.
-         */
+        /** The default [setMaxZoom] type applied by the engine if none is specified. */
         const val MAX_ZOOM_DEFAULT_TYPE = TYPE_ZOOM
 
-        /**
-         * The default value for [setAlignment].
-         */
+        /** The default value for [setAlignment]. */
         const val ALIGNMENT_DEFAULT = com.otaliastudios.zoom.Alignment.CENTER
     }
 }

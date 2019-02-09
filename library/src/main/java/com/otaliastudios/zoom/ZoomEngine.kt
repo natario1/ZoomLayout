@@ -73,6 +73,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private var mTransformation = ZoomApi.TRANSFORMATION_CENTER_INSIDE
     private var mTransformationGravity = ZoomApi.TRANSFORMATION_GRAVITY_AUTO
     private var mAlignment = ZoomApi.ALIGNMENT_DEFAULT
+    private var mDoubleTapBehaviour = ZoomApi.DOUBLE_TAP_BEHAVIOUR_NONE
 
     // Internal
     private val mListeners = mutableListOf<Listener>()
@@ -440,6 +441,10 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      */
     override fun setAlignment(@ZoomApi.Alignment alignment: Int) {
         mAlignment = alignment
+    }
+
+    override fun setDoubleTapBehaviour(@ZoomApi.DoubleTapBehaviour behaviour: Int) {
+        mDoubleTapBehaviour = behaviour
     }
 
     //endregion
@@ -1042,6 +1047,31 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             return true // We are interested in the gesture.
         }
 
+        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            if (mDoubleTapBehaviour != ZoomApi.DOUBLE_TAP_BEHAVIOUR_NONE) {
+                // TODO: single taps should be handled here then, to prevent taps
+                // triggering on child views in addition to double taps on ZoomLayout(?)
+            }
+
+            return super.onSingleTapConfirmed(e)
+        }
+
+        override fun onDoubleTap(e: MotionEvent): Boolean {
+            return when (mDoubleTapBehaviour) {
+                ZoomApi.DOUBLE_TAP_BEHAVIOUR_CENTER -> {
+                    val touchPoint = viewCoordinateToAbsolutePoint(e.x, e.y)
+                    moveTo(zoom, touchPoint, animate = true)
+                    true
+                }
+                ZoomApi.DOUBLE_TAP_BEHAVIOUR_ZOOM -> {
+                    val touchPoint = viewCoordinateToAbsolutePoint(e.x, e.y)
+                    moveTo(zoom * ZoomApi.ZOOM_IN_FACTOR, touchPoint, animate = true)
+                    true
+                }
+                else -> false
+            }
+        }
+
         override fun onFling(e1: MotionEvent?, e2: MotionEvent?, velocityX: Float, velocityY: Float): Boolean {
             // If disabled, don't start the gesture.
             if (!mFlingEnabled) return false
@@ -1135,6 +1165,10 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         }
     }
 
+    private fun moveTo(@Zoom zoom: Float, position: AbsolutePoint, animate: Boolean) {
+        moveTo(zoom, position.x, position.y, animate)
+    }
+
     /**
      * Pans the content until the top-left coordinates match the given x-y
      * values. These are referred to the content size passed in [setContentSize],
@@ -1200,18 +1234,18 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
     /**
      * Applies a small, animated zoom-in.
-     * Shorthand for [zoomBy] with factor 1.3.
+     * Shorthand for [zoomBy] with factor [ZoomApi.ZOOM_IN_FACTOR].
      */
     override fun zoomIn() {
-        zoomBy(1.3f, animate = true)
+        zoomBy(ZoomApi.ZOOM_IN_FACTOR, animate = true)
     }
 
     /**
      * Applies a small, animated zoom-out.
-     * Shorthand for [zoomBy] with factor 0.7.
+     * Shorthand for [zoomBy] with factor [ZoomApi.ZOOM_OUT_FACTOR].
      */
     override fun zoomOut() {
-        zoomBy(0.7f, animate = true)
+        zoomBy(ZoomApi.ZOOM_OUT_FACTOR, animate = true)
     }
 
     /**
