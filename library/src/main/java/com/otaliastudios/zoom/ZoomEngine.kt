@@ -1366,7 +1366,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             LOG.i("animateZoomAndAbsolutePan:", "starting.", "startX:", startPan.x, "endX:", x, "startY:", startPan.y, "endY:", y)
             LOG.i("animateZoomAndAbsolutePan:", "starting.", "startZoom:", startZoom, "endZoom:", endZoom)
 
-            ObjectAnimator.ofPropertyValuesHolder(mContainer,
+            ObjectAnimator.ofPropertyValuesHolder(
                     PropertyValuesHolder.ofObject(
                             "pan",
                             TypeEvaluator { fraction: Float, startValue: AbsolutePoint, endValue: AbsolutePoint ->
