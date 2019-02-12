@@ -1595,8 +1595,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     }
 
     /**
-     * Cancels all currently active code driven animations (including fling animations)
-     * If no animation is currently active this is a no-op.
+     * Cancels all currently active animations triggered by either API calls with `animate = true`
+     * or touch input flings. If no animation is currently active this is a no-op.
      *
      * @return true if anything was cancelled, false otherwise
      */
