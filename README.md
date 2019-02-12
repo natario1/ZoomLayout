@@ -243,6 +243,7 @@ will make more sense than the other - e. g., in a PDF viewer, you might want to 
 |`zoomOut()`|Applies a small, animated zoom-out.|`-`|
 |`setZoomEnabled(boolean)`|If true, the content will be allowed to zoom in and out by user input.|`true`|
 
+
 The `moveTo(float, float, float, boolean)` API will let you animate both zoom and [pan](#pan) at the same time.
 
 ### Pan
@@ -267,6 +268,7 @@ In any case the current scale is not considered, so your system won't change if 
 |`setAllowFlingInOverscroll(boolean)`|If true, fling gestures will be allowed even when detected while overscrolled. This might cause artifacts so it is disabled by default.|`false`|
 |`panTo(float, float, boolean)`|Pans to the given values, animating if needed.|`-`|
 |`panBy(float, float, boolean)`|Applies the given deltas to the current pan, animating if needed.|`-`|
+|`cancelAnimations()`|Cancels all currently active animations triggered by either API calls with `animate = true` or touch input flings.|`-`|
 
 The `moveTo(float, float, float, boolean)` API will let you animate both [zoom](#zoom) and pan at the same time.
 

@@ -85,7 +85,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private var mInitialized = false
     private var mContentScaledRect = RectF()
     private var mContentRect = RectF()
-    private var mClearAnimation = false
     private var mAnimationDuration = DEFAULT_ANIMATION_DURATION
 
     // Gestures
@@ -677,27 +676,31 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
     // Returns true if we should go to that mode.
     @SuppressLint("SwitchIntDef")
-    private fun setState(@State state: Int): Boolean {
-        LOG.v("trySetState:", state.toStateName())
+    private fun setState(@State newState: Int): Boolean {
+        LOG.v("trySetState:", newState.toStateName())
         if (!mInitialized) return false
-        if (state == mState) return true
-        val oldMode = mState
+        // we need to do some cleanup in case of ANIMATING so we can't return just yet
+        if (newState == mState && newState != ANIMATING) return true
+        val oldState = mState
 
-        when (state) {
-            SCROLLING -> if (oldMode == PINCHING || oldMode == ANIMATING) return false
-            FLINGING -> if (oldMode == ANIMATING) return false
-            PINCHING -> if (oldMode == ANIMATING) return false
+        when (newState) {
+            SCROLLING -> if (oldState == PINCHING || oldState == ANIMATING) return false
+            FLINGING -> if (oldState == ANIMATING) return false
+            PINCHING -> if (oldState == ANIMATING) return false
             NONE -> dispatchOnIdle()
         }
 
         // Now that it succeeded, do some cleanup.
-        when (oldMode) {
+        when (oldState) {
+            ANIMATING -> {
+                mActiveAnimators.forEach { it.cancel() }
+                mActiveAnimators.clear()
+            }
             FLINGING -> mFlingScroller.forceFinished(true)
-            ANIMATING -> mClearAnimation = true
         }
 
-        LOG.i("setState:", state.toStateName())
-        mState = state
+        LOG.i("setState:", newState.toStateName())
+        mState = newState
         return true
     }
 
@@ -1131,6 +1134,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         if (animate) {
             animateZoomAndAbsolutePan(zoom, x, y, allowOverScroll = false)
         } else {
+            cancelAnimations()
             applyZoomAndAbsolutePan(zoom, x, y, allowOverScroll = false)
         }
     }
@@ -1166,6 +1170,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         if (animate) {
             animateZoomAndAbsolutePan(zoom, panX + dx, panY + dy, allowOverScroll = false)
         } else {
+            cancelAnimations()
             applyZoomAndAbsolutePan(zoom, panX + dx, panY + dy, allowOverScroll = false)
         }
     }
@@ -1182,6 +1187,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         if (animate) {
             animateZoom(zoom, allowOverPinch = false)
         } else {
+            cancelAnimations()
             applyZoom(zoom, allowOverPinch = false)
         }
     }
@@ -1202,17 +1208,13 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * Applies a small, animated zoom-in.
      * Shorthand for [zoomBy] with factor 1.3.
      */
-    override fun zoomIn() {
-        zoomBy(1.3f, animate = true)
-    }
+    override fun zoomIn() = zoomBy(1.3f, animate = true)
 
     /**
      * Applies a small, animated zoom-out.
      * Shorthand for [zoomBy] with factor 0.7.
      */
-    override fun zoomOut() {
-        zoomBy(0.7f, animate = true)
-    }
+    override fun zoomOut() = zoomBy(0.7f, animate = true)
 
     /**
      * Animates the actual matrix zoom to the given value.
@@ -1277,24 +1279,46 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
 
     //region Apply values
 
+    private val mActiveAnimators = mutableSetOf<ValueAnimator>()
     private val mCancelAnimationListener = object : AnimatorListenerAdapter() {
 
-        override fun onAnimationEnd(animation: Animator?) {
-            setState(NONE)
+        override fun onAnimationEnd(animator: Animator) {
+            cleanup(animator)
         }
 
-        override fun onAnimationCancel(animation: Animator?) {
-            setState(NONE)
+        override fun onAnimationCancel(animator: Animator) {
+            cleanup(animator)
+        }
+
+        private fun cleanup(animator: Animator) {
+            animator.removeListener(this)
+            mActiveAnimators.remove(animator)
+            if (mActiveAnimators.isEmpty()) setState(NONE)
         }
     }
 
     /**
      * Prepares a [ValueAnimator] for the first run
+     *
+     * @return itself (for chaining)
      */
-    private fun ValueAnimator.prepare() {
+    private fun ValueAnimator.prepare(): ValueAnimator {
         this.duration = mAnimationDuration
         this.addListener(mCancelAnimationListener)
         this.interpolator = ANIMATION_INTERPOLATOR
+        return this
+    }
+
+    /**
+     * Starts a [ValueAnimator] with the given update function
+     *
+     * @return itself (for chaining)
+     */
+    private fun ValueAnimator.start(onUpdate: (ValueAnimator) -> Unit): ValueAnimator {
+        this.addUpdateListener(onUpdate)
+        this.start()
+        mActiveAnimators.add(this)
+        return this
     }
 
     /**
@@ -1306,21 +1330,12 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      */
     private fun animateZoom(@Zoom zoom: Float, allowOverPinch: Boolean) {
         if (setState(ANIMATING)) {
-            mClearAnimation = false
             @Zoom val startZoom = this.zoom
             @Zoom val endZoom = checkZoomBounds(zoom, allowOverPinch)
-            val zoomAnimator = ValueAnimator.ofFloat(startZoom, endZoom)
-            zoomAnimator.prepare()
-            zoomAnimator.addUpdateListener {
+            ValueAnimator.ofFloat(startZoom, endZoom).prepare().start {
                 LOG.v("animateZoom:", "animationStep:", it.animatedFraction)
-                if (mClearAnimation) {
-                    it.cancel()
-                    return@addUpdateListener
-                }
                 applyZoom(it.animatedValue as Float, allowOverPinch)
             }
-
-            zoomAnimator.start()
         }
     }
 
@@ -1336,6 +1351,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * @param zoomTargetX     the x-axis zoom target
      * @param zoomTargetY     the y-axis zoom target
      */
+    @SuppressLint("ObjectAnimatorBinding")
     private fun animateZoomAndAbsolutePan(@Zoom zoom: Float,
                                           @AbsolutePan x: Float, @AbsolutePan y: Float,
                                           allowOverScroll: Boolean,
@@ -1343,7 +1359,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                                           zoomTargetX: Float? = null,
                                           zoomTargetY: Float? = null) {
         if (setState(ANIMATING)) {
-            mClearAnimation = false
             @Zoom val startZoom = this.zoom
             @Zoom val endZoom = checkZoomBounds(zoom, allowOverScroll)
             val startPan = pan
@@ -1351,8 +1366,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             LOG.i("animateZoomAndAbsolutePan:", "starting.", "startX:", startPan.x, "endX:", x, "startY:", startPan.y, "endY:", y)
             LOG.i("animateZoomAndAbsolutePan:", "starting.", "startZoom:", startZoom, "endZoom:", endZoom)
 
-            @SuppressLint("ObjectAnimatorBinding")
-            val animator = ObjectAnimator.ofPropertyValuesHolder(mContainer,
+            ObjectAnimator.ofPropertyValuesHolder(
                     PropertyValuesHolder.ofObject(
                             "pan",
                             TypeEvaluator { fraction: Float, startValue: AbsolutePoint, endValue: AbsolutePoint ->
@@ -1362,20 +1376,13 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                     PropertyValuesHolder.ofFloat(
                             "zoom",
                             startZoom, endZoom)
-            )
-            animator.prepare()
-            animator.addUpdateListener {
-                if (mClearAnimation) {
-                    it.cancel()
-                    return@addUpdateListener
-                }
+            ).prepare().start {
                 val newZoom = it.getAnimatedValue("zoom") as Float
                 val currentPan = it.getAnimatedValue("pan") as AbsolutePoint
                 applyZoomAndAbsolutePan(newZoom, currentPan.x, currentPan.y,
                         allowOverScroll, allowOverPinch,
                         zoomTargetX, zoomTargetY)
             }
-            animator.start()
         }
     }
 
@@ -1390,25 +1397,16 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private fun animateScaledPan(@ScaledPan deltaX: Float, @ScaledPan deltaY: Float,
                                  allowOverScroll: Boolean) {
         if (setState(ANIMATING)) {
-            mClearAnimation = false
             val startPan = scaledPan
             val endPan = startPan + ScaledPoint(deltaX, deltaY)
 
-            val panAnimator = ValueAnimator.ofObject(TypeEvaluator { fraction, startValue: ScaledPoint, endValue: ScaledPoint ->
+            ValueAnimator.ofObject(TypeEvaluator { fraction, startValue: ScaledPoint, endValue: ScaledPoint ->
                 startValue + (endValue - startValue) * fraction - scaledPan
-            }, startPan, endPan)
-            panAnimator.prepare()
-            panAnimator.addUpdateListener {
+            }, startPan, endPan).prepare().start {
                 LOG.v("animateScaledPan:", "animationStep:", it.animatedFraction)
-                if (mClearAnimation) {
-                    it.cancel()
-                    return@addUpdateListener
-                }
                 val currentPan = it.animatedValue as ScaledPoint
                 applyScaledPan(currentPan.x, currentPan.y, allowOverScroll)
             }
-
-            panAnimator.start()
         }
     }
 
@@ -1594,6 +1592,21 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
             }
         })
         return true
+    }
+
+    /**
+     * Cancels all currently active animations triggered by either API calls with `animate = true`
+     * or touch input flings. If no animation is currently active this is a no-op.
+     *
+     * @return true if anything was cancelled, false otherwise
+     */
+    override fun cancelAnimations(): Boolean {
+        if (mState == FLINGING || mState == ANIMATING) {
+            setState(NONE)
+            return true
+        }
+
+        return false
     }
 
     //endregion
