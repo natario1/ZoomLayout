@@ -116,7 +116,7 @@ object Alignment {
      * Transforms this alignment to a vertical gravity value.
      */
     internal fun toVerticalGravity(alignment: Int, valueIfNone: Int): Int {
-        val verticalAlignment = getHorizontal(alignment)
+        val verticalAlignment = getVertical(alignment)
         return when (verticalAlignment) {
             Alignment.TOP -> Gravity.TOP
             Alignment.BOTTOM -> Gravity.BOTTOM
