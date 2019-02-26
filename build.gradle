@@ -10,9 +10,9 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:3.2.1'
         classpath 'com.github.dcendents:android-maven-gradle-plugin:2.1'
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.0'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.4'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath "org.jetbrains.dokka:dokka-android-gradle-plugin:+"
+        classpath "org.jetbrains.dokka:dokka-android-gradle-plugin:0.9.17"
     }
 }
 
@@ -26,7 +26,6 @@ allprojects {
 ext {
     // Updating? Update travis.yml.
     compileSdkVersion = 28
-    supportLibVersion = '1.0.0'
     minSdkVersion = 16
     targetSdkVersion = 28
 }

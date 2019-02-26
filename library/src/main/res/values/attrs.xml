@@ -1,29 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <declare-styleable name="ZoomEngine">
-        <attr name="hasClickableChildren" format="boolean"/>
-        <attr name="overScrollHorizontal" format="boolean"/>
-        <attr name="overScrollVertical" format="boolean"/>
-        <attr name="overPinchable" format="boolean"/>
+        <attr name="hasClickableChildren" format="boolean" />
+        <attr name="overScrollHorizontal" format="boolean" />
+        <attr name="overScrollVertical" format="boolean" />
+        <attr name="overPinchable" format="boolean" />
         <attr name="zoomEnabled" format="boolean" />
+        <attr name="flingEnabled" format="boolean" />
+        <attr name="allowFlingInOverscroll" format="boolean" />
         <attr name="verticalPanEnabled" format="boolean" />
         <attr name="horizontalPanEnabled" format="boolean" />
-        <attr name="minZoom" format="float"/>
-        <attr name="maxZoom" format="float"/>
+        <attr name="minZoom" format="float" />
+        <attr name="maxZoom" format="float" />
         <attr name="minZoomType" format="enum">
-            <enum name="zoom" value="0"/>
-            <enum name="realZoom" value="1"/>
+            <enum name="zoom" value="0" />
+            <enum name="realZoom" value="1" />
         </attr>
         <attr name="maxZoomType" format="enum">
-            <enum name="zoom" value="0"/>
-            <enum name="realZoom" value="1"/>
+            <enum name="zoom" value="0" />
+            <enum name="realZoom" value="1" />
         </attr>
         <attr name="transformation" format="enum">
-            <enum name="centerInside" value="0"/>
-            <enum name="centerCrop" value="1"/>
-            <enum name="none" value="2"/>
+            <enum name="centerInside" value="0" />
+            <enum name="centerCrop" value="1" />
+            <enum name="none" value="2" />
         </attr>
         <attr name="transformationGravity">
+            <flag name="auto" value="0" />
             <flag name="top" value="0x30" />
             <flag name="bottom" value="0x50" />
             <flag name="left" value="0x03" />
@@ -31,6 +34,18 @@
             <flag name="center_vertical" value="0x10" />
             <flag name="center_horizontal" value="0x01" />
             <flag name="center" value="0x11" />
+        </attr>
+        <attr name="alignment">
+            <flag name="top" value="0x01" />
+            <flag name="bottom" value="0x02" />
+            <flag name="center_vertical" value="0x03" />
+            <flag name="none_vertical" value="0x04" />
+            <flag name="left" value="0x10" />
+            <flag name="right" value="0x20" />
+            <flag name="center_horizontal" value="0x30" />
+            <flag name="none_horizontal" value="0x40" />
+            <flag name="center" value="0x33" />
+            <flag name="none" value="0x44" />
         </attr>
         <attr name="animationDuration" format="integer" />
     </declare-styleable>

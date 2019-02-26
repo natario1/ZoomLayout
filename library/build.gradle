@@ -1,13 +1,24 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
+apply plugin: 'org.jetbrains.dokka-android'
 apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
-apply plugin: 'org.jetbrains.dokka-android'
+
+ext {
+    libVersion = '1.5.0'
+    libGroup = 'com.otaliastudios'
+    libName = 'ZoomLayout'
+    libDescription = 'A View container that supports zooming and panning of View hierarchies, images and more.'
+    libArtifactId = 'zoomlayout'
+    githubUrl = "https://github.com/natario1/${libName}"
+    githubGit = "https://github.com/natario1/${libName}.git"
+}
+
 
 // Required by bintray
 // archivesBaseName is required if artifactId is different from gradle module name
 // or you can add baseName to each archive task (sources, javadoc, aar)
-version = '1.4.0'
+version = '1.5.0'
 group = 'com.otaliastudios'
 archivesBaseName = 'zoomlayout'
 
@@ -19,53 +30,56 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "0.1"
-    }
-
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
+        versionName libVersion
     }
 }
 
 dependencies {
-    api "androidx.annotation:annotation:$supportLibVersion"
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    api "androidx.annotation:annotation:1.0.1"
+    api "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.3.1"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.3.1"
 }
 
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from android.sourceSets.main.java.srcDirs
+}
 
-install {
-    repositories.mavenInstaller {
-        pom.project {
-            name 'ZoomLayout'
-            description 'A View container that supports zooming and panning of View hierarchies and more.'
-            url 'https://github.com/natario1/ZoomLayout'
+task dokkaJar(type: Jar, dependsOn: dokka) {
+    classifier = 'javadoc'
+    from dokka.outputDirectory
+}
 
-            packaging 'aar'
-            groupId project.group
-            artifactId 'zoomlayout'
-            version project.version
+artifacts {
+    archives dokkaJar
+    archives sourcesJar
+}
 
-            licenses {
-                license {
-                    name 'The Apache Software License, Version 2.0'
-                    url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                }
-            }
-            scm {
-                connection 'https://github.com/natario1/ZoomLayout.git'
-                developerConnection 'https://github.com/natario1/ZoomLayout.git'
-                url 'https://github.com/natario1/ZoomLayout'
+install.repositories.mavenInstaller.pom.project {
+    name libName
+    description libDescription
+    url githubUrl
+    groupId libGroup
+    artifactId libArtifactId
+    version libVersion
+    packaging 'aar'
 
-            }
-            developers {
-                developer {
-                    id = 'natario'
-                    name 'Natario'
-                }
-            }
+    scm {
+        connection githubGit
+        url githubUrl
+    }
+    licenses {
+        license {
+            name 'The Apache Software License, Version 2.0'
+            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+        }
+    }
+    developers {
+        developer {
+            id = 'natario'
+            name 'Mattia Iavarione'
         }
     }
 }
@@ -93,61 +107,22 @@ if (hasBintray) {
         user = bintrayUser
         key = bintrayKey
         configurations = ['archives']
+        publish = true
+        override = true
         pkg {
             repo = 'android'
-            name = 'ZoomLayout'
+            name = libName
             licenses = ['Apache-2.0']
-            vcsUrl = 'https://github.com/natario1/ZoomLayout.git'
-            publish = true
-            override = true
+            vcsUrl = githubGit
+            desc = libDescription
             version {
-                name = project.version
-                desc = 'ZoomLayout v. '+project.version
+                name = libVersion
+                desc = libName + ' v' + libVersion
                 released = new Date()
-                vcsTag = 'v'+project.version
+                vcsTag = 'v' + libVersion
             }
         }
     }
 }
 
-
-// From official sample https://github.com/bintray/bintray-examples/blob/master/gradle-aar-example/build.gradle
-task sourcesJar(type: Jar) {
-    classifier = 'sources'
-    from android.sourceSets.main.java.sourceFiles
-}
-
-task javadoc(type: Javadoc) {
-    source = android.sourceSets.main.java.srcDirs
-    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
-    classpath += project.files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
-    project.android.libraryVariants.all { variant ->
-        if (variant.name == 'release') {
-            classpath += files(variant.javaCompile.classpath)
-        }
-    }
-    exclude '**/BuildConfig.java'
-    exclude '**/R.java'
-    exclude '**/internal/**'
-}
-
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from javadoc.destinationDir
-}
-
-task dokkaJar(type: Jar, dependsOn: dokka) {
-    classifier = 'javadoc'
-    from dokka.outputDirectory
-}
-
-artifacts {
-    archives dokkaJar
-    archives sourcesJar
-}
-repositories {
-    mavenCentral()
-}
-
-// export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home
 // To deploy ./gradlew bintrayUpload

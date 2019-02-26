@@ -37,6 +37,13 @@ interface ZoomApi {
     @RealZoom
     val realZoom: Float
 
+
+    /**
+     * The current pan as an [AbsolutePoint].
+     * This field will be updated according to current pan when accessed.
+     */
+    val pan: AbsolutePoint
+
     /**
      * Returns the current horizontal pan value, in content coordinates
      * (that is, as if there was no zoom at all).
@@ -60,6 +67,7 @@ interface ZoomApi {
      *
      * @see realZoom
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     annotation class RealZoom
 
@@ -68,6 +76,7 @@ interface ZoomApi {
      *
      * @see zoom
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     annotation class Zoom
 
@@ -78,6 +87,7 @@ interface ZoomApi {
      * @see panY
      * @see ScaledPan
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     annotation class AbsolutePan
 
@@ -88,6 +98,7 @@ interface ZoomApi {
      * @see panY
      * @see AbsolutePan
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     annotation class ScaledPan
 
@@ -97,16 +108,36 @@ interface ZoomApi {
      * @see zoom
      * @see realZoom
      */
+    @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     @IntDef(TYPE_ZOOM, TYPE_REAL_ZOOM)
     annotation class ZoomType
 
     /**
-     * Defines the available transvormation types
+     * Defines the available transformation types
      */
     @Retention(AnnotationRetention.SOURCE)
     @IntDef(TRANSFORMATION_CENTER_INSIDE, TRANSFORMATION_CENTER_CROP, TRANSFORMATION_NONE)
     annotation class Transformation
+
+    /**
+     * Defines the available alignments
+     */
+    @Retention(AnnotationRetention.SOURCE)
+    @IntDef(
+        com.otaliastudios.zoom.Alignment.BOTTOM,
+        com.otaliastudios.zoom.Alignment.CENTER_VERTICAL,
+        com.otaliastudios.zoom.Alignment.NONE_VERTICAL,
+        com.otaliastudios.zoom.Alignment.TOP,
+        com.otaliastudios.zoom.Alignment.LEFT,
+        com.otaliastudios.zoom.Alignment.CENTER_HORIZONTAL,
+        com.otaliastudios.zoom.Alignment.NONE_HORIZONTAL,
+        com.otaliastudios.zoom.Alignment.RIGHT,
+        com.otaliastudios.zoom.Alignment.CENTER,
+        com.otaliastudios.zoom.Alignment.NONE,
+        flag = true
+    )
+    annotation class Alignment
 
     /**
      * Controls whether the content should be over-scrollable horizontally.
@@ -157,6 +188,30 @@ interface ZoomApi {
     fun setZoomEnabled(enabled: Boolean)
 
     /**
+     * Controls whether fling gesture is enabled or not.
+     *
+     * @param enabled true enables fling gesture, false disables it
+     */
+    fun setFlingEnabled(enabled: Boolean)
+
+    /**
+     * Controls whether fling events are allowed when the view is in an overscrolled state.
+     *
+     * @param allow true allows fling in overscroll, false disables it
+     */
+    fun setAllowFlingInOverscroll(allow: Boolean)
+
+    /**
+     * Sets the base transformation to be applied to the content.
+     * See [setTransformation].
+     *
+     * @param transformation the transformation type
+     */
+    fun setTransformation(@Transformation transformation: Int) {
+        setTransformation(transformation, TRANSFORMATION_GRAVITY_AUTO)
+    }
+
+    /**
      * Sets the base transformation to be applied to the content.
      * Defaults to [TRANSFORMATION_CENTER_INSIDE] with [android.view.Gravity.CENTER],
      * which means that the content will be zoomed so that it fits completely inside the container.
@@ -165,6 +220,18 @@ interface ZoomApi {
      * @param gravity        the transformation gravity. Might be ignored for some transformations
      */
     fun setTransformation(@Transformation transformation: Int, gravity: Int)
+
+    /**
+     * Sets the content alignment. Can be any of the constants defined in [com.otaliastudios.zoom.Alignment].
+     * The content will be aligned and forced to the specified side of the container.
+     * Defaults to [ALIGNMENT_DEFAULT].
+     *
+     * Keep in mind that this is disabled when the content is larger than the container,
+     * because a forced alignment in this case would result in part of the content being unreachable.
+     *
+     * @param alignment the new alignment
+     */
+    fun setAlignment(@Alignment alignment: Int)
 
     /**
      * A low level API that can animate both zoom and pan at the same time.
@@ -235,7 +302,7 @@ interface ZoomApi {
      * @param realZoom the new real zoom value
      * @param animate  whether to animate the transition
      */
-    fun realZoomTo(realZoom: Float, animate: Boolean)
+    fun realZoomTo(@RealZoom realZoom: Float, animate: Boolean)
 
     /**
      * Which is the max zoom that should be allowed.
@@ -268,6 +335,14 @@ interface ZoomApi {
      * @param duration new animation duration
      */
     fun setAnimationDuration(duration: Long)
+
+    /**
+     * Cancels all currently active animations triggered by either API calls with `animate = true`
+     * or touch input flings. If no animation is currently active this is a no-op.
+     *
+     * @return true if anything was cancelled, false otherwise
+     */
+    fun cancelAnimations(): Boolean
 
     companion object {
 
@@ -310,5 +385,37 @@ interface ZoomApi {
          * [ZoomApi.realZoom] will return the same value.
          */
         const val TRANSFORMATION_NONE = 2
+
+        /**
+         * Constant for [ZoomApi.setTransformation] gravity.
+         * This means that the gravity will be inferred from the alignment or
+         * fallback to a reasonable default.
+         */
+        const val TRANSFORMATION_GRAVITY_AUTO = 0
+
+        /**
+         * The default [setMinZoom] applied by the engine if none is specified.
+         */
+        const val MIN_ZOOM_DEFAULT = 0.8F
+
+        /**
+         * The default [setMinZoom] type applied by the engine if none is specified.
+         */
+        const val MIN_ZOOM_DEFAULT_TYPE = TYPE_ZOOM
+
+        /**
+         * The default [setMaxZoom] applied by the engine if none is specified.
+         */
+        const val MAX_ZOOM_DEFAULT = 2.5F
+
+        /**
+         * The default [setMaxZoom] type applied by the engine if none is specified.
+         */
+        const val MAX_ZOOM_DEFAULT_TYPE = TYPE_ZOOM
+
+        /**
+         * The default value for [setAlignment].
+         */
+        const val ALIGNMENT_DEFAULT = com.otaliastudios.zoom.Alignment.CENTER
     }
 }

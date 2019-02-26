@@ -10,6 +10,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+
+        setProperty("archivesBaseName", "ZoomLayout_v${versionName}_(${versionCode})")
     }
 
     buildTypes {
@@ -21,6 +23,6 @@ android {
 }
 
 dependencies {
-    implementation "androidx.appcompat:appcompat:$supportLibVersion"
+    implementation "androidx.appcompat:appcompat:1.0.2"
     implementation project(':library')
 }
