@@ -4,10 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.util.AttributeSet
-import android.view.Gravity
-import android.view.MotionEvent
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.FrameLayout
 import androidx.annotation.AttrRes
 import com.otaliastudios.zoom.ZoomApi.ZoomType
@@ -32,7 +29,7 @@ import com.otaliastudios.zoom.ZoomApi.ZoomType
  */
 open class ZoomLayout
 private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAttr: Int, val engine: ZoomEngine = ZoomEngine(context))
-    : FrameLayout(context, attrs, defStyleAttr), ZoomEngine.Listener, ZoomApi by engine {
+    : FrameLayout(context, attrs, defStyleAttr), ViewTreeObserver.OnGlobalLayoutListener, ZoomEngine.Listener, ZoomApi by engine {
 
     @JvmOverloads
     constructor(context: Context, attrs: AttributeSet? = null, @AttrRes defStyleAttr: Int = 0)
@@ -85,6 +82,24 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
 
     //region Internal
 
+    override fun onGlobalLayout() {
+        if (childCount == 0) {
+            return
+        }
+        val child = getChildAt(0)
+        engine.setContentSize(child.width.toFloat(), child.height.toFloat())
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        viewTreeObserver.addOnGlobalLayoutListener(this)
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        viewTreeObserver.removeOnGlobalLayoutListener(this)
+    }
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
 
         // Measure ourselves as MATCH_PARENT
@@ -103,12 +118,10 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
     }
 
     override fun addView(child: View, index: Int, params: ViewGroup.LayoutParams) {
-        if (childCount == 0) {
-            child.viewTreeObserver.addOnGlobalLayoutListener { engine.setContentSize(child.width.toFloat(), child.height.toFloat()) }
-            super.addView(child, index, params)
-        } else {
+        if (childCount > 0) {
             throw RuntimeException("$TAG accepts only a single child.")
         }
+        super.addView(child, index, params)
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
