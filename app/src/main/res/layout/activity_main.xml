@@ -3,7 +3,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layout_weight="1"
     android:orientation="vertical">
 
     <com.otaliastudios.zoom.ZoomLayout
@@ -34,6 +33,31 @@
         app:verticalPanEnabled="true"
         app:zoomEnabled="true" />
 
+    <FrameLayout
+        android:id="@+id/zoom_surface"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <com.otaliastudios.zoom.demo.VideoSurfaceContainer
+            android:id="@+id/surface_view_container"
+            android:layout_gravity="center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+            <SurfaceView
+                android:id="@+id/surface_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </com.otaliastudios.zoom.demo.VideoSurfaceContainer>
+
+        <com.google.android.exoplayer2.ui.PlayerControlView
+            android:id="@+id/player_control_view"
+            android:layout_gravity="bottom"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+    </FrameLayout>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -55,6 +79,14 @@
             android:layout_weight="0.5"
             android:background="@null"
             android:text="Image" />
+
+        <Button
+            android:id="@+id/show_zsv"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.5"
+            android:background="@null"
+            android:text="Video" />
 
     </LinearLayout>
 

@@ -20,9 +20,16 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    // required by ExoPlayer
+    compileOptions {
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 }
 
 dependencies {
     implementation "androidx.appcompat:appcompat:1.0.2"
+    implementation 'com.google.android.exoplayer:exoplayer-core:2.9.3'
+    implementation 'com.google.android.exoplayer:exoplayer-ui:2.9.3'
     implementation project(':library')
 }
