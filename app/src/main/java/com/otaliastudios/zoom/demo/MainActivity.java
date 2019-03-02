@@ -26,6 +26,9 @@ import com.google.android.exoplayer2.video.VideoListener;
 import com.otaliastudios.zoom.ZoomImageView;
 import com.otaliastudios.zoom.ZoomLayout;
 import com.otaliastudios.zoom.ZoomLogger;
+import com.otaliastudios.zoom.ZoomSurfaceView;
+
+import org.jetbrains.annotations.NotNull;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -38,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ZoomLogger.setLogLevel(ZoomLogger.LEVEL_INFO);
+        ZoomLogger.setLogLevel(ZoomLogger.LEVEL_VERBOSE);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         setUpVideoPlayer();
@@ -95,10 +98,21 @@ public class MainActivity extends AppCompatActivity {
     private void setUpVideoPlayer() {
         player = ExoPlayerFactory.newSimpleInstance(this);
         PlayerControlView controls = findViewById(R.id.player_control_view);
-        SurfaceView surface = findViewById(R.id.surface_view);
+        ZoomSurfaceView surface = findViewById(R.id.surface_view);
         VideoSurfaceContainer container = findViewById(R.id.surface_view_container);
         container.setPlayer(player);
-        player.setVideoSurfaceView(surface);
+        surface.addCallback(new ZoomSurfaceView.Callback() {
+            @Override
+            public void onZoomSurfaceCreated(@NotNull ZoomSurfaceView view) {
+                player.setVideoSurface(view.createSurface());
+            }
+
+            @Override
+            public void onZoomSurfaceChanged(@NotNull ZoomSurfaceView view, int width, int height) { }
+
+            @Override
+            public void onZoomSurfaceDestroyed(@NotNull ZoomSurfaceView view) { }
+        });
         controls.setPlayer(player);
         controls.setShowTimeoutMs(0);
         controls.show();
