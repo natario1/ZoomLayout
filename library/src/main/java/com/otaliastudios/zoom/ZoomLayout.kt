@@ -22,10 +22,6 @@ import com.otaliastudios.zoom.ZoomApi.ZoomType
  *
  *
  * Currently padding to this view / margins to the child view are NOT supported.
- *
- *
- * TODO: support padding (from inside ZoomEngine that gets the view)
- * TODO: support layout_margin (here)
  */
 open class ZoomLayout
 private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAttr: Int, val engine: ZoomEngine = ZoomEngine(context))
