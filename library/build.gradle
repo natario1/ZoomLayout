@@ -18,7 +18,7 @@ ext {
 // Required by bintray
 // archivesBaseName is required if artifactId is different from gradle module name
 // or you can add baseName to each archive task (sources, javadoc, aar)
-version = '1.5.0'
+version = '1.5.1'
 group = 'com.otaliastudios'
 archivesBaseName = 'zoomlayout'
 
@@ -35,7 +35,7 @@ android {
 }
 
 dependencies {
-    api "androidx.annotation:annotation:1.0.1"
+    api "androidx.annotation:annotation:1.0.2"
     api "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.3.1"

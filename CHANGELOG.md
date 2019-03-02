@@ -1,3 +1,14 @@
+## v1.5.1
+
+- Fix: fix a context leak in ZoomLayout thanks to [@dmazzoni][dmazzoni] ([#92][92]).
+- Fix: fix a bug in vertical Alignment thanks to  leak in ZoomLayout thanks to [@asclepix][asclepix] ([#90][90]).
+- Enhancement: cancel active fling animations thanks to [@markusressel][markusressel] ([#85][85]).
+- Fix: fix Kotlin nullability crashes thanks to [@Sly112][Sly112] ([#83][83]).
+- Fix: sources not present in published repo ([#81][81]).
+
+
+https://github.com/natario1/ZoomLayout/compare/v1.5.0...v1.5.1
+
 ## v1.5.0
 
 - New: Project source code was fully translated to Kotlin thanks to [@markusressel][markusressel] ([#38][38]).
@@ -14,6 +25,9 @@ https://github.com/natario1/ZoomLayout/compare/v1.4.0...v1.5.0
 [markusressel]: https://github.com/markusressel
 [nil2l]: https://github.com/nil2l
 [LRP-sgravel]: https://github.com/LRP-sgravel
+[dmazzoni]: https://github.com/dmazzoni
+[asclepix]: https://github.com/asclepix
+[Sly112]: https://github.com/Sly112
 
 [38]: https://github.com/natario1/ZoomLayout/pull/38
 [70]: https://github.com/natario1/ZoomLayout/pull/70
@@ -21,3 +35,8 @@ https://github.com/natario1/ZoomLayout/compare/v1.4.0...v1.5.0
 [79]: https://github.com/natario1/ZoomLayout/pull/79
 [71]: https://github.com/natario1/ZoomLayout/pull/71
 [76]: https://github.com/natario1/ZoomLayout/pull/76
+[81]: https://github.com/natario1/ZoomLayout/pull/81
+[83]: https://github.com/natario1/ZoomLayout/pull/83
+[85]: https://github.com/natario1/ZoomLayout/pull/85
+[90]: https://github.com/natario1/ZoomLayout/pull/90
+[92]: https://github.com/natario1/ZoomLayout/pull/92
