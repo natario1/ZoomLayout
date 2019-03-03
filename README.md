@@ -24,10 +24,11 @@ implementation 'com.otaliastudios:zoomlayout:1.5.1'
 
 - [`ZoomLayout`](#zoomlayout) : a container that supports 2D pan and zoom to a View hierarchy, even supporting clicks.
 - [`ZoomImageView`](#zoomimageview) : (yet another) ImageView that supports 2D pan and zoom.
+- [`ZoomSurfaceView`](#zoomsurfaceview) : A SurfaceView that supports 2D pan and zoom with OpenGL rendering (API 18).
 - Lightweight, no dependencies
 - API 16
 
-In fact, both `ZoomLayout` and `ZoomImageView` are just very simple implementations of the
+In fact, `ZoomLayout`, `ZoomImageView` and `ZoomSurfaceView` are just very simple implementations of the
 internal [`ZoomEngine`](#zoomengine). The zoom engine lets you animate everything through
 constant updates, as long as you feed it with touch events, with a `Matrix`-based mechanism
 that makes it very flexible.
@@ -135,6 +136,71 @@ zoomImageView.zoomTo(zoom, true);
 zoomImageView.zoomBy(factor, true);
 zoomImageView.realZoomTo(realZoom, true);
 zoomImageView.moveTo(zoom, x, y, true);
+```
+
+## ZoomSurfaceView
+
+A `SurfaceView` implementation (extending `GLSurfaceView`) that supports panning and zooming of its contents
+through OpenGL rendering. You can use this for video streaming, camera previews or any other surface application.
+
+```xml
+<com.otaliastudios.zoom.ZoomSurfaceView
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:transformation="centerInside"
+    app:transformationGravity="auto"
+    app:alignment="center"
+    app:horizontalPanEnabled="true"
+    app:verticalPanEnabled="true"
+    app:zoomEnabled="true"
+    app:flingEnabled="true"
+    app:maxZoom="2.5"
+    app:maxZoomType="zoom"
+    app:animationDuration="280"/>
+```
+
+There are a few special things about `ZoomSurfaceView` with respect to the other classes:
+
+- It **requires** API level 18
+- It does not support overscrolling and overpinching
+- The minimum zoom is fixed to 1
+- It will not draw scrollbars
+
+Using a SurfaceView is not a simple topic so we won't go into details here. Please take a look
+at the demo app which reproduces a zoomable/pannable video through ExoPlayer.
+
+To get a usable `Surface` out of `ZoomSurfaceView`, please add a callback and wait for the surface
+to be available:
+
+```java
+ZoomSurfaceView surfaceView = findViewById(R.id.zoom_surface_view);
+surfaceView.addCallback(new ZoomSurfaceView.Callback() {
+    @Override
+    public void onZoomSurfaceCreated(@NotNull ZoomSurfaceView view) {
+        Surface surface = view.createSurface();
+        // Use this surface for video players, camera preview, ...
+    }
+
+    @Override
+    public void onZoomSurfaceChanged(@NotNull ZoomSurfaceView view, int width, int height) { }
+
+    @Override
+    public void onZoomSurfaceDestroyed(@NotNull ZoomSurfaceView view) { }
+});
+```
+
+### APIs
+
+The `ZoomSurfaceView` will forward all API calls to the internal engine. See [engine docs](#zoomengine).
+You can also get the backing engine using `zoomSurfaceView.getEngine()`.
+
+```java
+zoomSurfaceView.panTo(x, y, true); // Shorthand for zoomSurfaceView.getEngine().panTo(x, y, true)
+zoomSurfaceView.panBy(deltaX, deltaY, true);
+zoomSurfaceView.zoomTo(zoom, true);
+zoomSurfaceView.zoomBy(factor, true);
+zoomSurfaceView.realZoomTo(realZoom, true);
+zoomSurfaceView.moveTo(zoom, x, y, true);
 ```
 
 ## ZoomEngine
