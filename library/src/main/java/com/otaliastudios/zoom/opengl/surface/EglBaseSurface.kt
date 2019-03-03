@@ -7,6 +7,7 @@ import android.opengl.EGL14
 import android.opengl.GLES20
 import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.otaliastudios.zoom.opengl.core.Egl
 import com.otaliastudios.zoom.opengl.core.EglCore
 import java.io.*
@@ -17,7 +18,7 @@ import java.nio.ByteOrder
  * Common base class for EGL surfaces.
  * There can be multiple base surfaces associated with a single [EglCore] object.
  */
-@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
+@RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 internal open class EglBaseSurface(protected var mEglCore: EglCore) {
 
     private var mEGLSurface = EGL14.EGL_NO_SURFACE

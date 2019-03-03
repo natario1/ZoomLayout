@@ -102,12 +102,20 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private val mContentScaledHeight: Float
         get() = mContentScaledRect.height()
 
+    /**
+     * Returns the content width as passed to [setContentSize].
+     * @return the current width
+     */
     @AbsolutePan
-    private val mContentWidth: Float
+    val contentWidth: Float
         get() = mContentRect.width()
 
+    /**
+     * Returns the content height as passed to [setContentSize].
+     * @return the current height
+     */
     @AbsolutePan
-    private val mContentHeight: Float
+    val contentHeight: Float
         get() = mContentRect.height()
 
     /**
@@ -483,7 +491,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     @JvmOverloads
     fun setContentSize(width: Float, height: Float, applyTransformation: Boolean = false) {
         if (width <= 0 || height <= 0) return
-        if (mContentWidth != width || mContentHeight != height || applyTransformation) {
+        if (contentWidth != width || contentHeight != height || applyTransformation) {
             mContentRect.set(0f, 0f, width, height)
             onSizeChanged(applyTransformation)
         }
@@ -514,16 +522,16 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         // We will sync them later using matrix.mapRect.
         mContentScaledRect.set(mContentRect)
 
-        if (mContentWidth <= 0
-                || mContentHeight <= 0
+        if (contentWidth <= 0
+                || contentHeight <= 0
                 || mContainerWidth <= 0
                 || mContainerHeight <= 0)
             return
 
         LOG.w("onSizeChanged:", "containerWidth:", mContainerWidth,
                 "containerHeight:", mContainerHeight,
-                "contentWidth:", mContentWidth,
-                "contentHeight:", mContentHeight)
+                "contentWidth:", contentWidth,
+                "contentHeight:", contentHeight)
 
         // See if we need to apply the transformation. This is the easier case, because
         // if we don't want to apply it, we must do extra computations to keep the appearance unchanged.
@@ -1008,7 +1016,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 // to initially transform the content.
                 // Currently this is always [View.Gravity.CENTER] as indicated by [mTransformationGravity]
                 // but this might be changed by the user.
-                return AbsolutePoint(-mContentWidth / 2F, -mContentHeight / 2F).toViewCoordinate()
+                return AbsolutePoint(-contentWidth / 2F, -contentHeight / 2F).toViewCoordinate()
             }
 
             val x = when {

@@ -5,6 +5,7 @@ import android.annotation.TargetApi
 import android.graphics.SurfaceTexture
 import android.os.Build
 import android.view.Surface
+import androidx.annotation.RequiresApi
 import com.otaliastudios.zoom.opengl.core.EglCore
 
 
@@ -12,7 +13,7 @@ import com.otaliastudios.zoom.opengl.core.EglCore
  * Recordable EGL window surface.
  * It's good practice to explicitly release() the surface, preferably from a "finally" block.
  */
-@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
+@RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 internal class EglWindowSurface : EglBaseSurface {
     private var mSurface: Surface? = null
     private var mReleaseSurface = false

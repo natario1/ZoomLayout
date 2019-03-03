@@ -2,6 +2,7 @@ package com.otaliastudios.zoom.demo;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.widget.FrameLayout;
 
 import com.google.android.exoplayer2.SimpleExoPlayer;
@@ -10,16 +11,16 @@ import com.google.android.exoplayer2.video.VideoListener;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-public class VideoSurfaceContainer extends FrameLayout implements VideoListener {
+public class ZoomSurfaceViewContainer extends FrameLayout implements VideoListener {
 
     private SimpleExoPlayer player;
     private float videoAspectRatio = -1F;
 
-    public VideoSurfaceContainer(@NonNull Context context) {
+    public ZoomSurfaceViewContainer(@NonNull Context context) {
         super(context);
     }
 
-    public VideoSurfaceContainer(@NonNull Context context, @Nullable AttributeSet attrs) {
+    public ZoomSurfaceViewContainer(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
     }
 
@@ -31,6 +32,7 @@ public class VideoSurfaceContainer extends FrameLayout implements VideoListener 
 
     @Override
     public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees, float pixelWidthHeightRatio) {
+        Log.e("ZoomSurfaceContainer", "onVideoSizeChanged: " + width + "x" + height);
         videoAspectRatio = (height == 0 || width == 0) ? 1 : (width * pixelWidthHeightRatio) / height;
         requestLayout();
     }

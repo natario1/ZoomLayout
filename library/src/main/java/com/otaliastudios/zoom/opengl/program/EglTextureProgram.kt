@@ -3,7 +3,11 @@ package com.otaliastudios.zoom.opengl.program
 
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
+import android.opengl.GLES32
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.otaliastudios.zoom.opengl.core.Egl
+import com.otaliastudios.zoom.opengl.core.EglOptions
 import com.otaliastudios.zoom.opengl.draw.EglDrawable
 import java.nio.FloatBuffer
 
@@ -15,6 +19,7 @@ import java.nio.FloatBuffer
  * The texture ID is passed outside so the callers can draw on that texture ID and then
  * call draw() here.
  */
+@RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 internal open class EglTextureProgram : EglProgram() {
 
     companion object {
@@ -88,8 +93,8 @@ internal open class EglTextureProgram : EglProgram() {
 
         GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST.toFloat())
         GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR.toFloat())
-        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
-        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, EglOptions.glTextureWrapS)
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, EglOptions.glTextureWrapT)
         Egl.check("glTexParameter")
 
         return texId

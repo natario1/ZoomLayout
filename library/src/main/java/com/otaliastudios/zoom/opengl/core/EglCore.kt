@@ -7,6 +7,7 @@ import android.opengl.*
 import android.os.Build
 import android.util.Log
 import android.view.Surface
+import androidx.annotation.RequiresApi
 
 
 /**
@@ -17,24 +18,15 @@ import android.view.Surface
  * @param sharedContext The context to share, or null if sharing is not desired.
  * @param flags Configuration bit flags, e.g. FLAG_RECORDABLE.
  */
-@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
+@RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 internal class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: Int = 0) {
 
     private var eglDisplay: EGLDisplay? = EGL14.EGL_NO_DISPLAY
-    internal var eglContext = EGL14.EGL_NO_CONTEXT
-        private set
+    private var eglContext = EGL14.EGL_NO_CONTEXT
     private var eglConfig: EGLConfig? = null
-
-    // Returns the GLES version this context is configured for (currently 2 or 3).
-    var glVersion = -1
-        private set
+    private var glVersion = -1 // 2 or 3
 
     init {
-        if (eglDisplay !== EGL14.EGL_NO_DISPLAY) {
-            // Don't see how this would happen.
-            throw RuntimeException("EGL already set up")
-        }
-
         eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
         if (eglDisplay === EGL14.EGL_NO_DISPLAY) {
             throw RuntimeException("unable to get EGL14 display")
@@ -47,63 +39,41 @@ internal class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: 
         }
 
         // Try to get a GLES3 context, if requested.
-        if (flags and FLAG_TRY_GLES3 != 0) {
-            val config = getConfig(flags, 3)
+        val recordable = flags and FLAG_RECORDABLE != 0
+        val tryGles3 = flags and FLAG_TRY_GLES3 != 0
+        if (tryGles3) {
+            val config = EglConfigChooser.getConfig(eglDisplay!!, 3, recordable)
             if (config != null) {
-                val attribList = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 3, EGL14.EGL_NONE)
-                val context = EGL14.eglCreateContext(eglDisplay, config, sharedContext,
-                        attribList, 0)
-                if (EGL14.eglGetError() == EGL14.EGL_SUCCESS) {
+                val attributes = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 3, EGL14.EGL_NONE)
+                val context = EGL14.eglCreateContext(eglDisplay, config, sharedContext, attributes, 0)
+                try {
+                    checkEglError("eglCreateContext (3)")
                     eglConfig = config
                     eglContext = context
                     glVersion = 3
+                } catch (e: Exception) {
+                    // Swallow, will try GLES2
                 }
             }
         }
 
-        if (eglContext === EGL14.EGL_NO_CONTEXT) {  // GLES 2 only, or GLES 3 attempt failed
-            val config = getConfig(flags, 2) ?: throw RuntimeException("Unable to find a suitable EGLConfig")
-            val attribList = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL14.EGL_NONE)
-            val context = EGL14.eglCreateContext(eglDisplay, config, sharedContext,
-                    attribList, 0)
-            checkEglError("eglCreateContext")
-            eglConfig = config
-            eglContext = context
-            glVersion = 2
+        // If GLES3 failed, go with GLES2.
+        val tryGles2 = eglContext === EGL14.EGL_NO_CONTEXT
+        if (tryGles2) {
+            val config = EglConfigChooser.getConfig(eglDisplay!!, 2, recordable)
+            if (config != null) {
+                val attributes = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL14.EGL_NONE)
+                val context = EGL14.eglCreateContext(eglDisplay, config, sharedContext, attributes, 0)
+                checkEglError("eglCreateContext (2)")
+                eglConfig = config
+                eglContext = context
+                glVersion = 2
+            } else {
+                throw RuntimeException("Unable to find a suitable EGLConfig")
+            }
         }
     }
 
-    /**
-     * Finds a suitable EGLConfig.
-     *
-     * @param flags Bit flags from constructor.
-     * @param version Must be 2 or 3.
-     */
-    private fun getConfig(flags: Int, version: Int): EGLConfig? {
-        var renderableType = EGL14.EGL_OPENGL_ES2_BIT
-        if (version >= 3) {
-            renderableType = renderableType or EGLExt.EGL_OPENGL_ES3_BIT_KHR
-        }
-
-        // The actual surface is generally RGBA or RGBX, so situationally omitting alpha
-        // doesn't really help.  It can also lead to a huge performance hit on glReadPixels()
-        // when reading into a GL_RGBA buffer.
-        val attribList = intArrayOf(EGL14.EGL_RED_SIZE, 8, EGL14.EGL_GREEN_SIZE, 8, EGL14.EGL_BLUE_SIZE, 8, EGL14.EGL_ALPHA_SIZE, 8,
-                EGL14.EGL_RENDERABLE_TYPE, renderableType, EGL14.EGL_NONE, 0, // placeholder for recordable [@-3]
-                EGL14.EGL_NONE)
-        if (flags and FLAG_RECORDABLE != 0) {
-            attribList[attribList.size - 3] = EGL_RECORDABLE_ANDROID
-            attribList[attribList.size - 2] = 1
-        }
-        val configs = arrayOfNulls<EGLConfig>(1)
-        val numConfigs = IntArray(1)
-        if (!EGL14.eglChooseConfig(eglDisplay, attribList, 0, configs, 0, configs.size,
-                        numConfigs, 0)) {
-            Log.w(TAG, "Unable to find RGB8888 / $version EGLConfig")
-            return null
-        }
-        return configs[0]
-    }
 
     /**
      * Discards all resources held by this class, notably the EGL context.  This must be
@@ -115,8 +85,7 @@ internal class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: 
         if (eglDisplay !== EGL14.EGL_NO_DISPLAY) {
             // Android is unusual in that it uses a reference-counted EGLDisplay.  So for
             // every eglInitialize() we need an eglTerminate().
-            EGL14.eglMakeCurrent(eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE,
-                    EGL14.EGL_NO_CONTEXT)
+            EGL14.eglMakeCurrent(eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)
             EGL14.eglDestroyContext(eglDisplay, eglContext)
             EGL14.eglReleaseThread()
             EGL14.eglTerminate(eglDisplay)
@@ -128,7 +97,7 @@ internal class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: 
     }
 
     // Kotlin has no finalize, but simply declaring it works,
-    // as stated in officla documentation.
+    // as stated in official documentation.
     protected fun finalize() {
         if (eglDisplay !== EGL14.EGL_NO_DISPLAY) {
             // We're limited here -- finalizers don't run on the thread that holds
@@ -184,9 +153,7 @@ internal class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: 
      * Makes our EGL context current, using the supplied surface for both "draw" and "read".
      */
     fun makeCurrent(eglSurface: EGLSurface) {
-        if (eglDisplay === EGL14.EGL_NO_DISPLAY) {
-            // Log.d(TAG, "NOTE: makeCurrent w/o display")
-        }
+        if (eglDisplay === EGL14.EGL_NO_DISPLAY) Log.d(TAG, "NOTE: makeCurrent w/o display")
         if (!EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)) {
             throw RuntimeException("eglMakeCurrent failed")
         }
@@ -196,9 +163,7 @@ internal class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: 
      * Makes our EGL context current, using the supplied "draw" and "read" surfaces.
      */
     fun makeCurrent(drawSurface: EGLSurface, readSurface: EGLSurface) {
-        if (eglDisplay === EGL14.EGL_NO_DISPLAY) {
-            // Log.d(TAG, "NOTE: makeCurrent w/o display")
-        }
+        if (eglDisplay === EGL14.EGL_NO_DISPLAY) Log.d(TAG, "NOTE: makeCurrent w/o display")
         if (!EGL14.eglMakeCurrent(eglDisplay, drawSurface, readSurface, eglContext)) {
             throw RuntimeException("eglMakeCurrent(draw,read) failed")
         }
@@ -208,10 +173,7 @@ internal class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: 
      * Makes no context current.
      */
     fun makeNothingCurrent() {
-        if (!EGL14.eglMakeCurrent(eglDisplay,
-                        EGL14.EGL_NO_SURFACE,
-                        EGL14.EGL_NO_SURFACE,
-                        EGL14.EGL_NO_CONTEXT)) {
+        if (!EGL14.eglMakeCurrent(eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)) {
             throw RuntimeException("eglMakeCurrent failed")
         }
     }
@@ -281,9 +243,6 @@ internal class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: 
          */
         val FLAG_TRY_GLES3 = 0x02
 
-        // Android-specific extension.
-        private val EGL_RECORDABLE_ANDROID = 0x3142
-
         /**
          * Writes the current display, context, and surface to the log.
          */
@@ -291,8 +250,7 @@ internal class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: 
             val display = EGL14.eglGetCurrentDisplay()
             val context = EGL14.eglGetCurrentContext()
             val surface = EGL14.eglGetCurrentSurface(EGL14.EGL_DRAW)
-            // Log.i(TAG, "Current EGL (" + msg + "): display=" + display + ", context=" + context +
-            //         ", surface=" + surface)
+            Log.i(TAG, "Current EGL ($msg): display=$display, context=$context, surface=$surface)")
         }
     }
 }

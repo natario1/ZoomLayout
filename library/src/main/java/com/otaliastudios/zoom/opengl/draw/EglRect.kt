@@ -1,5 +1,7 @@
 package com.otaliastudios.zoom.opengl.draw
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.otaliastudios.zoom.opengl.core.Egl
 import java.nio.FloatBuffer
 
@@ -7,6 +9,7 @@ import java.nio.FloatBuffer
 /**
  * Includes stuff from grafika's Drawable2d FULL_RECTANGLE.
  */
+@RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 internal class EglRect: EglDrawable() {
 
     companion object {

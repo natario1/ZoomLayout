@@ -1,20 +1,14 @@
 package com.otaliastudios.zoom.demo;
 
-import android.content.Context;
+import android.annotation.TargetApi;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
-import android.util.AttributeSet;
-import android.util.Log;
-import android.view.SurfaceView;
-import android.view.TextureView;
 import android.view.View;
 import android.widget.Button;
-import android.widget.FrameLayout;
+import android.widget.Toast;
 
-import com.google.android.exoplayer2.ExoPlaybackException;
-import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.ExoPlayerFactory;
-import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.source.ExtractorMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
@@ -22,7 +16,6 @@ import com.google.android.exoplayer2.ui.PlayerControlView;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
-import com.google.android.exoplayer2.video.VideoListener;
 import com.otaliastudios.zoom.ZoomImageView;
 import com.otaliastudios.zoom.ZoomLayout;
 import com.otaliastudios.zoom.ZoomLogger;
@@ -30,8 +23,6 @@ import com.otaliastudios.zoom.ZoomSurfaceView;
 
 import org.jetbrains.annotations.NotNull;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 
@@ -44,7 +35,9 @@ public class MainActivity extends AppCompatActivity {
         ZoomLogger.setLogLevel(ZoomLogger.LEVEL_VERBOSE);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        setUpVideoPlayer();
+
+        final boolean supportsSurfaceView = Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2;
+        if (supportsSurfaceView) setUpVideoPlayer();
 
         final Button buttonZoomLayout = findViewById(R.id.show_zl);
         final Button buttonZoomImage = findViewById(R.id.show_ziv);
@@ -57,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
         buttonZoomLayout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                player.setPlayWhenReady(false);
+                if (supportsSurfaceView) player.setPlayWhenReady(false);
                 zoomSurface.setVisibility(View.GONE);
                 zoomImage.setVisibility(View.GONE);
                 zoomLayout.setVisibility(View.VISIBLE);
@@ -70,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
         buttonZoomImage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                player.setPlayWhenReady(false);
+                if (supportsSurfaceView) player.setPlayWhenReady(false);
                 zoomSurface.setVisibility(View.GONE);
                 zoomLayout.setVisibility(View.GONE);
                 zoomImage.setVisibility(View.VISIBLE);
@@ -82,24 +75,29 @@ public class MainActivity extends AppCompatActivity {
         buttonZoomSurface.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                player.setPlayWhenReady(true);
-                zoomImage.setVisibility(View.GONE);
-                zoomLayout.setVisibility(View.GONE);
-                zoomSurface.setVisibility(View.VISIBLE);
-                buttonZoomLayout.setAlpha(0.65f);
-                buttonZoomImage.setAlpha(0.65f);
-                buttonZoomSurface.setAlpha(1f);
-
+                if (supportsSurfaceView) {
+                    player.setPlayWhenReady(true);
+                    zoomImage.setVisibility(View.GONE);
+                    zoomLayout.setVisibility(View.GONE);
+                    zoomSurface.setVisibility(View.VISIBLE);
+                    buttonZoomLayout.setAlpha(0.65f);
+                    buttonZoomImage.setAlpha(0.65f);
+                    buttonZoomSurface.setAlpha(1f);
+                } else {
+                    Toast.makeText(MainActivity.this,
+                            "ZoomSurfaceView requires API 18", Toast.LENGTH_SHORT).show();
+                }
             }
         });
         buttonZoomLayout.performClick();
     }
 
+    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
     private void setUpVideoPlayer() {
         player = ExoPlayerFactory.newSimpleInstance(this);
         PlayerControlView controls = findViewById(R.id.player_control_view);
         ZoomSurfaceView surface = findViewById(R.id.surface_view);
-        VideoSurfaceContainer container = findViewById(R.id.surface_view_container);
+        ZoomSurfaceViewContainer container = findViewById(R.id.surface_view_container);
         container.setPlayer(player);
         surface.addCallback(new ZoomSurfaceView.Callback() {
             @Override

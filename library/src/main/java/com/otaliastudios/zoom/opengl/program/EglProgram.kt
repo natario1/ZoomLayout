@@ -2,11 +2,14 @@ package com.otaliastudios.zoom.opengl.program
 
 
 import android.opengl.GLES20
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.otaliastudios.zoom.opengl.core.Egl
 
 /**
  * Base class for a program, can create the program and load shaders.
  */
+@RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 internal open class EglProgram {
 
     // Creates a program with given vertex shader and pixel shader.

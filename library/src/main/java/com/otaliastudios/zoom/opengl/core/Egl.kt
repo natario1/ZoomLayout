@@ -1,14 +1,18 @@
 package com.otaliastudios.zoom.opengl.core
 
 
+import android.annotation.TargetApi
 import android.opengl.GLES20
 import android.opengl.GLU
 import android.opengl.Matrix
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 
+@RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 internal object Egl {
 
     // Identity matrix for general use.
@@ -31,8 +35,8 @@ internal object Egl {
     fun check(opName: String) {
         val error = GLES20.glGetError()
         if (error != GLES20.GL_NO_ERROR) {
-            val message = "Error during $opName: glError 0x ${Integer.toHexString(error)}"
-            Log.e("Egl", message + " " + GLU.gluErrorString(error))
+            val message = "Error during $opName: glError 0x${Integer.toHexString(error)}: ${GLU.gluErrorString(error)}"
+            Log.e("Egl", message)
             throw RuntimeException(message)
         }
     }

@@ -1,17 +1,19 @@
 package com.otaliastudios.zoom
 
+import android.annotation.TargetApi
 import android.content.Context
-import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.SurfaceTexture
 import android.opengl.GLSurfaceView
+import android.os.Build
 import android.util.AttributeSet
 import android.view.*
-import android.widget.FrameLayout
-import androidx.annotation.AttrRes
+import androidx.annotation.RequiresApi
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import com.otaliastudios.zoom.ZoomApi.ZoomType
+import com.otaliastudios.zoom.opengl.core.EglConfigChooser
+import com.otaliastudios.zoom.opengl.core.EglContextFactory
 import com.otaliastudios.zoom.opengl.program.EglRectTextureProgram
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -19,7 +21,14 @@ import javax.microedition.khronos.opengles.GL10
 
 /**
  * Uses [ZoomEngine] to allow zooming and pan events onto a GL rendered surface.
+ *
+ * This class does not allow overscrolling nor overpincinhg. This means that these XML attributes are
+ * ignored and [setOverScrollHorizontal], [setOverScrollVertical], [setOverPinchable] do nothing.
+ * You can still call these methods on the underlying engine, but this will create visible artifacts.
+ *
+ * The same goes for [setMinZoom]. This is forced to be 1 so that you can never zoom out too much.
  */
+@RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 open class ZoomSurfaceView
 private constructor(
         context: Context,
@@ -97,26 +106,27 @@ private constructor(
 
         engine.setContainer(this)
         engine.addListener(this)
+        engine.setOverScrollHorizontal(false)
+        engine.setOverScrollVertical(false)
+        engine.setOverPinchable(false)
+        engine.setMinZoom(1F, ZoomApi.TYPE_REAL_ZOOM)
         setTransformation(transformation, transformationGravity)
         setAlignment(alignment)
-        setOverScrollHorizontal(false)
-        setOverScrollVertical(false)
         setHorizontalPanEnabled(horizontalPanEnabled)
         setVerticalPanEnabled(verticalPanEnabled)
-        setOverPinchable(false)
         setZoomEnabled(zoomEnabled)
         setFlingEnabled(flingEnabled)
         setAllowFlingInOverscroll(allowFlingInOverscroll)
         setAnimationDuration(animationDuration)
-        setMinZoom(1F, ZoomApi.TYPE_REAL_ZOOM)
         setMaxZoom(maxZoom, maxZoomMode)
 
-        setEGLContextClientVersion(2)
+        setEGLContextFactory(EglContextFactory.GLES2)
+        setEGLConfigChooser(EglConfigChooser.GLES2)
         setRenderer(this)
         renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
         holder.addCallback(object: SurfaceHolder.Callback {
 
-            // Surface has changed. Disptach to callbacks.
+            // Surface has changed. Dispatch to callbacks.
             override fun surfaceChanged(holder: SurfaceHolder?, format: Int, width: Int, height: Int) {
                 post { callbacks.forEach { it.onZoomSurfaceChanged(this@ZoomSurfaceView, width, height) } }
             }
@@ -128,6 +138,18 @@ private constructor(
             override fun surfaceDestroyed(holder: SurfaceHolder?) { onSurfaceDestroyed() }
         })
     }
+
+    // This is not allowed in this class, because I can't get CLAMP_TO_BORDER to work.
+    final override fun setOverScrollHorizontal(overScroll: Boolean) {}
+
+    // This is not allowed in this class, because I can't get CLAMP_TO_BORDER to work.
+    final override fun setOverScrollVertical(overScroll: Boolean) {}
+
+    // This is not allowed in this class, because I can't get CLAMP_TO_BORDER to work.
+    final override fun setOverPinchable(overPinchable: Boolean) {}
+
+    // This is not supported - we want to force this to 1.
+    final override fun setMinZoom(minZoom: Float, type: Int) {}
 
     override fun dispatchTouchEvent(event: MotionEvent?): Boolean {
         val engineResult = event?.let { engine.onTouchEvent(it) } ?: false
@@ -189,17 +211,24 @@ private constructor(
     override fun onDrawFrame(gl: GL10?) {
         val texture = surfaceTexture ?: return
         val program = program ?: return
-        val translX = -panX / measuredWidth
-        val translY = panY / measuredHeight
+        val translX = -panX / engine.contentWidth
+        val translY = panY / engine.contentHeight
         val scale = 1F / realZoom
-        LOG.i("performing a  draw operation. translX: $translX translY: $translY scale: $scale")
 
-        // Latch the latest frame.  If there isn't anything new,
+        // Latch the latest frame. If there isn't anything new,
         // we'll just re-use whatever was there before.
         texture.updateTexImage()
         texture.getTransformMatrix(surfaceTextureTransformMatrix)
-        android.opengl.Matrix.translateM(surfaceTextureTransformMatrix, 0, translX, translY, 0F)
+
+        // There are some issues here due to the fact that GL will always apply translation first than scale,
+        // which is not what we want. It also scales with respect to the (0,0) point (bottom-left) which is also
+        // is not what we want. A good option, apparently, is to:
+        // 1. translate with our pan values.
+        android.opengl.Matrix.translateM(surfaceTextureTransformMatrix, 0, translX, translY, 0f)
+        // 2. Scale, but with respect to the top-left point (0,1). This is achieved by translating then translating back.
+        android.opengl.Matrix.translateM(surfaceTextureTransformMatrix, 0, 0F, 1f, 0f)
         android.opengl.Matrix.scaleM(surfaceTextureTransformMatrix, 0, scale, scale, 1F)
+        android.opengl.Matrix.translateM(surfaceTextureTransformMatrix, 0, 0F, -1f, 0f)
         program.drawRect(textureId, surfaceTextureTransformMatrix)
     }
 

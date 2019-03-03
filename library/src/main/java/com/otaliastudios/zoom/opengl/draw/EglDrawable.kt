@@ -1,8 +1,11 @@
 package com.otaliastudios.zoom.opengl.draw
 
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import java.nio.FloatBuffer
 
+@RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 internal abstract class EglDrawable {
 
     /**
