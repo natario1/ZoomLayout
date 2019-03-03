@@ -166,6 +166,9 @@ There are a few special things about `ZoomSurfaceView` with respect to the other
 - The minimum zoom is fixed to 1
 - It will not draw scrollbars
 
+Also it is your responsibility to measure the `ZoomSurfaceView` so that it matches the stream aspect
+ratio. If it doesn't, the content will be distorted.
+
 Using a SurfaceView is not a simple topic so we won't go into details here. Please take a look
 at the demo app which reproduces a zoomable/pannable video through ExoPlayer.
 
@@ -318,6 +321,7 @@ All pan APIs accept x and y coordinates. These refer to the top-left visible pix
 
 - If using `ZoomLayout`, the coordinate system is that of the inner view
 - If using `ZoomImageView`, the coordinate system is that of the drawable intrinsic width and height
+- If using `ZoomSurfaceView`, the coordinate system is that of the view dimensions
 - If using the engine directly, the coordinate system is that of the rect you passed in `setContentRect`
 
 In any case the current scale is not considered, so your system won't change if zoom changes.
