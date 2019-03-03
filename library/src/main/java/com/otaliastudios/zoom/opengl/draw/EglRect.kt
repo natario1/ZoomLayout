@@ -44,7 +44,7 @@ internal class EglRect: EglDrawable() {
     override val vertexCount: Int
         get() = FULL_RECTANGLE_COORDS.size / COORDS_PER_VERTEX
 
-    override val texCoordsPerVertex: Int
+    override val coordsPerVertex: Int
         get() = COORDS_PER_VERTEX
 
     override val vertexStride: Int

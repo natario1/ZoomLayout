@@ -12,8 +12,12 @@ import androidx.annotation.RequiresApi
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import com.otaliastudios.zoom.ZoomApi.ZoomType
+import com.otaliastudios.zoom.opengl.core.Egl
 import com.otaliastudios.zoom.opengl.core.EglConfigChooser
 import com.otaliastudios.zoom.opengl.core.EglContextFactory
+import com.otaliastudios.zoom.opengl.draw.EglRect
+import com.otaliastudios.zoom.opengl.program.EglFlatProgram
+import com.otaliastudios.zoom.opengl.program.EglRectFlatProgram
 import com.otaliastudios.zoom.opengl.program.EglRectTextureProgram
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10

@@ -5,12 +5,14 @@ import android.opengl.GLES20
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.otaliastudios.zoom.opengl.core.Egl
+import com.otaliastudios.zoom.opengl.draw.EglDrawable
 
 /**
  * Base class for a program, can create the program and load shaders.
+ * Programs should define functions to draw [EglDrawable]s.
  */
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-internal open class EglProgram {
+internal abstract class EglProgram {
 
     // Creates a program with given vertex shader and pixel shader.
     protected fun createProgram(vertexSource: String, fragmentSource: String): Int {

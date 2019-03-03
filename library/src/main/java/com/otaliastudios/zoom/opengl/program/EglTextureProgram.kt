@@ -3,7 +3,6 @@ package com.otaliastudios.zoom.opengl.program
 
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
-import android.opengl.GLES32
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.otaliastudios.zoom.opengl.core.Egl
@@ -103,7 +102,7 @@ internal open class EglTextureProgram : EglProgram() {
     internal fun drawEglDrawable(textureId: Int, textureMatrix: FloatArray, drawable: EglDrawable) {
         draw(textureId, textureMatrix,
                 drawable.vertexArray, 0, drawable.vertexCount, drawable.vertexStride,
-                drawable.texCoordArray, drawable.texCoordStride, drawable.texCoordsPerVertex)
+                drawable.texCoordArray, drawable.texCoordStride, drawable.coordsPerVertex)
     }
 
     private fun draw(textureId: Int, textureMatrix: FloatArray,

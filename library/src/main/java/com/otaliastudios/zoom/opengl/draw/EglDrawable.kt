@@ -25,18 +25,19 @@ internal abstract class EglDrawable {
     abstract val vertexStride: Int
 
     /**
-     * Returns the array of texture coordinates.
+     * Returns the number of position coordinates per vertex.  This will be 2 or 3.
+     */
+    abstract val coordsPerVertex: Int
+
+    /**
+     * Texture drawing: returns the array of texture coordinates.
      * To avoid allocations, this returns internal state.  The caller must not modify it.
      */
     abstract val texCoordArray: FloatBuffer
 
     /**
-     * Returns the width, in bytes, of the data for each texture coordinate.
+     * Texture drawing: Returns the width, in bytes, of the data for each texture coordinate.
      */
     abstract val texCoordStride: Int
 
-    /**
-     * Returns the number of position coordinates per vertex.  This will be 2 or 3.
-     */
-    abstract val texCoordsPerVertex: Int
 }
