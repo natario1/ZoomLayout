@@ -92,6 +92,21 @@ public class MainActivity extends AppCompatActivity {
         buttonZoomLayout.performClick();
     }
 
+    @Override
+    protected void onStop() {
+        super.onStop();
+        ZoomSurfaceView surface = findViewById(R.id.surface_view);
+        surface.onPause();
+    }
+
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        ZoomSurfaceView surface = findViewById(R.id.surface_view);
+        surface.onResume();
+    }
+
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
     private void setUpVideoPlayer() {
         player = ExoPlayerFactory.newSimpleInstance(this);
