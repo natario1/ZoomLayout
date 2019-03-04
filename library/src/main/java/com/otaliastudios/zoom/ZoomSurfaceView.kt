@@ -46,16 +46,28 @@ private constructor(
             : this(context, attrs, ZoomEngine(context))
 
     private val callbacks = mutableListOf<Callback>()
-    private var surfaceTexture: SurfaceTexture? = null
     private val surfaceTextureTransformMatrix = FloatArray(16)
 
     /**
      * A [Surface] that can be consumed by some buffer provider.
      * This will be non-null after [Callback.onZoomSurfaceCreated]
      * and null again after [Callback.onZoomSurfaceDestroyed].
+     *
+     * This class cares about releasing this object when done.
      */
     var surface: Surface? = null
         private set
+
+    /**
+     * A [SurfaceTexture] that can be consumed by some buffer provider.
+     * This will be non-null after [Callback.onZoomSurfaceCreated]
+     * and null again after [Callback.onZoomSurfaceDestroyed].
+     *
+     * This class cares about releasing this object when done.
+     */
+    private var surfaceTexture: SurfaceTexture? = null
+        private set
+
 
     private var program: EglRectTextureProgram? = null
     private var textureId = 0
@@ -203,11 +215,11 @@ private constructor(
         // after onZoomSurfaceDestroyed (the create call is posted).
         post {
             surfaceTexture?.release()
-            surfaceTexture = null
             program?.release()
-            program = null
-            callbacks.forEach { it.onZoomSurfaceDestroyed(this) }
             surface?.release()
+            callbacks.forEach { it.onZoomSurfaceDestroyed(this) }
+            surfaceTexture = null // Keep these non-null in the callback
+            program = null
             surface = null
         }
     }
@@ -254,9 +266,7 @@ private constructor(
      * matrix using the [android.opengl.Matrix] utilities.
      */
     @WorkerThread
-    protected fun onDraw(transformMatrix: FloatArray) {
-
-    }
+    protected open fun onDraw(transformMatrix: FloatArray) {}
 
     override fun onIdle(engine: ZoomEngine) {}
 

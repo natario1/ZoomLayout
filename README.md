@@ -141,7 +141,8 @@ zoomImageView.moveTo(zoom, x, y, true);
 ## ZoomSurfaceView
 
 A `SurfaceView` implementation (extending `GLSurfaceView`) that supports panning and zooming of its contents
-through OpenGL rendering. You can use this for video streaming, camera previews or any other surface application.
+through OpenGL rendering. You can use this for video streaming, camera previews or any other surface application
+that streams image buffers into a `Surface`.
 
 ```xml
 <com.otaliastudios.zoom.ZoomSurfaceView
@@ -169,7 +170,7 @@ There are a few special things about `ZoomSurfaceView` with respect to the other
 Also it is your responsibility to measure the `ZoomSurfaceView` so that it matches the stream aspect
 ratio. If it doesn't, the content will be distorted.
 
-Using a SurfaceView is not a simple topic so we won't go into details here. Please take a look
+Using `Surface`s is not a simple topic so we won't go into details here. Please take a look
 at the demo app which reproduces a zoomable/pannable video through ExoPlayer.
 
 To get a usable `Surface` out of `ZoomSurfaceView`, please add a callback and wait for the surface
