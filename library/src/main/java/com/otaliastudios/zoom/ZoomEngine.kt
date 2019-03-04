@@ -461,7 +461,14 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      */
     internal fun setContainer(container: View) {
         mContainer = container
-        mContainer.viewTreeObserver.addOnGlobalLayoutListener(this)
+        mContainer.addOnAttachStateChangeListener(object: View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(view: View) {
+                view.viewTreeObserver.addOnGlobalLayoutListener(this@ZoomEngine)
+            }
+            override fun onViewDetachedFromWindow(view: View) {
+                view.viewTreeObserver.removeOnGlobalLayoutListener(this@ZoomEngine)
+            }
+        })
     }
 
     override fun onGlobalLayout() {
