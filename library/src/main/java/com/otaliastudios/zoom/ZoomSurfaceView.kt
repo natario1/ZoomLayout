@@ -1,5 +1,6 @@
 package com.otaliastudios.zoom
 
+import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.content.Context
 import android.graphics.Matrix
@@ -47,6 +48,15 @@ private constructor(
     private val callbacks = mutableListOf<Callback>()
     private var surfaceTexture: SurfaceTexture? = null
     private val surfaceTextureTransformMatrix = FloatArray(16)
+
+    /**
+     * A [Surface] that can be consumed by some buffer provider.
+     * This will be non-null after [Callback.onZoomSurfaceCreated]
+     * and null again after [Callback.onZoomSurfaceDestroyed].
+     */
+    var surface: Surface? = null
+        private set
+
     private var program: EglRectTextureProgram? = null
     private var textureId = 0
 
@@ -58,7 +68,7 @@ private constructor(
 
         /**
          * The underlying surface was just created. At this point you
-         * can call [createSurface] to obtain a consumable surface.
+         * can call [surface] to obtain a consumable surface.
          */
         @UiThread
         fun onZoomSurfaceCreated(view: ZoomSurfaceView)
@@ -72,7 +82,7 @@ private constructor(
 
         /**
          * The underlying surface has just been destroyed. At this point
-         * surfaces created with [createSurface] should not be used anymore.
+         * the surface obtained with [surface] is about to be released.
          */
         @UiThread
         fun onZoomSurfaceDestroyed(view: ZoomSurfaceView)
@@ -128,18 +138,20 @@ private constructor(
         setEGLConfigChooser(EglConfigChooser.GLES2)
         setRenderer(this)
         renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+
         holder.addCallback(object: SurfaceHolder.Callback {
 
-            // Surface has changed. Dispatch to callbacks.
+            // Surface has changed. Dispatch to callbacks. I THINK this is UI thread.
             override fun surfaceChanged(holder: SurfaceHolder?, format: Int, width: Int, height: Int) {
-                post { callbacks.forEach { it.onZoomSurfaceChanged(this@ZoomSurfaceView, width, height) } }
+                callbacks.forEach { it.onZoomSurfaceChanged(this@ZoomSurfaceView, width, height) }
             }
 
             // Surface was created. Do nothing as we use the Renderer callback.
             override fun surfaceCreated(holder: SurfaceHolder?) {}
 
-            // Surface was destroyed. Release stuff.
-            override fun surfaceDestroyed(holder: SurfaceHolder?) { onSurfaceDestroyed() }
+            // Surface was destroyed. Do nothing as we use onDetachedFromWindow() for this.
+            // For example, this is also called when setting visibility to GONE.
+            override fun surfaceDestroyed(holder: SurfaceHolder?) {}
         })
     }
 
@@ -155,25 +167,15 @@ private constructor(
     // This is not supported - we want to force this to 1.
     final override fun setMinZoom(minZoom: Float, type: Int) {}
 
-    override fun dispatchTouchEvent(event: MotionEvent?): Boolean {
-        val engineResult = event?.let { engine.onTouchEvent(it) } ?: false
-        return engineResult || super.dispatchTouchEvent(event)
+    @SuppressLint("ClickableViewAccessibility")
+    override fun onTouchEvent(ev: MotionEvent): Boolean {
+        // Using | so click listeners work.
+        return engine.onTouchEvent(ev) or super.onTouchEvent(ev)
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         engine.setContentSize(measuredWidth.toFloat(), measuredHeight.toFloat())
-    }
-
-    /**
-     * Returns a [Surface] that can be consumed by some buffer provider.
-     * This method should be called
-     */
-    fun createSurface(): Surface {
-        if (surfaceTexture == null) {
-            throw IllegalStateException("createSurface() must be called after ZoomSurfaceView.Callback.onZoomSurfaceCreated()")
-        }
-        return Surface(surfaceTexture!!)
     }
 
     @WorkerThread
@@ -187,6 +189,7 @@ private constructor(
         }
 
         post {
+            surface = Surface(surfaceTexture)
             callbacks.forEach { it.onZoomSurfaceCreated(this) }
         }
     }
@@ -194,12 +197,19 @@ private constructor(
     @WorkerThread
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {}
 
-    private fun onSurfaceDestroyed() {
-        surfaceTexture?.release()
-        surfaceTexture = null
-        program?.release()
-        program = null
-        callbacks.forEach { it.onZoomSurfaceDestroyed(this) }
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow() // This call stops GL thread.
+        // Post just for the super-rare case in which we might call onZoomSurfaceCreated
+        // after onZoomSurfaceDestroyed (the create call is posted).
+        post {
+            surfaceTexture?.release()
+            surfaceTexture = null
+            program?.release()
+            program = null
+            callbacks.forEach { it.onZoomSurfaceDestroyed(this) }
+            surface?.release()
+            surface = null
+        }
     }
 
     /**
@@ -211,6 +221,7 @@ private constructor(
         requestRender()
     }
 
+    @SuppressLint("WrongCall")
     @WorkerThread
     override fun onDrawFrame(gl: GL10?) {
         val texture = surfaceTexture ?: return
@@ -233,7 +244,18 @@ private constructor(
         android.opengl.Matrix.translateM(surfaceTextureTransformMatrix, 0, 0F, 1f, 0f)
         android.opengl.Matrix.scaleM(surfaceTextureTransformMatrix, 0, scale, scale, 1F)
         android.opengl.Matrix.translateM(surfaceTextureTransformMatrix, 0, 0F, -1f, 0f)
+        onDraw(surfaceTextureTransformMatrix)
         program.drawRect(textureId, surfaceTextureTransformMatrix)
+    }
+
+    /**
+     * Called on the renderer thread when the texture is being drawn.
+     * You can, if needed, perform extra transformation by editing the [transformMatrix]
+     * matrix using the [android.opengl.Matrix] utilities.
+     */
+    @WorkerThread
+    protected fun onDraw(transformMatrix: FloatArray) {
+
     }
 
     override fun onIdle(engine: ZoomEngine) {}

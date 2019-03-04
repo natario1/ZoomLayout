@@ -180,7 +180,7 @@ ZoomSurfaceView surfaceView = findViewById(R.id.zoom_surface_view);
 surfaceView.addCallback(new ZoomSurfaceView.Callback() {
     @Override
     public void onZoomSurfaceCreated(@NotNull ZoomSurfaceView view) {
-        Surface surface = view.createSurface();
+        Surface surface = view.getSurface();
         // Use this surface for video players, camera preview, ...
     }
 

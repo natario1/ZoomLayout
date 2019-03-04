@@ -102,7 +102,7 @@ public class MainActivity extends AppCompatActivity {
         surface.addCallback(new ZoomSurfaceView.Callback() {
             @Override
             public void onZoomSurfaceCreated(@NotNull ZoomSurfaceView view) {
-                player.setVideoSurface(view.createSurface());
+                player.setVideoSurface(view.getSurface());
             }
 
             @Override
