@@ -58,19 +58,15 @@ object EglConfigChooser {
         } else {
             EGL14.EGL_OPENGL_ES2_BIT
         }
-        val attributes = intArrayOf(
+        return intArrayOf(
                 EGL14.EGL_RED_SIZE, 8,
                 EGL14.EGL_GREEN_SIZE, 8,
                 EGL14.EGL_BLUE_SIZE, 8,
                 EGL14.EGL_ALPHA_SIZE, 8,
                 EGL14.EGL_RENDERABLE_TYPE, renderableType,
-                EGL14.EGL_NONE, 0, // placeholder for recordable [@-3]
+                if (recordable) EGL_RECORDABLE_ANDROID else EGL14.EGL_NONE,
+                if (recordable) 1 else 0,
                 EGL14.EGL_NONE)
-        if (recordable) {
-            attributes[attributes.size - 3] = EGL_RECORDABLE_ANDROID
-            attributes[attributes.size - 2] = 1
-        }
-        return attributes
     }
 
     private class Chooser(private val version: Int) : GLSurfaceView.EGLConfigChooser {

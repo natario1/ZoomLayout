@@ -5,6 +5,7 @@ import android.annotation.TargetApi
 import android.content.Context
 import android.graphics.Matrix
 import android.graphics.SurfaceTexture
+import android.opengl.EGL14
 import android.opengl.GLSurfaceView
 import android.os.Build
 import android.util.AttributeSet
@@ -86,13 +87,6 @@ private constructor(
         fun onZoomSurfaceCreated(view: ZoomSurfaceView)
 
         /**
-         * The underlying surface has just changed dimensions. This is also
-         * called after creation to notify of initial dimensions.
-         */
-        @UiThread
-        fun onZoomSurfaceChanged(view: ZoomSurfaceView, width: Int, height: Int)
-
-        /**
          * The underlying surface has just been destroyed. At this point
          * the surface obtained with [surface] is about to be released.
          */
@@ -150,21 +144,6 @@ private constructor(
         setEGLConfigChooser(EglConfigChooser.GLES2)
         setRenderer(this)
         renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
-
-        holder.addCallback(object: SurfaceHolder.Callback {
-
-            // Surface has changed. Dispatch to callbacks. I THINK this is UI thread.
-            override fun surfaceChanged(holder: SurfaceHolder?, format: Int, width: Int, height: Int) {
-                callbacks.forEach { it.onZoomSurfaceChanged(this@ZoomSurfaceView, width, height) }
-            }
-
-            // Surface was created. Do nothing as we use the Renderer callback.
-            override fun surfaceCreated(holder: SurfaceHolder?) {}
-
-            // Surface was destroyed. Do nothing as we use onDetachedFromWindow() for this.
-            // For example, this is also called when setting visibility to GONE.
-            override fun surfaceDestroyed(holder: SurfaceHolder?) {}
-        })
     }
 
     // This is not allowed in this class, because I can't get CLAMP_TO_BORDER to work.
@@ -187,11 +166,16 @@ private constructor(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        engine.setContentSize(measuredWidth.toFloat(), measuredHeight.toFloat())
+        // Strictly speaking setContainerSize is not needed, because the engine gets that onGlobalLayout (after),
+        // however it's better to sync the two calls so that there is no weird state in the middle
+        // that can cause distortions in the preview. We also ensure that applyTransformation is true.
+        engine.setContainerSize(measuredWidth.toFloat(), measuredHeight.toFloat(), true)
+        engine.setContentSize(measuredWidth.toFloat(), measuredHeight.toFloat(), true)
     }
 
     @WorkerThread
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+        LOG.i("onSurfaceCreated")
         program = EglRectTextureProgram()
         textureId = program!!.createTexture()
         surfaceTexture = SurfaceTexture(textureId).also {
@@ -206,22 +190,38 @@ private constructor(
         }
     }
 
+
     @WorkerThread
-    override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {}
+    override fun onSurfaceChanged(gl: GL10, width: Int, height: Int) {
+        gl.glViewport(0, 0, width, height)
+        // Another option, like CameraView/GlCameraPreview does, is to force
+        // recreate the GL thread using onPause() + onResume() [if width or height changed].
+        // That relies on the fact that the initial glViewport is that of the surface and was
+        // a workaround. It's better to update the viewport than force a recreation.
+    }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow() // This call stops GL thread.
         // Post just for the super-rare case in which we might call onZoomSurfaceCreated
         // after onZoomSurfaceDestroyed (the create call is posted).
-        post {
-            surfaceTexture?.release()
-            program?.release()
-            surface?.release()
-            callbacks.forEach { it.onZoomSurfaceDestroyed(this) }
-            surfaceTexture = null // Keep these non-null in the callback
-            program = null
-            surface = null
+        post { releaseCurrentSurface() }
+    }
+
+    @UiThread
+    private fun releaseCurrentSurface() {
+        val hasSurface = surfaceTexture != null
+        surfaceTexture?.release()
+        program?.release()
+        surface?.release()
+        if (hasSurface) {
+            callbacks.forEach {
+                it.onZoomSurfaceDestroyed(this)
+            }
         }
+        surfaceTexture = null // Keep these non-null in the callback
+        program = null
+        surface = null
+
     }
 
     /**
@@ -246,6 +246,7 @@ private constructor(
         // we'll just re-use whatever was there before.
         texture.updateTexImage()
         texture.getTransformMatrix(surfaceTextureTransformMatrix)
+        LOG.i("onDrawFrame: scale:$scale translX:$translX translY:$translY")
 
         // There are some issues here due to the fact that GL will always apply translation first than scale,
         // which is not what we want. It also scales with respect to the (0,0) point (bottom-left) which is also

@@ -106,9 +106,6 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onZoomSurfaceChanged(@NotNull ZoomSurfaceView view, int width, int height) { }
-
-            @Override
             public void onZoomSurfaceDestroyed(@NotNull ZoomSurfaceView view) { }
         });
         controls.setPlayer(player);
