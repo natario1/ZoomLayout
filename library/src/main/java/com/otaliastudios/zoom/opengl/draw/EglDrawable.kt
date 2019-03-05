@@ -3,6 +3,8 @@ package com.otaliastudios.zoom.opengl.draw
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import com.otaliastudios.zoom.opengl.program.EglFlatProgram
+import com.otaliastudios.zoom.opengl.program.EglTextureProgram
 import java.nio.FloatBuffer
 
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)

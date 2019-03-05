@@ -2,6 +2,7 @@ package com.otaliastudios.zoom.opengl.program
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import com.otaliastudios.zoom.opengl.core.Egl
 import com.otaliastudios.zoom.opengl.draw.EglRect
 
 /**
@@ -10,12 +11,13 @@ import com.otaliastudios.zoom.opengl.draw.EglRect
  * program.
  */
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-internal class EglRectTextureProgram : EglTextureProgram() {
+class EglRectTextureProgram : EglTextureProgram() {
 
     private val drawable = EglRect()
 
-    internal fun drawRect(textureId: Int, textureMatrix: FloatArray) {
-        drawEglDrawable(textureId, textureMatrix, drawable)
+    @JvmOverloads
+    fun drawRect(textureId: Int, textureMatrix: FloatArray, mvpMatrix: FloatArray = Egl.IDENTITY_MATRIX) {
+        drawable.drawTexture(this, textureId, textureMatrix, mvpMatrix)
     }
 
 }

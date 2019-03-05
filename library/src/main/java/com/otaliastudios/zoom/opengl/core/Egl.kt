@@ -13,7 +13,7 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-internal object Egl {
+object Egl {
 
     // Identity matrix for general use.
     val IDENTITY_MATRIX = FloatArray(16)
@@ -23,13 +23,17 @@ internal object Egl {
 
     // Allocates a direct float buffer, and populates it with the float array data.
     // Allocate a direct ByteBuffer, using 4 bytes per float, and copy coords into it.
-    fun floatBuffer(coords: FloatArray): FloatBuffer {
+    fun floatBufferOf(coords: FloatArray): FloatBuffer {
         val bb = ByteBuffer.allocateDirect(coords.size * 4)
         bb.order(ByteOrder.nativeOrder())
         val fb = bb.asFloatBuffer()
-        fb.put(coords)
-        fb.position(0)
+        setFloatBuffer(fb, coords)
         return fb
+    }
+
+    fun setFloatBuffer(buffer: FloatBuffer, coords: FloatArray) {
+        buffer.put(coords)
+        buffer.position(0)
     }
 
     fun check(opName: String) {

@@ -9,10 +9,10 @@ import com.otaliastudios.zoom.opengl.draw.EglDrawable
 
 /**
  * Base class for a program, can create the program and load shaders.
- * Programs should define functions to draw [EglDrawable]s.
+ * Programs should define low-level functions to draw.
  */
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-internal abstract class EglProgram {
+abstract class EglProgram {
 
     // Creates a program with given vertex shader and pixel shader.
     protected fun createProgram(vertexSource: String, fragmentSource: String): Int {

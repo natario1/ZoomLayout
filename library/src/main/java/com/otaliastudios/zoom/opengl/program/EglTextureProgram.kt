@@ -19,7 +19,7 @@ import java.nio.FloatBuffer
  * call draw() here.
  */
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-internal open class EglTextureProgram : EglProgram() {
+open class EglTextureProgram : EglProgram() {
 
     companion object {
         internal val TAG = EglTextureProgram::class.java.simpleName
@@ -99,15 +99,10 @@ internal open class EglTextureProgram : EglProgram() {
         return texId
     }
 
-    internal fun drawEglDrawable(textureId: Int, textureMatrix: FloatArray, drawable: EglDrawable) {
-        draw(textureId, textureMatrix,
-                drawable.vertexArray, 0, drawable.vertexCount, drawable.vertexStride,
-                drawable.texCoordArray, drawable.texCoordStride, drawable.coordsPerVertex)
-    }
-
-    private fun draw(textureId: Int, textureMatrix: FloatArray,
-                     vertexBuffer: FloatBuffer, firstVertex: Int, vertexCount: Int, vertexStride: Int,
-                     texCoordBuffer: FloatBuffer, texCoordStride: Int, coordsPerVertex: Int) {
+    fun draw(mvpMatrix: FloatArray, textureId: Int, textureMatrix: FloatArray,
+             vertexBuffer: FloatBuffer, firstVertex: Int, vertexCount: Int, vertexStride: Int,
+             coordsPerVertex: Int,
+             texCoordBuffer: FloatBuffer, texCoordStride: Int) {
         Egl.check("draw start")
 
         // Select the program.
@@ -123,7 +118,7 @@ internal open class EglTextureProgram : EglProgram() {
         Egl.check("glUniformMatrix4fv")
 
         // Copy the model / view / projection matrix over.
-        GLES20.glUniformMatrix4fv(muMVPMatrixLocation, 1, false, Egl.IDENTITY_MATRIX, 0)
+        GLES20.glUniformMatrix4fv(muMVPMatrixLocation, 1, false, mvpMatrix, 0)
         Egl.check("glUniformMatrix4fv")
 
         // Enable the "aPosition" vertex attribute.

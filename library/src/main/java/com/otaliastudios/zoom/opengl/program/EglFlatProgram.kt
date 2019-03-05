@@ -13,7 +13,7 @@ import java.nio.FloatBuffer
  * based on FlatShadedProgram from grafika.
  */
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-internal open class EglFlatProgram : EglProgram() {
+open class EglFlatProgram : EglProgram() {
 
     companion object {
         internal val TAG = EglFlatProgram::class.java.simpleName
@@ -65,23 +65,13 @@ internal open class EglFlatProgram : EglProgram() {
     /**
      * @param color A 4-element color vector.
      * @param mvpMatrix The 4x4 projection matrix.
-     * @param drawable A drawable containing vertex information.
-     */
-    fun drawEglDrawable(color: FloatArray, mvpMatrix: FloatArray, drawable: EglDrawable) {
-        draw(color, mvpMatrix, drawable.vertexArray, 0, drawable.vertexCount,
-                drawable.vertexStride, drawable.coordsPerVertex)
-    }
-
-    /**
-     * @param color A 4-element color vector.
-     * @param mvpMatrix The 4x4 projection matrix.
      * @param vertexBuffer Buffer with vertex data.
      * @param firstVertex Index of first vertex to use in vertexBuffer.
      * @param vertexCount Number of vertices in vertexBuffer.
      * @param coordsPerVertex The number of coordinates per vertex (e.g. x,y is 2).
      * @param vertexStride Width, in bytes, of the data for each vertex (often vertexCount * sizeof(float)).
      */
-    private fun draw(color: FloatArray, mvpMatrix: FloatArray,
+    fun draw(mvpMatrix: FloatArray, color: FloatArray,
                      vertexBuffer: FloatBuffer, firstVertex: Int,
                      vertexCount: Int, vertexStride: Int, coordsPerVertex: Int) {
         Egl.check("draw start")

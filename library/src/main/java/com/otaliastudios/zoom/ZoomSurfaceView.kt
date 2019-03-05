@@ -235,7 +235,7 @@ private constructor(
 
     @SuppressLint("WrongCall")
     @WorkerThread
-    override fun onDrawFrame(gl: GL10?) {
+    override fun onDrawFrame(gl: GL10) {
         val texture = surfaceTexture ?: return
         val program = program ?: return
         val translX = -panX / engine.contentWidth
