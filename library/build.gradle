@@ -5,7 +5,7 @@ apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
 
 ext {
-    libVersion = '1.5.0'
+    libVersion = '1.5.1'
     libGroup = 'com.otaliastudios'
     libName = 'ZoomLayout'
     libDescription = 'A View container that supports zooming and panning of View hierarchies, images and more.'
@@ -18,9 +18,9 @@ ext {
 // Required by bintray
 // archivesBaseName is required if artifactId is different from gradle module name
 // or you can add baseName to each archive task (sources, javadoc, aar)
-version = '1.5.1'
-group = 'com.otaliastudios'
-archivesBaseName = 'zoomlayout'
+version = libVersion
+group = libGroup
+archivesBaseName = libArtifactId
 
 android {
 
