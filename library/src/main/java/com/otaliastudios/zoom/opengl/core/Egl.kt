@@ -12,13 +12,20 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 
+
+fun FloatArray.makeIdentity(): FloatArray {
+    if (size != 16) throw RuntimeException("Need a 16 values matrix.")
+    Matrix.setIdentityM(this, 0)
+    return this
+}
+
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 object Egl {
 
     // Identity matrix for general use.
     val IDENTITY_MATRIX = FloatArray(16)
     init {
-        Matrix.setIdentityM(IDENTITY_MATRIX, 0)
+        IDENTITY_MATRIX.makeIdentity()
     }
 
     // Allocates a direct float buffer, and populates it with the float array data.

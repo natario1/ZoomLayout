@@ -18,60 +18,26 @@ internal class EglRect: EglDrawable() {
 
         // A full square, extending from -1 to +1 in both dimensions.
         // When the model/view/projection matrix is identity, this will exactly cover the viewport.
-        private val FULL_RECTANGLE_COORDS = floatArrayOf(
+        private val FULL_RECTANGLE_COORDS = Egl.floatBufferOf(floatArrayOf(
                 -1.0f, -1.0f, // 0 bottom left
                 1.0f, -1.0f, // 1 bottom right
                 -1.0f, 1.0f, // 2 top left
-                1.0f, 1.0f) // 3 top right
+                1.0f, 1.0f)) // 3 top right
 
-        private val FULL_RECTANGLE_TEX_COORDS = floatArrayOf(
-                0.0f, 0.0f, // 0 bottom left
-                1.0f, 0.0f, // 1 bottom right
-                0.0f, 1.0f, // 2 top left
-                1.0f, 1.0f // 3 top right
-        )
-
-        private const val SIZE_OF_FLOAT = 4
         private const val COORDS_PER_VERTEX = 2
     }
 
-    private var mVertexCoordinates = Egl.floatBufferOf(FULL_RECTANGLE_COORDS)
-    private val mTextureCoordinates = Egl.floatBufferOf(FULL_RECTANGLE_TEX_COORDS)
+    fun setVertexCoords(array: FloatArray) {
+        vertexCoords = Egl.floatBufferOf(array)
+    }
+
+    private var vertexCoords = FULL_RECTANGLE_COORDS
 
     override val vertexArray: FloatBuffer
-        get() = mVertexCoordinates
-
-    override val texCoordArray: FloatBuffer
-        get() = mTextureCoordinates
+        get() = vertexCoords
 
     override val vertexCount: Int
-        get() = 8 /* FULL_RECTANGLE_COORDS.size */ / COORDS_PER_VERTEX
+        get() = 8 /* floats in FULL_RECTANGLE_COORDS */ / coordsPerVertex
 
-    override val coordsPerVertex: Int
-        get() = COORDS_PER_VERTEX
-
-    override val vertexStride: Int
-        get() = COORDS_PER_VERTEX * SIZE_OF_FLOAT
-
-    override val texCoordStride: Int
-        get() = 2 * SIZE_OF_FLOAT
-
-    fun setVertexCoordinates(coords: FloatArray) {
-        Egl.setFloatBuffer(mVertexCoordinates, coords)
-    }
-
-    fun drawFlat(program: EglFlatProgram, color: FloatArray, mvpMatrix: FloatArray = Egl.IDENTITY_MATRIX) {
-        program.draw(mvpMatrix,
-                color,
-                vertexArray, 0, vertexCount,
-                vertexStride, coordsPerVertex)
-    }
-
-    fun drawTexture(program: EglTextureProgram, textureId: Int, textureMatrix: FloatArray, mvpMatrix: FloatArray = Egl.IDENTITY_MATRIX) {
-        program.draw(mvpMatrix,
-                textureId, textureMatrix,
-                vertexArray, 0, vertexCount,
-                vertexStride, coordsPerVertex,
-                texCoordArray, texCoordStride)
-    }
+    override val coordsPerVertex = COORDS_PER_VERTEX
 }

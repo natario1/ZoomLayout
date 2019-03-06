@@ -151,10 +151,15 @@ that streams image buffers into a `Surface`.
     app:transformation="centerInside"
     app:transformationGravity="auto"
     app:alignment="center"
+    app:overScrollHorizontal="false"
+    app:overScrollVertical="false"
+    app:overPinchable="false"
     app:horizontalPanEnabled="true"
     app:verticalPanEnabled="true"
     app:zoomEnabled="true"
     app:flingEnabled="true"
+    app:minZoom="1"
+    app:minZoomType="zoom"
     app:maxZoom="2.5"
     app:maxZoomType="zoom"
     app:animationDuration="280"/>
@@ -163,12 +168,9 @@ that streams image buffers into a `Surface`.
 There are a few special things about `ZoomSurfaceView` with respect to the other classes:
 
 - It **requires** API level 18
-- It does not support overscrolling and overpinching
-- The minimum zoom is fixed to 1
 - It will not draw scrollbars
-
-Also it is your responsibility to measure the `ZoomSurfaceView` so that it matches the stream aspect
-ratio. If it doesn't, the content will be distorted.
+- You **must** either call `ZoomSurfaceView.setContentSize()` passing the stream size, or measure the
+  view so that it matches the stream aspect ratio.
 
 Using `Surface`s is not a simple topic so we won't go into details here. Please take a look
 at the demo app which reproduces a zoomable/pannable video through ExoPlayer.

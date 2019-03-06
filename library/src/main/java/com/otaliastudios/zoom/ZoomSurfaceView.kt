@@ -1,38 +1,30 @@
 package com.otaliastudios.zoom
 
 import android.annotation.SuppressLint
-import android.annotation.TargetApi
 import android.content.Context
-import android.graphics.Matrix
-import android.graphics.SurfaceTexture
-import android.opengl.EGL14
+import android.graphics.*
 import android.opengl.GLSurfaceView
 import android.os.Build
 import android.util.AttributeSet
 import android.view.*
+import androidx.annotation.ColorInt
 import androidx.annotation.RequiresApi
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import com.otaliastudios.zoom.ZoomApi.ZoomType
-import com.otaliastudios.zoom.opengl.core.Egl
 import com.otaliastudios.zoom.opengl.core.EglConfigChooser
 import com.otaliastudios.zoom.opengl.core.EglContextFactory
+import com.otaliastudios.zoom.opengl.core.makeIdentity
 import com.otaliastudios.zoom.opengl.draw.EglRect
 import com.otaliastudios.zoom.opengl.program.EglFlatProgram
-import com.otaliastudios.zoom.opengl.program.EglRectFlatProgram
-import com.otaliastudios.zoom.opengl.program.EglRectTextureProgram
+import com.otaliastudios.zoom.opengl.program.EglTextureProgram
+import com.otaliastudios.zoom.opengl.scene.EglScene
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
 
 /**
  * Uses [ZoomEngine] to allow zooming and pan events onto a GL rendered surface.
- *
- * This class does not allow overscrolling nor overpincinhg. This means that these XML attributes are
- * ignored and [setOverScrollHorizontal], [setOverScrollVertical], [setOverPinchable] do nothing.
- * You can still call these methods on the underlying engine, but this will create visible artifacts.
- *
- * The same goes for [setMinZoom]. This is forced to be 1 so that you can never zoom out too much.
  */
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 open class ZoomSurfaceView
@@ -66,12 +58,19 @@ private constructor(
      *
      * This class cares about releasing this object when done.
      */
-    private var surfaceTexture: SurfaceTexture? = null
+    var surfaceTexture: SurfaceTexture? = null
         private set
 
 
-    private var program: EglRectTextureProgram? = null
+    private val scene = EglScene()
+    private val textureRect = EglRect()
+    private var textureProgram: EglTextureProgram? = null
     private var textureId = 0
+    private var flatProgram: EglFlatProgram? = null
+    private val flatRect = EglRect()
+    private var flatColor = floatArrayOf(0.1F, 0.1F, 0.1F, 1F)
+    private var drawsBackgroundColor = false
+    private var hasExplicitContentSize = false
 
     /**
      * A Callback to be notified of the surface lifecycle.
@@ -109,14 +108,44 @@ private constructor(
         callbacks.remove(callback)
     }
 
+    /**
+     * If non transparent, we will draw this background color using GL before drawing
+     * the actual texture.
+     */
+    override fun setBackgroundColor(color: Int) {
+        drawsBackgroundColor = Color.alpha(color) > 0
+        flatColor[0] = (Color.red(color).toFloat() / 255F).coerceIn(0F, 1F)
+        flatColor[1] = (Color.green(color).toFloat() / 255F).coerceIn(0F, 1F)
+        flatColor[2] = (Color.blue(color).toFloat() / 255F).coerceIn(0F, 1F)
+        flatColor[3] = (Color.alpha(color).toFloat() / 255F).coerceIn(0F, 1F)
+    }
+
+    /**
+     * Sets the size of the content. If this is not called, the size will be assumed to be
+     * that of the [ZoomSurfaceView] itself. In this case, make sure to measure [ZoomSurfaceView]
+     * correctly or the texture will be distorted.
+     */
+    fun setContentSize(width: Float, height: Float) {
+        hasExplicitContentSize = true
+        if (engine.contentWidth != width || engine.contentHeight != height) {
+            engine.setContentSize(width, height, true)
+            onContentOrContainerSizeChanged()
+        }
+    }
+
     init {
         val a = context.theme.obtainStyledAttributes(attrs, R.styleable.ZoomEngine, 0, 0)
+        val overScrollHorizontal = a.getBoolean(R.styleable.ZoomEngine_overScrollHorizontal, false)
+        val overScrollVertical = a.getBoolean(R.styleable.ZoomEngine_overScrollVertical, false)
         val horizontalPanEnabled = a.getBoolean(R.styleable.ZoomEngine_horizontalPanEnabled, true)
         val verticalPanEnabled = a.getBoolean(R.styleable.ZoomEngine_verticalPanEnabled, true)
+        val overPinchable = a.getBoolean(R.styleable.ZoomEngine_overPinchable, false)
         val zoomEnabled = a.getBoolean(R.styleable.ZoomEngine_zoomEnabled, true)
         val flingEnabled = a.getBoolean(R.styleable.ZoomEngine_flingEnabled, true)
         val allowFlingInOverscroll = a.getBoolean(R.styleable.ZoomEngine_allowFlingInOverscroll, true)
+        val minZoom = a.getFloat(R.styleable.ZoomEngine_minZoom, 1F)
         val maxZoom = a.getFloat(R.styleable.ZoomEngine_maxZoom, ZoomApi.MAX_ZOOM_DEFAULT)
+        @ZoomType val minZoomMode = a.getInteger(R.styleable.ZoomEngine_minZoomType, ZoomApi.TYPE_ZOOM)
         @ZoomType val maxZoomMode = a.getInteger(R.styleable.ZoomEngine_maxZoomType, ZoomApi.MAX_ZOOM_DEFAULT_TYPE)
         val transformation = a.getInteger(R.styleable.ZoomEngine_transformation, ZoomApi.TRANSFORMATION_CENTER_INSIDE)
         val transformationGravity = a.getInt(R.styleable.ZoomEngine_transformationGravity, ZoomApi.TRANSFORMATION_GRAVITY_AUTO)
@@ -126,18 +155,18 @@ private constructor(
 
         engine.setContainer(this)
         engine.addListener(this)
-        engine.setOverScrollHorizontal(false)
-        engine.setOverScrollVertical(false)
-        engine.setOverPinchable(false)
-        engine.setMinZoom(1F, ZoomApi.TYPE_REAL_ZOOM)
+        setOverScrollHorizontal(overScrollHorizontal)
+        setOverScrollVertical(overScrollVertical)
         setTransformation(transformation, transformationGravity)
         setAlignment(alignment)
         setHorizontalPanEnabled(horizontalPanEnabled)
         setVerticalPanEnabled(verticalPanEnabled)
+        setOverPinchable(overPinchable)
         setZoomEnabled(zoomEnabled)
         setFlingEnabled(flingEnabled)
         setAllowFlingInOverscroll(allowFlingInOverscroll)
         setAnimationDuration(animationDuration)
+        setMinZoom(minZoom, minZoomMode)
         setMaxZoom(maxZoom, maxZoomMode)
 
         setEGLContextFactory(EglContextFactory.GLES2)
@@ -145,18 +174,6 @@ private constructor(
         setRenderer(this)
         renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
     }
-
-    // This is not allowed in this class, because I can't get CLAMP_TO_BORDER to work.
-    final override fun setOverScrollHorizontal(overScroll: Boolean) {}
-
-    // This is not allowed in this class, because I can't get CLAMP_TO_BORDER to work.
-    final override fun setOverScrollVertical(overScroll: Boolean) {}
-
-    // This is not allowed in this class, because I can't get CLAMP_TO_BORDER to work.
-    final override fun setOverPinchable(overPinchable: Boolean) {}
-
-    // This is not supported - we want to force this to 1.
-    final override fun setMinZoom(minZoom: Float, type: Int) {}
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(ev: MotionEvent): Boolean {
@@ -167,17 +184,53 @@ private constructor(
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         // Strictly speaking setContainerSize is not needed, because the engine gets that onGlobalLayout (after),
-        // however it's better to sync the two calls so that there is no weird state in the middle
-        // that can cause distortions in the preview. We also ensure that applyTransformation is true.
-        engine.setContainerSize(measuredWidth.toFloat(), measuredHeight.toFloat(), true)
-        engine.setContentSize(measuredWidth.toFloat(), measuredHeight.toFloat(), true)
+        // however it's better to do this again so we can use applyTransformation=true and make sure that we
+        // react well to container size changes. We also don't want to stay in any weird state for some frames
+        // before the engine gets that GlobalLayout call (possible since rendering happens on the Renderer thread).
+        val width = measuredWidth.toFloat()
+        val height = measuredHeight.toFloat()
+        val changed = engine.containerWidth != width || engine.containerHeight != height
+        if (changed) engine.setContainerSize(width, height, true)
+        if (!hasExplicitContentSize) {
+            val contentChanged = engine.contentWidth != width || engine.contentHeight != height
+            if (contentChanged) engine.setContentSize(width, height, true)
+        }
+        if (changed) {
+            onContentOrContainerSizeChanged()
+        }
+    }
+
+    /**
+     * This is very important.
+     * Basically, in this class we call engine.setContentSize() with a user defined size.
+     * But for the engine updates to make sense, we must UNDO here two things that SurfaceView does by default:
+     * - scaling the content so that it center-fits the container
+     * - drawing with respect to the center
+     * They are very useful usually, but for us, this means applying some modifications BEFORE the
+     * engine and this invalidates the meaning of the engine updates.
+     */
+    private fun onContentOrContainerSizeChanged() {
+        val fullSize = EGL_RECT_FULL_SIZE // Full size of EglRect()
+        val width = fullSize * engine.contentWidth / engine.containerWidth
+        val height = fullSize * engine.contentHeight / engine.containerHeight
+        val originX = -EGL_RECT_FULL_SIZE / 2F
+        val originY = EGL_RECT_FULL_SIZE / 2F // --: Y is opposite in GL
+        val endX = originX + width
+        val endY = originY - height
+        textureRect.setVertexCoords(floatArrayOf(
+                originX, endY,
+                endX, endY,
+                originX, originY,
+                endX, originY
+        ))
     }
 
     @WorkerThread
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         LOG.i("onSurfaceCreated")
-        program = EglRectTextureProgram()
-        textureId = program!!.createTexture()
+        flatProgram = EglFlatProgram()
+        textureProgram = EglTextureProgram()
+        textureId = textureProgram!!.createTexture()
         surfaceTexture = SurfaceTexture(textureId).also {
             // Since we are using RENDERMODE_WHEN_DIRTY, we must notify the SurfaceView
             // of dirtyness, so that it draws again. This is how it's done. requestRender is thread-safe.
@@ -211,7 +264,8 @@ private constructor(
     private fun releaseCurrentSurface() {
         val hasSurface = surfaceTexture != null
         surfaceTexture?.release()
-        program?.release()
+        textureProgram?.release()
+        flatProgram?.release()
         surface?.release()
         if (hasSurface) {
             callbacks.forEach {
@@ -219,7 +273,8 @@ private constructor(
             }
         }
         surfaceTexture = null // Keep these non-null in the callback
-        program = null
+        textureProgram = null
+        flatProgram = null
         surface = null
 
     }
@@ -233,47 +288,82 @@ private constructor(
         requestRender()
     }
 
+    /**
+     * Performs the texture and background drawing.
+     *
+     * An old version of this acted on surfaceTextureTransformMatrix instead of the rect modelMatrix.
+     * This has the drawback that any "background" (overscrolls, zoom < 1, ...) will draw the CLAMP_TO_BORDER
+     * texture mess and there's no way around that.
+     *
+     * The current version acts on textureRect.modelMatrix instead.
+     * In both cases there are some issues here.
+     *
+     * 1. We passed the video size to the engine. So we must UNDO some default behavior of SurfaceView.
+     *   This is done and documented in [onContentOrContainerSizeChanged].
+     *
+     * 2. OpenGL will apply translation first then scale, which is typically not what we want.
+     *
+     * 3. OpenGL will scale with respect to some fixed point, which is typically not the pan origin.
+     *    (if we work on modelMatrix, this point is the translated viewport center)
+     *
+     * 4. OpenGL Y coordinates are reversed.
+     */
     @SuppressLint("WrongCall")
     @WorkerThread
     override fun onDrawFrame(gl: GL10) {
         val texture = surfaceTexture ?: return
-        val program = program ?: return
-        val translX = -panX / engine.contentWidth
-        val translY = panY / engine.contentHeight
-        val scale = 1F / realZoom
-
-        // Latch the latest frame. If there isn't anything new,
-        // we'll just re-use whatever was there before.
+        val program = textureProgram ?: return
+        val flatProgram = flatProgram ?: return
+        // Latch the latest frame. If there isn't anything new, we'll just re-use whatever was there before.
         texture.updateTexImage()
         texture.getTransformMatrix(surfaceTextureTransformMatrix)
-        LOG.i("onDrawFrame: scale:$scale translX:$translX translY:$translY")
-
-        // There are some issues here due to the fact that GL will always apply translation first than scale,
-        // which is not what we want. It also scales with respect to the (0,0) point (bottom-left) which is also
-        // is not what we want. A good option, apparently, is to:
+        LOG.i("onDrawFrame: zoom:${engine.realZoom} panX:${engine.panX} panY:${engine.panY}")
+        // Note that the textureRect has size 2x2 due to how it is defined (full rect coords).
+        // It applies translation first then scale, scaling WRT the translated container center.
+        val textureWidth = EGL_RECT_FULL_SIZE * engine.contentWidth / engine.containerWidth
+        val textureHeight = EGL_RECT_FULL_SIZE * engine.contentHeight / engine.containerHeight
+        val translX = textureWidth * (panX / engine.contentWidth)
+        val translY = -textureHeight * (panY / engine.contentHeight)
+        val scaleX = realZoom
+        val scaleY = realZoom
+        LOG.i("onDrawFrame: translX:$translX translY:$translY scaleX:$scaleX scaleY:$scaleY")
+        textureRect.modelMatrix.makeIdentity()
         // 1. translate with our pan values.
-        android.opengl.Matrix.translateM(surfaceTextureTransformMatrix, 0, translX, translY, 0f)
+        android.opengl.Matrix.translateM(textureRect.modelMatrix, 0, translX, translY, 0F)
         // 2. Scale, but with respect to the top-left point (0,1). This is achieved by translating then translating back.
-        android.opengl.Matrix.translateM(surfaceTextureTransformMatrix, 0, 0F, 1f, 0f)
-        android.opengl.Matrix.scaleM(surfaceTextureTransformMatrix, 0, scale, scale, 1F)
-        android.opengl.Matrix.translateM(surfaceTextureTransformMatrix, 0, 0F, -1f, 0f)
-        onDraw(surfaceTextureTransformMatrix)
-        program.drawRect(textureId, surfaceTextureTransformMatrix)
+        // In this case we also have to account for translation - we want to scale WRT to the TEXTURE point, not the container point.
+        android.opengl.Matrix.translateM(textureRect.modelMatrix, 0, EGL_RECT_ORIGIN_X - translX, EGL_RECT_ORIGIN_Y - translY, 0f)
+        android.opengl.Matrix.scaleM(textureRect.modelMatrix, 0, scaleX, scaleY, 1F)
+        android.opengl.Matrix.translateM(textureRect.modelMatrix, 0, -EGL_RECT_ORIGIN_X + translX, -EGL_RECT_ORIGIN_Y + translY, 0f)
+        onDraw(textureRect.modelMatrix, surfaceTextureTransformMatrix)
+        // 3. Perform actual drawing. If set, draw a full screen color as background to avoid the SV full black.
+        if (drawsBackgroundColor) {
+            scene.drawFlat(flatRect, flatProgram, flatColor)
+        } else {
+            // Need to clear the buffer in case we were underpinching or overscrolling or any other
+            // condition that shows some black background.
+            gl.glClear(GL10.GL_COLOR_BUFFER_BIT)
+        }
+        scene.drawTexture(textureRect, program, textureId, surfaceTextureTransformMatrix)
     }
 
     /**
      * Called on the renderer thread when the texture is being drawn.
-     * You can, if needed, perform extra transformation by editing the [transformMatrix]
-     * matrix using the [android.opengl.Matrix] utilities.
+     * You can, if needed, perform extra transformation by editing the [textureTransformMatrix]
+     * or the [modelMatrix] using the [android.opengl.Matrix] utilities.
      */
     @WorkerThread
-    protected open fun onDraw(transformMatrix: FloatArray) {}
+    protected open fun onDraw(modelMatrix: FloatArray, textureTransformMatrix: FloatArray) {}
 
     override fun onIdle(engine: ZoomEngine) {}
 
     companion object {
         private val TAG = ZoomSurfaceView::class.java.simpleName
         private val LOG = ZoomLogger.create(TAG)
+
+        private const val EGL_RECT_FULL_SIZE = 2
+        private const val EGL_RECT_ORIGIN_X = -1F
+        private const val EGL_RECT_ORIGIN_Y = 1F
     }
 
 }

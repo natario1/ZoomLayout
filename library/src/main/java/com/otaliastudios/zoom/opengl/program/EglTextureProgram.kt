@@ -6,7 +6,6 @@ import android.opengl.GLES20
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.otaliastudios.zoom.opengl.core.Egl
-import com.otaliastudios.zoom.opengl.core.EglOptions
 import com.otaliastudios.zoom.opengl.draw.EglDrawable
 import java.nio.FloatBuffer
 
@@ -92,8 +91,8 @@ open class EglTextureProgram : EglProgram() {
 
         GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST.toFloat())
         GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR.toFloat())
-        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, EglOptions.glTextureWrapS)
-        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, EglOptions.glTextureWrapT)
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
         Egl.check("glTexParameter")
 
         return texId

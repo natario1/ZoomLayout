@@ -16,6 +16,7 @@ import com.google.android.exoplayer2.ui.PlayerControlView;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
+import com.google.android.exoplayer2.video.VideoListener;
 import com.otaliastudios.zoom.ZoomImageView;
 import com.otaliastudios.zoom.ZoomLayout;
 import com.otaliastudios.zoom.ZoomLogger;
@@ -24,6 +25,7 @@ import com.otaliastudios.zoom.ZoomSurfaceView;
 import org.jetbrains.annotations.NotNull;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -111,9 +113,14 @@ public class MainActivity extends AppCompatActivity {
     private void setUpVideoPlayer() {
         player = ExoPlayerFactory.newSimpleInstance(this);
         PlayerControlView controls = findViewById(R.id.player_control_view);
-        ZoomSurfaceView surface = findViewById(R.id.surface_view);
-        ZoomSurfaceViewContainer container = findViewById(R.id.surface_view_container);
-        container.setPlayer(player);
+        final ZoomSurfaceView surface = findViewById(R.id.surface_view);
+        player.addVideoListener(new VideoListener() {
+            @Override
+            public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees, float pixelWidthHeightRatio) {
+                surface.setContentSize(width, height);
+            }
+        });
+        surface.setBackgroundColor(ContextCompat.getColor(this, R.color.background));
         surface.addCallback(new ZoomSurfaceView.Callback() {
             @Override
             public void onZoomSurfaceCreated(@NotNull ZoomSurfaceView view) {
