@@ -213,10 +213,10 @@ private constructor(
         val fullSize = EGL_RECT_FULL_SIZE // Full size of EglRect()
         val width = fullSize * engine.contentWidth / engine.containerWidth
         val height = fullSize * engine.contentHeight / engine.containerHeight
-        val originX = -EGL_RECT_FULL_SIZE / 2F
-        val originY = EGL_RECT_FULL_SIZE / 2F // --: Y is opposite in GL
+        val originX = EGL_RECT_TOPLEFT_X
+        val originY = EGL_RECT_TOPLEFT_Y
         val endX = originX + width
-        val endY = originY - height
+        val endY = originY - height // Y is opposite in GL
         textureRect.setVertexCoords(floatArrayOf(
                 originX, endY,
                 endX, endY,
@@ -247,7 +247,7 @@ private constructor(
     @WorkerThread
     override fun onSurfaceChanged(gl: GL10, width: Int, height: Int) {
         gl.glViewport(0, 0, width, height)
-        // Another option, like CameraView/GlCameraPreview does, is to force
+        // Another option, like CameraView/GlCameraPreview does/did, is to force
         // recreate the GL thread using onPause() + onResume() [if width or height changed].
         // That relies on the fact that the initial glViewport is that of the surface and was
         // a workaround. It's better to update the viewport than force a recreation.
@@ -332,9 +332,9 @@ private constructor(
         android.opengl.Matrix.translateM(textureRect.modelMatrix, 0, translX, translY, 0F)
         // 2. Scale, but with respect to the top-left point (0,1). This is achieved by translating then translating back.
         // In this case we also have to account for translation - we want to scale WRT to the TEXTURE point, not the container point.
-        android.opengl.Matrix.translateM(textureRect.modelMatrix, 0, EGL_RECT_ORIGIN_X - translX, EGL_RECT_ORIGIN_Y - translY, 0f)
+        android.opengl.Matrix.translateM(textureRect.modelMatrix, 0, EGL_RECT_TOPLEFT_X - translX, EGL_RECT_TOPLEFT_Y - translY, 0f)
         android.opengl.Matrix.scaleM(textureRect.modelMatrix, 0, scaleX, scaleY, 1F)
-        android.opengl.Matrix.translateM(textureRect.modelMatrix, 0, -EGL_RECT_ORIGIN_X + translX, -EGL_RECT_ORIGIN_Y + translY, 0f)
+        android.opengl.Matrix.translateM(textureRect.modelMatrix, 0, -EGL_RECT_TOPLEFT_X + translX, -EGL_RECT_TOPLEFT_Y + translY, 0f)
         onDraw(textureRect.modelMatrix, surfaceTextureTransformMatrix)
         // 3. Perform actual drawing. If set, draw a full screen color as background to avoid the SV full black.
         if (drawsBackgroundColor) {
@@ -362,8 +362,8 @@ private constructor(
         private val LOG = ZoomLogger.create(TAG)
 
         private const val EGL_RECT_FULL_SIZE = 2
-        private const val EGL_RECT_ORIGIN_X = -1F
-        private const val EGL_RECT_ORIGIN_Y = 1F
+        private const val EGL_RECT_TOPLEFT_X = -1F
+        private const val EGL_RECT_TOPLEFT_Y = 1F
     }
 
 }
