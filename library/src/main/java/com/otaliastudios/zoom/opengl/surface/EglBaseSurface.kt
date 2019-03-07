@@ -19,7 +19,7 @@ import java.nio.ByteOrder
  * There can be multiple base surfaces associated with a single [EglCore] object.
  */
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-internal open class EglBaseSurface(protected var mEglCore: EglCore) {
+abstract class EglBaseSurface internal constructor(protected var mEglCore: EglCore) {
 
     private var mEGLSurface = EGL14.EGL_NO_SURFACE
     private var mWidth = -1
@@ -128,7 +128,7 @@ internal open class EglBaseSurface(protected var mEglCore: EglCore) {
      * Expects that this object's EGL surface is current.
      */
     @Throws(IOException::class)
-    fun saveFrameToFile(file: File) {
+    fun saveFrameToFile(file: File, format: Bitmap.CompressFormat = Bitmap.CompressFormat.PNG) {
         if (!mEglCore.isCurrent(mEGLSurface)) {
             throw RuntimeException("Expected EGL context/surface is not current")
         }
@@ -158,7 +158,7 @@ internal open class EglBaseSurface(protected var mEglCore: EglCore) {
             bos = BufferedOutputStream(FileOutputStream(filename))
             val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             bmp.copyPixelsFromBuffer(buf)
-            bmp.compress(Bitmap.CompressFormat.PNG, 90, bos)
+            bmp.compress(format, 90, bos)
             bmp.recycle()
         } finally {
             bos?.close()
@@ -169,7 +169,7 @@ internal open class EglBaseSurface(protected var mEglCore: EglCore) {
      * Saves the EGL surface to given format.
      * Expects that this object's EGL surface is current.
      */
-    fun saveFrameTo(compressFormat: Bitmap.CompressFormat): ByteArray {
+    fun saveFrameToByteArray(compressFormat: Bitmap.CompressFormat): ByteArray {
         if (!mEglCore.isCurrent(mEGLSurface)) {
             throw RuntimeException("Expected EGL context/surface is not current")
         }

@@ -14,7 +14,7 @@ import com.otaliastudios.zoom.opengl.core.EglCore
  * It's good practice to explicitly release() the surface, preferably from a "finally" block.
  */
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-internal class EglWindowSurface : EglBaseSurface {
+class EglWindowSurface : EglBaseSurface {
     private var mSurface: Surface? = null
     private var mReleaseSurface = false
 

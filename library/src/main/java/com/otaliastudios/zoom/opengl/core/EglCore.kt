@@ -19,7 +19,7 @@ import androidx.annotation.RequiresApi
  * @param flags Configuration bit flags, e.g. FLAG_RECORDABLE.
  */
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-internal class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: Int = 0) {
+class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: Int = 0) {
 
     private var eglDisplay: EGLDisplay? = EGL14.EGL_NO_DISPLAY
     private var eglContext = EGL14.EGL_NO_CONTEXT
