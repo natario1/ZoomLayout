@@ -21,10 +21,10 @@ import androidx.annotation.RequiresApi
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: Int = 0) {
 
-    private var eglDisplay: EGLDisplay? = EGL14.EGL_NO_DISPLAY
-    private var eglContext = EGL14.EGL_NO_CONTEXT
-    private var eglConfig: EGLConfig? = null
-    private var glVersion = -1 // 2 or 3
+    internal var eglDisplay: EGLDisplay? = EGL14.EGL_NO_DISPLAY
+    internal var eglContext = EGL14.EGL_NO_CONTEXT
+    internal var eglConfig: EGLConfig? = null
+    internal var glVersion = -1 // 2 or 3
 
     init {
         eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
@@ -47,7 +47,7 @@ class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: Int = 0) 
                 val attributes = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 3, EGL14.EGL_NONE)
                 val context = EGL14.eglCreateContext(eglDisplay, config, sharedContext, attributes, 0)
                 try {
-                    checkEglError("eglCreateContext (3)")
+                    Egl.checkEgl("eglCreateContext (3)")
                     eglConfig = config
                     eglContext = context
                     glVersion = 3
@@ -64,7 +64,7 @@ class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: Int = 0) 
             if (config != null) {
                 val attributes = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL14.EGL_NONE)
                 val context = EGL14.eglCreateContext(eglDisplay, config, sharedContext, attributes, 0)
-                checkEglError("eglCreateContext (2)")
+                Egl.checkEgl("eglCreateContext (2)")
                 eglConfig = config
                 eglContext = context
                 glVersion = 2
@@ -74,6 +74,12 @@ class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: Int = 0) 
         }
     }
 
+    /**
+     * Queries a string value.
+     */
+    fun queryString(what: Int): String {
+        return EGL14.eglQueryString(eglDisplay, what)
+    }
 
     /**
      * Discards all resources held by this class, notably the EGL context.  This must be
@@ -113,7 +119,7 @@ class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: Int = 0) 
      * Destroys the specified surface.  Note the EGLSurface won't actually be destroyed if it's
      * still current in a context.
      */
-    fun releaseSurface(eglSurface: EGLSurface) {
+    internal fun releaseSurface(eglSurface: EGLSurface) {
         EGL14.eglDestroySurface(eglDisplay, eglSurface)
     }
 
@@ -121,16 +127,14 @@ class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: Int = 0) 
      * Creates an EGL surface associated with a Surface.
      * If this is destined for MediaCodec, the EGLConfig should have the "recordable" attribute.
      */
-    fun createWindowSurface(surface: Any): EGLSurface {
+    internal fun createWindowSurface(surface: Any): EGLSurface {
         if (surface !is Surface && surface !is SurfaceTexture) {
             throw RuntimeException("invalid surface: $surface")
         }
-
         // Create a window surface, and attach it to the Surface we received.
         val surfaceAttribs = intArrayOf(EGL14.EGL_NONE)
-        val eglSurface = EGL14.eglCreateWindowSurface(eglDisplay, eglConfig, surface,
-                surfaceAttribs, 0)
-        checkEglError("eglCreateWindowSurface")
+        val eglSurface = EGL14.eglCreateWindowSurface(eglDisplay, eglConfig, surface, surfaceAttribs, 0)
+        Egl.checkEgl("eglCreateWindowSurface")
         if (eglSurface == null) throw RuntimeException("surface was null")
         return eglSurface
     }
@@ -138,22 +142,19 @@ class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: Int = 0) 
     /**
      * Creates an EGL surface associated with an offscreen buffer.
      */
-    fun createOffscreenSurface(width: Int, height: Int): EGLSurface {
+    internal fun createOffscreenSurface(width: Int, height: Int): EGLSurface {
         val surfaceAttribs = intArrayOf(EGL14.EGL_WIDTH, width, EGL14.EGL_HEIGHT, height, EGL14.EGL_NONE)
-        val eglSurface = EGL14.eglCreatePbufferSurface(eglDisplay, eglConfig,
-                surfaceAttribs, 0)
-        checkEglError("eglCreatePbufferSurface")
-        if (eglSurface == null) {
-            throw RuntimeException("surface was null")
-        }
+        val eglSurface = EGL14.eglCreatePbufferSurface(eglDisplay, eglConfig, surfaceAttribs, 0)
+        Egl.checkEgl("eglCreatePbufferSurface")
+        if (eglSurface == null) throw RuntimeException("surface was null")
         return eglSurface
     }
 
     /**
      * Makes our EGL context current, using the supplied surface for both "draw" and "read".
      */
-    fun makeCurrent(eglSurface: EGLSurface) {
-        if (eglDisplay === EGL14.EGL_NO_DISPLAY) Log.d(TAG, "NOTE: makeCurrent w/o display")
+    internal fun makeSurfaceCurrent(eglSurface: EGLSurface) {
+        if (eglDisplay === EGL14.EGL_NO_DISPLAY) Log.d(TAG, "NOTE: makeSurfaceCurrent w/o display")
         if (!EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)) {
             throw RuntimeException("eglMakeCurrent failed")
         }
@@ -162,69 +163,51 @@ class EglCore(sharedContext: EGLContext = EGL14.EGL_NO_CONTEXT, flags: Int = 0) 
     /**
      * Makes our EGL context current, using the supplied "draw" and "read" surfaces.
      */
-    fun makeCurrent(drawSurface: EGLSurface, readSurface: EGLSurface) {
-        if (eglDisplay === EGL14.EGL_NO_DISPLAY) Log.d(TAG, "NOTE: makeCurrent w/o display")
+    internal fun makeSurfaceCurrent(drawSurface: EGLSurface, readSurface: EGLSurface) {
+        if (eglDisplay === EGL14.EGL_NO_DISPLAY) Log.d(TAG, "NOTE: makeSurfaceCurrent w/o display")
         if (!EGL14.eglMakeCurrent(eglDisplay, drawSurface, readSurface, eglContext)) {
             throw RuntimeException("eglMakeCurrent(draw,read) failed")
         }
     }
 
     /**
-     * Makes no context current.
+     * Makes no surface current.
      */
-    fun makeNothingCurrent() {
-        if (!EGL14.eglMakeCurrent(eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)) {
+    internal fun makeNoSurfaceCurrent() {
+        if (!EGL14.eglMakeCurrent(eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, eglContext)) {
             throw RuntimeException("eglMakeCurrent failed")
         }
     }
 
     /**
-     * Calls eglSwapBuffers.  Use this to "publish" the current frame.
-     *
+     * Calls eglSwapBuffers. Use this to "publish" the current frame.
      * @return false on failure
      */
-    fun swapBuffers(eglSurface: EGLSurface): Boolean {
+    internal fun swapSurfaceBuffers(eglSurface: EGLSurface): Boolean {
         return EGL14.eglSwapBuffers(eglDisplay, eglSurface)
     }
 
     /**
      * Sends the presentation time stamp to EGL.  Time is expressed in nanoseconds.
      */
-    fun setPresentationTime(eglSurface: EGLSurface, nsecs: Long) {
+    internal fun setSurfacePresentationTime(eglSurface: EGLSurface, nsecs: Long) {
         EGLExt.eglPresentationTimeANDROID(eglDisplay, eglSurface, nsecs)
     }
 
     /**
      * Returns true if our context and the specified surface are current.
      */
-    fun isCurrent(eglSurface: EGLSurface): Boolean {
+    internal fun isSurfaceCurrent(eglSurface: EGLSurface): Boolean {
         return eglContext == EGL14.eglGetCurrentContext() && eglSurface == EGL14.eglGetCurrentSurface(EGL14.EGL_DRAW)
     }
 
     /**
      * Performs a simple surface query.
      */
-    fun querySurface(eglSurface: EGLSurface, what: Int): Int {
+    internal fun querySurface(eglSurface: EGLSurface, what: Int): Int {
         val value = IntArray(1)
         EGL14.eglQuerySurface(eglDisplay, eglSurface, what, value, 0)
         return value[0]
-    }
-
-    /**
-     * Queries a string value.
-     */
-    fun queryString(what: Int): String {
-        return EGL14.eglQueryString(eglDisplay, what)
-    }
-
-    /**
-     * Checks for EGL errors.  Throws an exception if an error has been raised.
-     */
-    private fun checkEglError(msg: String) {
-        val error = EGL14.eglGetError()
-        if (error != EGL14.EGL_SUCCESS) {
-            throw RuntimeException(msg + ": EGL error: 0x" + Integer.toHexString(error))
-        }
     }
 
     companion object {

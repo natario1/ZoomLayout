@@ -2,6 +2,7 @@ package com.otaliastudios.zoom.opengl.core
 
 
 import android.annotation.TargetApi
+import android.opengl.EGL14
 import android.opengl.GLES20
 import android.opengl.GLU
 import android.opengl.Matrix
@@ -43,10 +44,25 @@ object Egl {
         buffer.position(0)
     }
 
+    /**
+     * Checks for GLES errors.
+     */
     fun check(opName: String) {
         val error = GLES20.glGetError()
         if (error != GLES20.GL_NO_ERROR) {
             val message = "Error during $opName: glError 0x${Integer.toHexString(error)}: ${GLU.gluErrorString(error)}"
+            Log.e("Egl", message)
+            throw RuntimeException(message)
+        }
+    }
+
+    /**
+     * Checks for EGL errors.
+     */
+    fun checkEgl(eglOpName: String) {
+        val error = EGL14.eglGetError()
+        if (error != EGL14.EGL_SUCCESS) {
+            val message = "Error during $eglOpName: EGL error 0x${Integer.toHexString(error)}"
             Log.e("Egl", message)
             throw RuntimeException(message)
         }

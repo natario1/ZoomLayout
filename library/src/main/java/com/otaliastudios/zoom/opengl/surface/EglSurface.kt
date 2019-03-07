@@ -1,12 +1,13 @@
 package com.otaliastudios.zoom.opengl.surface
 
 
-import android.annotation.TargetApi
 import android.graphics.Bitmap
+import android.graphics.SurfaceTexture
 import android.opengl.EGL14
 import android.opengl.GLES20
 import android.os.Build
 import android.util.Log
+import android.view.Surface
 import androidx.annotation.RequiresApi
 import com.otaliastudios.zoom.opengl.core.Egl
 import com.otaliastudios.zoom.opengl.core.EglCore
@@ -19,11 +20,38 @@ import java.nio.ByteOrder
  * There can be multiple base surfaces associated with a single [EglCore] object.
  */
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-abstract class EglBaseSurface internal constructor(protected var mEglCore: EglCore) {
+open class EglSurface internal constructor(protected var eglCore: EglCore) {
 
-    private var mEGLSurface = EGL14.EGL_NO_SURFACE
-    private var mWidth = -1
-    private var mHeight = -1
+    /**
+     * Creates an offscreen surface.
+     */
+    internal constructor(eglCore: EglCore, width: Int, height: Int): this(eglCore) {
+        eglSurface = eglCore.createOffscreenSurface(width, height)
+        this.width = width
+        this.height = height
+    }
+
+    /**
+     * Creates a window surface.
+     */
+    internal constructor(eglCore: EglCore, surface: Surface): this(eglCore) {
+        eglSurface = eglCore.createWindowSurface(surface)
+        // Don't cache width/height here, because the size of the underlying surface can change
+        // width = eglCore.querySurface(eglSurface, EGL14.EGL_WIDTH);
+        // height = eglCore.querySurface(eglSurface, EGL14.EGL_HEIGHT);
+    }
+
+    /**
+     * Creates a window surface.
+     */
+    internal constructor(eglCore: EglCore, surfaceTexture: SurfaceTexture): this(eglCore) {
+        eglSurface = eglCore.createWindowSurface(surfaceTexture)
+        // Same as above
+    }
+
+    protected var eglSurface = EGL14.EGL_NO_SURFACE
+    private var width = -1
+    private var height = -1
 
     /**
      * Returns the surface's width, in pixels.
@@ -33,10 +61,10 @@ abstract class EglBaseSurface internal constructor(protected var mEglCore: EglCo
      * callback).  The size should match after the next buffer swap.
      */
     fun getWidth(): Int {
-        return if (mWidth < 0) {
-            mEglCore.querySurface(mEGLSurface, EGL14.EGL_WIDTH)
+        return if (width < 0) {
+            eglCore.querySurface(eglSurface, EGL14.EGL_WIDTH)
         } else {
-            mWidth
+            width
         }
     }
 
@@ -44,63 +72,43 @@ abstract class EglBaseSurface internal constructor(protected var mEglCore: EglCo
      * Returns the surface's height, in pixels.
      */
     fun getHeight(): Int {
-        return if (mHeight < 0) {
-            mEglCore.querySurface(mEGLSurface, EGL14.EGL_HEIGHT)
+        return if (height < 0) {
+            eglCore.querySurface(eglSurface, EGL14.EGL_HEIGHT)
         } else {
-            mHeight
+            height
         }
-    }
-
-    /**
-     * Creates a window surface.
-     * The [surface] param may be a Surface or SurfaceTexture.
-     */
-    fun createWindowSurface(surface: Any) {
-        if (mEGLSurface !== EGL14.EGL_NO_SURFACE) {
-            throw IllegalStateException("surface already created")
-        }
-        mEGLSurface = mEglCore.createWindowSurface(surface)
-        // Don't cache width/height here, because the size of the underlying surface can change
-        // out from under us (see e.g. HardwareScalerActivity).
-        // mWidth = mEglCore.querySurface(mEGLSurface, EGL14.EGL_WIDTH);
-        // mHeight = mEglCore.querySurface(mEGLSurface, EGL14.EGL_HEIGHT);
-    }
-
-    /**
-     * Creates an off-screen surface.
-     */
-    fun createOffscreenSurface(width: Int, height: Int) {
-        if (mEGLSurface !== EGL14.EGL_NO_SURFACE) {
-            throw IllegalStateException("surface already created")
-        }
-        mEGLSurface = mEglCore.createOffscreenSurface(width, height)
-        mWidth = width
-        mHeight = height
     }
 
     /**
      * Release the EGL surface.
      */
-    fun releaseEglSurface() {
-        mEglCore.releaseSurface(mEGLSurface)
-        mEGLSurface = EGL14.EGL_NO_SURFACE
-        mHeight = -1
-        mWidth = mHeight
+    open fun release() {
+        eglCore.releaseSurface(eglSurface)
+        eglSurface = EGL14.EGL_NO_SURFACE
+        height = -1
+        width = -1
     }
 
     /**
      * Makes our EGL context and surface current.
      */
     fun makeCurrent() {
-        mEglCore.makeCurrent(mEGLSurface)
+        eglCore.makeSurfaceCurrent(eglSurface)
     }
 
     /**
      * Makes our EGL context and surface current for drawing,
      * using the supplied surface for reading.
      */
-    fun makeCurrentReadFrom(readSurface: EglBaseSurface) {
-        mEglCore.makeCurrent(mEGLSurface, readSurface.mEGLSurface)
+    fun makeCurrentReadFrom(readSurface: EglSurface) {
+        eglCore.makeSurfaceCurrent(eglSurface, readSurface.eglSurface)
+    }
+
+    /**
+     * Makes nothing current for the attached [eglCore].
+     */
+    fun makeNothingCurrent() {
+        eglCore.makeNoSurfaceCurrent()
     }
 
     /**
@@ -108,9 +116,9 @@ abstract class EglBaseSurface internal constructor(protected var mEglCore: EglCo
      * Returns false on failure.
      */
     fun swapBuffers(): Boolean {
-        val result = mEglCore.swapBuffers(mEGLSurface)
+        val result = eglCore.swapSurfaceBuffers(eglSurface)
         if (!result) {
-            Log.d(TAG, "WARNING: swapBuffers() failed")
+            Log.d(TAG, "WARNING: swapSurfaceBuffers() failed")
         }
         return result
     }
@@ -120,7 +128,7 @@ abstract class EglBaseSurface internal constructor(protected var mEglCore: EglCo
      * [nsecs] is the timestamp in nanoseconds.
      */
     fun setPresentationTime(nsecs: Long) {
-        mEglCore.setPresentationTime(mEGLSurface, nsecs)
+        eglCore.setSurfacePresentationTime(eglSurface, nsecs)
     }
 
     /**
@@ -129,7 +137,7 @@ abstract class EglBaseSurface internal constructor(protected var mEglCore: EglCo
      */
     @Throws(IOException::class)
     fun saveFrameToFile(file: File, format: Bitmap.CompressFormat = Bitmap.CompressFormat.PNG) {
-        if (!mEglCore.isCurrent(mEGLSurface)) {
+        if (!eglCore.isSurfaceCurrent(eglSurface)) {
             throw RuntimeException("Expected EGL context/surface is not current")
         }
 
@@ -170,7 +178,7 @@ abstract class EglBaseSurface internal constructor(protected var mEglCore: EglCo
      * Expects that this object's EGL surface is current.
      */
     fun saveFrameToByteArray(compressFormat: Bitmap.CompressFormat): ByteArray {
-        if (!mEglCore.isCurrent(mEGLSurface)) {
+        if (!eglCore.isSurfaceCurrent(eglSurface)) {
             throw RuntimeException("Expected EGL context/surface is not current")
         }
 
@@ -203,6 +211,28 @@ abstract class EglBaseSurface internal constructor(protected var mEglCore: EglCo
     }
 
     companion object {
-        protected val TAG = EglBaseSurface::class.java.simpleName
+        protected val TAG = EglSurface::class.java.simpleName
+
+        /**
+         * Set releaseSurface to true if you want the Surface to be released when release() is
+         * called.  This is convenient, but can interfere with framework classes that expect to
+         * manage the Surface themselves (e.g. if you release a SurfaceView's Surface, the
+         * surfaceDestroyed() callback won't fire).
+         */
+        @JvmOverloads
+        @JvmStatic
+        fun createWindowSurface(eglCore: EglCore, surface: Surface, releaseSurface: Boolean = false): EglWindowSurface {
+            return EglWindowSurface(eglCore, surface, releaseSurface)
+        }
+
+        @JvmStatic
+        fun createWindowSurface(eglCore: EglCore, surfaceTexture: SurfaceTexture): EglWindowSurface {
+            return EglWindowSurface(eglCore, surfaceTexture)
+        }
+
+        @JvmStatic
+        fun createOffscreenSurface(eglCore: EglCore, width: Int, height: Int): EglSurface {
+            return EglSurface(eglCore, width, height)
+        }
     }
 }
