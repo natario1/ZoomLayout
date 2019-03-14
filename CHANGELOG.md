@@ -1,3 +1,7 @@
+### v1.6.0
+
+- Introduces ZoomSurfaceView, a zoomable and pannable Surface container. Please read docs for usage ([#94][94]).
+
 ## v1.5.1
 
 - Fix: fix a context leak in ZoomLayout thanks to [@dmazzoni][dmazzoni] ([#92][92]).
@@ -40,3 +44,4 @@ https://github.com/natario1/ZoomLayout/compare/v1.4.0...v1.5.0
 [85]: https://github.com/natario1/ZoomLayout/pull/85
 [90]: https://github.com/natario1/ZoomLayout/pull/90
 [92]: https://github.com/natario1/ZoomLayout/pull/92
+[94]: https://github.com/natario1/ZoomLayout/pull/94
