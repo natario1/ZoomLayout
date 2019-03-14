@@ -80,8 +80,6 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private var mTransformationZoom = 0F // mZoom * mTransformationZoom matches the matrix scale.
     @State private var mState = NONE
     private lateinit var mContainer: View
-    private var mContainerWidth = 0F
-    private var mContainerHeight = 0F
     private var mInitialized = false
     private var mContentScaledRect = RectF()
     private var mContentRect = RectF()
@@ -102,13 +100,35 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private val mContentScaledHeight: Float
         get() = mContentScaledRect.height()
 
+    /**
+     * Returns the content width as passed to [setContentSize].
+     * @return the current width
+     */
     @AbsolutePan
-    private val mContentWidth: Float
+    val contentWidth: Float
         get() = mContentRect.width()
 
+    /**
+     * Returns the content height as passed to [setContentSize].
+     * @return the current height
+     */
     @AbsolutePan
-    private val mContentHeight: Float
+    val contentHeight: Float
         get() = mContentRect.height()
+
+    /**
+     * Returns the container width as passed to [setContainerSize].
+     * @return the current width
+     */
+    var containerWidth = 0F
+        private set
+
+    /**
+     * Returns the container height as passed to [setContainerSize].
+     * @return the current height
+     */
+    var containerHeight = 0F
+        private set
 
     /**
      * Gets the current zoom value, which can be used as a reference when calling
@@ -146,8 +166,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     @ScaledPan
     private val maxOverScroll: Int
         get() {
-            val overX = mContainerWidth * DEFAULT_OVERSCROLL_FACTOR
-            val overY = mContainerHeight * DEFAULT_OVERSCROLL_FACTOR
+            val overX = containerWidth * DEFAULT_OVERSCROLL_FACTOR
+            val overY = containerHeight * DEFAULT_OVERSCROLL_FACTOR
             return Math.min(overX, overY).toInt()
         }
 
@@ -453,7 +473,14 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      */
     internal fun setContainer(container: View) {
         mContainer = container
-        mContainer.viewTreeObserver.addOnGlobalLayoutListener(this)
+        mContainer.addOnAttachStateChangeListener(object: View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(view: View) {
+                view.viewTreeObserver.addOnGlobalLayoutListener(this@ZoomEngine)
+            }
+            override fun onViewDetachedFromWindow(view: View) {
+                view.viewTreeObserver.removeOnGlobalLayoutListener(this@ZoomEngine)
+            }
+        })
     }
 
     override fun onGlobalLayout() {
@@ -483,7 +510,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     @JvmOverloads
     fun setContentSize(width: Float, height: Float, applyTransformation: Boolean = false) {
         if (width <= 0 || height <= 0) return
-        if (mContentWidth != width || mContentHeight != height || applyTransformation) {
+        if (contentWidth != width || contentHeight != height || applyTransformation) {
             mContentRect.set(0f, 0f, width, height)
             onSizeChanged(applyTransformation)
         }
@@ -503,9 +530,9 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     @JvmOverloads
     fun setContainerSize(width: Float, height: Float, applyTransformation: Boolean = false) {
         if (width <= 0 || height <= 0) return
-        if (width != mContainerWidth || height != mContainerHeight || applyTransformation) {
-            mContainerWidth = width
-            mContainerHeight = height
+        if (width != containerWidth || height != containerHeight || applyTransformation) {
+            containerWidth = width
+            containerHeight = height
             onSizeChanged(applyTransformation)
         }
     }
@@ -514,16 +541,16 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
         // We will sync them later using matrix.mapRect.
         mContentScaledRect.set(mContentRect)
 
-        if (mContentWidth <= 0
-                || mContentHeight <= 0
-                || mContainerWidth <= 0
-                || mContainerHeight <= 0)
+        if (contentWidth <= 0
+                || contentHeight <= 0
+                || containerWidth <= 0
+                || containerHeight <= 0)
             return
 
-        LOG.w("onSizeChanged:", "containerWidth:", mContainerWidth,
-                "containerHeight:", mContainerHeight,
-                "contentWidth:", mContentWidth,
-                "contentHeight:", mContentHeight)
+        LOG.w("onSizeChanged:", "containerWidth:", containerWidth,
+                "containerHeight:", containerHeight,
+                "contentWidth:", contentWidth,
+                "contentHeight:", contentHeight)
 
         // See if we need to apply the transformation. This is the easier case, because
         // if we don't want to apply it, we must do extra computations to keep the appearance unchanged.
@@ -588,8 +615,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
      * is called.
      */
     fun clear() {
-        mContainerHeight = 0f
-        mContainerWidth = 0f
+        containerHeight = 0f
+        containerWidth = 0f
         zoom = 1f
         mTransformationZoom = 0f
         mContentScaledRect = RectF()
@@ -604,14 +631,14 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private fun computeTransformationZoom(): Float {
         when (mTransformation) {
             ZoomApi.TRANSFORMATION_CENTER_INSIDE -> {
-                val scaleX = mContainerWidth / mContentScaledWidth
-                val scaleY = mContainerHeight / mContentScaledHeight
+                val scaleX = containerWidth / mContentScaledWidth
+                val scaleY = containerHeight / mContentScaledHeight
                 LOG.v("computeTransformationZoom", "centerInside", "scaleX:", scaleX, "scaleY:", scaleY)
                 return Math.min(scaleX, scaleY)
             }
             ZoomApi.TRANSFORMATION_CENTER_CROP -> {
-                val scaleX = mContainerWidth / mContentScaledWidth
-                val scaleY = mContainerHeight / mContentScaledHeight
+                val scaleX = containerWidth / mContentScaledWidth
+                val scaleY = containerHeight / mContentScaledHeight
                 LOG.v("computeTransformationZoom", "centerCrop", "scaleX:", scaleX, "scaleY:", scaleY)
                 return Math.max(scaleX, scaleY)
             }
@@ -627,8 +654,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     @ScaledPan
     private fun computeTransformationPan(): FloatArray {
         val result = floatArrayOf(0f, 0f)
-        val extraWidth = mContentScaledWidth - mContainerWidth
-        val extraHeight = mContentScaledHeight - mContainerHeight
+        val extraWidth = mContentScaledWidth - containerWidth
+        val extraHeight = mContentScaledHeight - containerHeight
         val gravity = computeTransformationGravity(mTransformationGravity)
         result[0] = -applyGravity(gravity, extraWidth, true)
         result[1] = -applyGravity(gravity, extraHeight, false)
@@ -762,7 +789,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     @ScaledPan
     private fun checkPanBounds(horizontal: Boolean, allowOverScroll: Boolean): Float {
         @ScaledPan val value = if (horizontal) scaledPanX else scaledPanY
-        val containerSize = if (horizontal) mContainerWidth else mContainerHeight
+        val containerSize = if (horizontal) containerWidth else containerHeight
         @ScaledPan val contentSize = if (horizontal) mContentScaledWidth else mContentScaledHeight
         val overScrollable = if (horizontal) mOverScrollHorizontal else mOverScrollVertical
         @ScaledPan val overScroll = (if (overScrollable && allowOverScroll) maxOverScroll else 0).toFloat()
@@ -1008,19 +1035,19 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
                 // to initially transform the content.
                 // Currently this is always [View.Gravity.CENTER] as indicated by [mTransformationGravity]
                 // but this might be changed by the user.
-                return AbsolutePoint(-mContentWidth / 2F, -mContentHeight / 2F).toViewCoordinate()
+                return AbsolutePoint(-contentWidth / 2F, -contentHeight / 2F).toViewCoordinate()
             }
 
             val x = when {
-                fixPan.x > 0 -> mContainerWidth // content needs to be moved left, use the right border as target
+                fixPan.x > 0 -> containerWidth // content needs to be moved left, use the right border as target
                 fixPan.x < 0 -> 0F // content needs to move right, use the left border as target
-                else -> mContainerWidth / 2F // axis is not changed, use center as target
+                else -> containerWidth / 2F // axis is not changed, use center as target
             }
 
             val y = when {
-                fixPan.y > 0 -> mContainerHeight // content needs to be moved up, use the bottom border as target
+                fixPan.y > 0 -> containerHeight // content needs to be moved up, use the bottom border as target
                 fixPan.y < 0 -> 0F // content needs to move down, use the top border as target
-                else -> mContainerHeight / 2F // axis is not changed, use center as target
+                else -> containerHeight / 2F // axis is not changed, use center as target
             }
 
             return PointF(x, y)
@@ -1426,8 +1453,8 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     private fun applyZoom(@Zoom zoom: Float,
                           allowOverPinch: Boolean,
                           allowOverScroll: Boolean = false,
-                          zoomTargetX: Float = mContainerWidth / 2f,
-                          zoomTargetY: Float = mContainerHeight / 2f,
+                          zoomTargetX: Float = containerWidth / 2f,
+                          zoomTargetY: Float = containerHeight / 2f,
                           notifyListeners: Boolean = true) {
         val newZoom = checkZoomBounds(zoom, allowOverPinch)
         val scaleFactor = newZoom / this.zoom
@@ -1514,7 +1541,7 @@ internal constructor(context: Context) : ViewTreeObserver.OnGlobalLayoutListener
     // while max values are related to top-left.
     private fun computeScrollerValues(horizontal: Boolean, output: ScrollerValues) {
         @ScaledPan val currentPan = (if (horizontal) scaledPanX else scaledPanY).toInt()
-        val containerDim = (if (horizontal) mContainerWidth else mContainerHeight).toInt()
+        val containerDim = (if (horizontal) containerWidth else containerHeight).toInt()
         @ScaledPan val contentDim = (if (horizontal) mContentScaledWidth else mContentScaledHeight).toInt()
         val fix = checkPanBounds(horizontal, false).toInt()
         val alignment = if (horizontal) Alignment.getHorizontal(mAlignment) else Alignment.getVertical(mAlignment)
