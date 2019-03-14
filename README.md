@@ -165,12 +165,24 @@ that streams image buffers into a `Surface`.
     app:animationDuration="280"/>
 ```
 
+### Setup
+
 There are a few special things about `ZoomSurfaceView` with respect to the other classes:
 
 - It **requires** API level 18
 - It will not draw scrollbars
 - You **must** either call `ZoomSurfaceView.setContentSize()` passing the stream size, or measure the
   view so that it matches the stream aspect ratio.
+
+To use `ZoomSurfaceView` you must add the [EglCore](https://github.com/natario1/EglCore) library to your
+dependencies or the view will crash. Please take a look at the sample app to see which version you
+should be using.
+
+```groovy
+implementation 'com.otaliastudios.opengl:egl-core:<version>'
+```
+
+### Usage
 
 Using `Surface`s is not a simple topic so we won't go into details here. Please take a look
 at the demo app which reproduces a zoomable/pannable video through ExoPlayer.

@@ -12,13 +12,13 @@ import androidx.annotation.RequiresApi
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import com.otaliastudios.zoom.ZoomApi.ZoomType
-import com.otaliastudios.zoom.opengl.core.EglConfigChooser
-import com.otaliastudios.zoom.opengl.core.EglContextFactory
-import com.otaliastudios.zoom.opengl.core.makeIdentity
-import com.otaliastudios.zoom.opengl.draw.EglRect
-import com.otaliastudios.zoom.opengl.program.EglFlatProgram
-import com.otaliastudios.zoom.opengl.program.EglTextureProgram
-import com.otaliastudios.zoom.opengl.scene.EglScene
+import com.otaliastudios.opengl.core.EglConfigChooser
+import com.otaliastudios.opengl.core.EglContextFactory
+import com.otaliastudios.opengl.core.makeIdentity
+import com.otaliastudios.opengl.draw.EglRect
+import com.otaliastudios.opengl.program.EglFlatProgram
+import com.otaliastudios.opengl.program.EglTextureProgram
+import com.otaliastudios.opengl.scene.EglScene
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -33,6 +33,15 @@ private constructor(
         attrs: AttributeSet?,
         val engine: ZoomEngine = ZoomEngine(context)
 ) : GLSurfaceView(context, attrs), ZoomEngine.Listener, ZoomApi by engine, GLSurfaceView.Renderer {
+
+    init {
+        // See if the com.otaliastudios.opengl:egl-core was added.
+        val hasEglCore = kotlin.runCatching { EglRect() }
+        if (hasEglCore.isFailure) {
+            throw IllegalStateException("If you wish to use ZoomSurfaceView, you must" +
+                    "add com.otaliastudios.opengl:egl-core to your dependencies.")
+        }
+    }
 
     @JvmOverloads
     constructor(context: Context, attrs: AttributeSet? = null)

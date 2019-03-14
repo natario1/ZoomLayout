@@ -37,6 +37,7 @@ android {
 dependencies {
     api "androidx.annotation:annotation:1.0.2"
     api "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    compileOnly "com.otaliastudios.opengl:egl-core:$eglCoreVersion"
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.3.1"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.3.1"
