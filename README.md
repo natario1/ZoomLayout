@@ -200,9 +200,6 @@ surfaceView.addCallback(new ZoomSurfaceView.Callback() {
     }
 
     @Override
-    public void onZoomSurfaceChanged(@NotNull ZoomSurfaceView view, int width, int height) { }
-
-    @Override
     public void onZoomSurfaceDestroyed(@NotNull ZoomSurfaceView view) { }
 });
 ```
