@@ -52,7 +52,7 @@ internal class ZoomManager(private val engine: ZoomEngine) {
     internal fun getMinZoom(): Float {
         return when (minZoomMode) {
             ZoomApi.TYPE_ZOOM -> minZoom
-            ZoomApi.TYPE_REAL_ZOOM -> minZoom / engine.mTransformationZoom
+            ZoomApi.TYPE_REAL_ZOOM -> minZoom / engine.transformationZoom
             else -> throw IllegalArgumentException("Unknown ZoomType $minZoomMode")
         }
     }
@@ -61,7 +61,7 @@ internal class ZoomManager(private val engine: ZoomEngine) {
     internal fun getMaxZoom(): Float {
         return when (maxZoomMode) {
             ZoomApi.TYPE_ZOOM -> maxZoom
-            ZoomApi.TYPE_REAL_ZOOM -> maxZoom / engine.mTransformationZoom
+            ZoomApi.TYPE_REAL_ZOOM -> maxZoom / engine.transformationZoom
             else -> throw IllegalArgumentException("Unknown ZoomType $maxZoomMode")
         }
     }

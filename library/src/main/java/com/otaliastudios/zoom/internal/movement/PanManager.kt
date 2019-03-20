@@ -39,9 +39,9 @@ internal class PanManager(private val engine: ZoomEngine) {
     internal fun computeStatus(horizontal: Boolean, output: Status) {
         @ZoomApi.ScaledPan val currentPan = (if (horizontal) engine.scaledPanX else engine.scaledPanY).toInt()
         val containerDim = (if (horizontal) engine.containerWidth else engine.containerHeight).toInt()
-        @ZoomApi.ScaledPan val contentDim = (if (horizontal) engine.mContentScaledWidth else engine.mContentScaledHeight).toInt()
+        @ZoomApi.ScaledPan val contentDim = (if (horizontal) engine.contentScaledWidth else engine.contentScaledHeight).toInt()
         val fix = checkBounds(horizontal, false).toInt()
-        val alignment = if (horizontal) Alignment.getHorizontal(engine.mAlignment) else Alignment.getVertical(engine.mAlignment)
+        val alignment = if (horizontal) Alignment.getHorizontal(engine.alignment) else Alignment.getVertical(engine.alignment)
         if (contentDim > containerDim) {
             // Content is bigger. We can move between 0 and extraSpace, but since our pans
             // are negative, we must invert the sign.
@@ -91,13 +91,13 @@ internal class PanManager(private val engine: ZoomEngine) {
     internal fun checkBounds(horizontal: Boolean, allowOverScroll: Boolean): Float {
         @ZoomApi.ScaledPan val value = if (horizontal) engine.scaledPanX else engine.scaledPanY
         val containerSize = if (horizontal) engine.containerWidth else engine.containerHeight
-        @ZoomApi.ScaledPan val contentSize = if (horizontal) engine.mContentScaledWidth else engine.mContentScaledHeight
+        @ZoomApi.ScaledPan val contentSize = if (horizontal) engine.contentScaledWidth else engine.contentScaledHeight
         val overScrollable = if (horizontal) horizontalOverPanEnabled else verticalOverPanEnabled
         @ZoomApi.ScaledPan val overScroll = (if (overScrollable && allowOverScroll) maxOverPan else 0).toFloat()
         val alignmentGravity = if (horizontal) {
-            Alignment.toHorizontalGravity(engine.mAlignment, Gravity.NO_GRAVITY)
+            Alignment.toHorizontalGravity(engine.alignment, Gravity.NO_GRAVITY)
         } else {
-            Alignment.toVerticalGravity(engine.mAlignment, Gravity.NO_GRAVITY)
+            Alignment.toVerticalGravity(engine.alignment, Gravity.NO_GRAVITY)
         }
 
         var min: Float

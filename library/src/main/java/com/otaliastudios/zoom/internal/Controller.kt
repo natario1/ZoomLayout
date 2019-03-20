@@ -9,7 +9,7 @@ import com.otaliastudios.zoom.ZoomLogger
  * and applies special logic to touch inputs and state changes to
  * prefer one gesture over the other, for example.
  */
-internal class StateManager(private val callback: Callback) {
+internal class Controller(private val callback: Callback) {
 
     internal interface Callback {
         // State callbacks
@@ -131,7 +131,7 @@ internal class StateManager(private val callback: Callback) {
     internal annotation class State
 
     companion object {
-        private val TAG = StateManager::class.java.simpleName
+        private val TAG = Controller::class.java.simpleName
         private val LOG = ZoomLogger.create(TAG)
 
         internal const val NONE = 0

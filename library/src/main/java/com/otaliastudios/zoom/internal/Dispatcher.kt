@@ -4,7 +4,7 @@ import com.otaliastudios.zoom.ZoomApi
 import com.otaliastudios.zoom.ZoomEngine
 import com.otaliastudios.zoom.ZoomEngine.Listener
 
-internal class EventsDispatcher(private val engine: ZoomEngine) {
+internal class Dispatcher(private val engine: ZoomEngine) {
 
     private val listeners = mutableListOf<ZoomEngine.Listener>()
 

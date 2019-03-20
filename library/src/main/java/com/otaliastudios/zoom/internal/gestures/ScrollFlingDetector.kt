@@ -8,21 +8,23 @@ import com.otaliastudios.zoom.AbsolutePoint
 import com.otaliastudios.zoom.ZoomApi
 import com.otaliastudios.zoom.ZoomEngine
 import com.otaliastudios.zoom.ZoomLogger
-import com.otaliastudios.zoom.internal.StateManager
+import com.otaliastudios.zoom.internal.MatrixManager
+import com.otaliastudios.zoom.internal.Controller
 import com.otaliastudios.zoom.internal.movement.PanManager
 
 /**
  * Deals with scroll and fling gestures.
  *
  * - Detects them
- * - Checks state using [stateManager]
+ * - Checks state using [controller]
  * - Checks pan using [panManager]
- * - Applies updates using the [engine]
+ * - Applies updates using the [matrixManager]
  */
 internal class ScrollFlingDetector(
         context: Context,
-        private val stateManager: StateManager,
+        private val controller: Controller,
         private val panManager: PanManager,
+        private val matrixManager: MatrixManager,
         private val engine: ZoomEngine) {
 
     private val detector = GestureDetector(context, Listener()).apply {
@@ -50,11 +52,11 @@ internal class ScrollFlingDetector(
         if (panManager.isOverPanEnabled) {
             val fix = panManager.correction
             if (fix.x != 0f || fix.y != 0f) {
-                engine.animateScaledPan(fix.x, fix.y, true)
+                matrixManager.animateScaledPan(fix.x, fix.y, true)
                 return
             }
         }
-        stateManager.makeIdle()
+        controller.makeIdle()
     }
 
     private fun startFling(@ZoomApi.ScaledPan velocityX: Int, @ZoomApi.ScaledPan velocityY: Int): Boolean {
@@ -76,7 +78,7 @@ internal class ScrollFlingDetector(
             return false
         }
         // Must be after the other conditions.
-        if (!stateManager.setFlinging()) return false
+        if (!controller.setFlinging()) return false
 
         @ZoomApi.ScaledPan val overScrollX = if (panManager.horizontalOverPanEnabled) panManager.maxOverPan else 0
         @ZoomApi.ScaledPan val overScrollY = if (panManager.verticalOverPanEnabled) panManager.maxOverPan else 0
@@ -91,12 +93,12 @@ internal class ScrollFlingDetector(
         engine.post(object : Runnable {
             override fun run() {
                 if (flingScroller.isFinished) {
-                    stateManager.makeIdle()
+                    controller.makeIdle()
                 } else if (flingScroller.computeScrollOffset()) {
                     @ZoomApi.ScaledPan val newPanX = flingScroller.currX
                     @ZoomApi.ScaledPan val newPanY = flingScroller.currY
                     // OverScroller will eventually go back to our bounds.
-                    engine.applyScaledPan(
+                    matrixManager.applyScaledPan(
                             newPanX - engine.scaledPanX,
                             newPanY - engine.scaledPanY,
                             true)
@@ -133,7 +135,7 @@ internal class ScrollFlingDetector(
         override fun onScroll(e1: MotionEvent?, e2: MotionEvent?,
                               @ZoomApi.AbsolutePan distanceX: Float, @ZoomApi.AbsolutePan distanceY: Float): Boolean {
             if (!panManager.isPanEnabled) return false
-            if (!stateManager.setScrolling()) return false
+            if (!controller.setScrolling()) return false
 
             // Change sign, since we work with opposite values.
             val delta = AbsolutePoint(-distanceX, -distanceY)
@@ -162,7 +164,7 @@ internal class ScrollFlingDetector(
             if (!panManager.verticalPanEnabled) delta.y = 0f
 
             if (delta.x != 0f || delta.y != 0f) {
-                engine.applyScaledPan(delta.x, delta.y, true)
+                matrixManager.applyScaledPan(delta.x, delta.y, true)
             }
             return true
         }
