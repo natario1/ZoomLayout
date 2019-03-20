@@ -1,9 +1,10 @@
 package com.otaliastudios.zoom
 
 /**
- * This class represents a scaled point on the ZoomEngine canvas (or beyond it's bounds)
+ * This class represents a point on the [ZoomEngine] content surface.
  *
- * Note that these values depend on the current zoomlevel
+ * It is scaled because, unlike [AbsolutePoint], it is affected by the current zoom level.
+ * If content is zoomed in, the exact same content point will have bigger [ScaledPoint] coordinates.
  */
 data class ScaledPoint(
         @ZoomApi.ScaledPan var x: Float = 0F,
@@ -72,6 +73,15 @@ data class ScaledPoint(
      */
     operator fun times(factor: Number): ScaledPoint {
         return ScaledPoint(factor.toFloat() * this.x, factor.toFloat() * this.y)
+    }
+
+    /**
+     * Returns a [AbsolutePoint] for this point, assuming that
+     * the current zoom level is [scale].
+     */
+    internal fun toAbsolute(scale: Float, outPoint: AbsolutePoint = AbsolutePoint()): AbsolutePoint {
+        outPoint.set(x / scale, y / scale)
+        return outPoint
     }
 
 }
