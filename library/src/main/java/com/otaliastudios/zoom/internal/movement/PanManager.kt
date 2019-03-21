@@ -3,6 +3,7 @@ package com.otaliastudios.zoom.internal.movement
 import android.annotation.SuppressLint
 import android.view.Gravity
 import com.otaliastudios.zoom.*
+import com.otaliastudios.zoom.internal.MatrixController
 
 /**
  * Contains:
@@ -12,14 +13,15 @@ import com.otaliastudios.zoom.*
  * - utilities for computing the pan status
  * - the pan settings (whether it's enabled or not).
  *
- * Does NOT hold the current pan values, which is done by the [engine].
+ * Does NOT hold the current pan values, which is done by the [MatrixController].
  */
-internal class PanManager(private val engine: ZoomEngine) {
+internal class PanManager(provider: () -> MatrixController) : MovementManager(provider) {
 
     internal var horizontalOverPanEnabled = true
     internal var verticalOverPanEnabled = true
     internal var horizontalPanEnabled = true
     internal var verticalPanEnabled = true
+    internal var alignment = ZoomApi.ALIGNMENT_DEFAULT
 
     /** whether overpan is enabled, horizontally or vertically */
     internal val isOverPanEnabled = horizontalOverPanEnabled || verticalOverPanEnabled
@@ -44,11 +46,11 @@ internal class PanManager(private val engine: ZoomEngine) {
      * while max values are related to top-left.
      */
     internal fun computeStatus(horizontal: Boolean, output: Status) {
-        @ZoomApi.ScaledPan val currentPan = (if (horizontal) engine.scaledPanX else engine.scaledPanY).toInt()
-        val containerDim = (if (horizontal) engine.containerWidth else engine.containerHeight).toInt()
-        @ZoomApi.ScaledPan val contentDim = (if (horizontal) engine.contentScaledWidth else engine.contentScaledHeight).toInt()
+        @ZoomApi.ScaledPan val currentPan = (if (horizontal) controller.scaledPanX else controller.scaledPanY).toInt()
+        val containerDim = (if (horizontal) controller.containerWidth else controller.containerHeight).toInt()
+        @ZoomApi.ScaledPan val contentDim = (if (horizontal) controller.contentScaledWidth else controller.contentScaledHeight).toInt()
         val fix = checkBounds(horizontal, false).toInt()
-        val alignment = if (horizontal) Alignment.getHorizontal(engine.alignment) else Alignment.getVertical(engine.alignment)
+        val alignment = if (horizontal) Alignment.getHorizontal(alignment) else Alignment.getVertical(alignment)
         if (contentDim > containerDim) {
             // Content is bigger. We can move between 0 and extraSpace, but since our pans
             // are negative, we must invert the sign.
@@ -96,15 +98,15 @@ internal class PanManager(private val engine: ZoomEngine) {
     @SuppressLint("RtlHardcoded")
     @ZoomApi.ScaledPan
     internal fun checkBounds(horizontal: Boolean, allowOverScroll: Boolean): Float {
-        @ZoomApi.ScaledPan val value = if (horizontal) engine.scaledPanX else engine.scaledPanY
-        val containerSize = if (horizontal) engine.containerWidth else engine.containerHeight
-        @ZoomApi.ScaledPan val contentSize = if (horizontal) engine.contentScaledWidth else engine.contentScaledHeight
+        @ZoomApi.ScaledPan val value = if (horizontal) controller.scaledPanX else controller.scaledPanY
+        val containerSize = if (horizontal) controller.containerWidth else controller.containerHeight
+        @ZoomApi.ScaledPan val contentSize = if (horizontal) controller.contentScaledWidth else controller.contentScaledHeight
         val overScrollable = if (horizontal) horizontalOverPanEnabled else verticalOverPanEnabled
         @ZoomApi.ScaledPan val overScroll = (if (overScrollable && allowOverScroll) maxOverPan else 0).toFloat()
         val alignmentGravity = if (horizontal) {
-            Alignment.toHorizontalGravity(engine.alignment, Gravity.NO_GRAVITY)
+            Alignment.toHorizontalGravity(alignment, Gravity.NO_GRAVITY)
         } else {
-            Alignment.toVerticalGravity(engine.alignment, Gravity.NO_GRAVITY)
+            Alignment.toVerticalGravity(alignment, Gravity.NO_GRAVITY)
         }
 
         var min: Float
@@ -114,7 +116,7 @@ internal class PanManager(private val engine: ZoomEngine) {
             // Expect the output to be >= 0, we will show part of the container background.
             val extraSpace = containerSize - contentSize // > 0
             if (alignmentGravity != Gravity.NO_GRAVITY) {
-                val correction = engine.applyGravity(alignmentGravity, extraSpace, horizontal)
+                val correction = applyGravity(alignmentGravity, extraSpace, horizontal)
                 min = correction
                 max = correction
             } else {
@@ -141,10 +143,30 @@ internal class PanManager(private val engine: ZoomEngine) {
     @ZoomApi.ScaledPan
     internal val maxOverPan: Int
         get() {
-            val overX = engine.containerWidth * DEFAULT_OVERPAN_FACTOR
-            val overY = engine.containerHeight * DEFAULT_OVERPAN_FACTOR
+            val overX = controller.containerWidth * DEFAULT_OVERPAN_FACTOR
+            val overY = controller.containerHeight * DEFAULT_OVERPAN_FACTOR
             return Math.min(overX, overY).toInt()
         }
+
+    /**
+     * Returns 0 for 'start' gravities, [extraSpace] for 'end' gravities, and half of it
+     * for 'center' gravities.
+     */
+    @SuppressLint("RtlHardcoded")
+    internal fun applyGravity(gravity: Int, extraSpace: Float, horizontal: Boolean): Float {
+        val resolved = if (horizontal) {
+            // TODO support START and END correctly.
+            gravity and Gravity.HORIZONTAL_GRAVITY_MASK
+        } else {
+            gravity and Gravity.VERTICAL_GRAVITY_MASK
+        }
+        return when (resolved) {
+            Gravity.TOP, Gravity.LEFT -> 0F
+            Gravity.BOTTOM, Gravity.RIGHT -> extraSpace
+            Gravity.CENTER_VERTICAL, Gravity.CENTER_HORIZONTAL -> 0.5F * extraSpace
+            else -> 0F // Includes Gravity.NO_GRAVITY and unsupported mixes like FILL
+        }
+    }
 
     companion object {
 

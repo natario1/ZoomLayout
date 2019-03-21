@@ -21,13 +21,14 @@ internal class MatrixController(
         private val zoomManager: ZoomManager,
         private val panManager: PanManager,
         private val stateController: StateController,
-        private val callback: Callback,
-        private val engine: ZoomEngine
+        private val callback: Callback
 ) {
 
     internal interface Callback {
         fun onMatrixUpdate()
         fun onMatrixSizeChanged(firstTime: Boolean)
+        fun post(action: Runnable)
+        fun postOnAnimation(action: Runnable)
     }
 
     private var contentScaledRect = RectF()
@@ -113,6 +114,53 @@ internal class MatrixController(
         get() = contentScaledRect.top
 
     /**
+     * Gets the current zoom value.
+     * This value will match the scaleX - scaleY values you get into the [Matrix],
+     * and is the actual scale value of the content from its original size.
+     */
+    @ZoomApi.RealZoom
+    internal val zoom: Float
+        get() = contentScaledRect.width() / contentRect.width()
+
+
+    /**
+     * Returns the current horizontal pan value, in content coordinates
+     * (that is, as if there was no zoom at all) referring to what was passed
+     * to [setContentSize].
+     */
+    @ZoomApi.AbsolutePan
+    internal val panX: Float
+        get() = scaledPanX / zoom
+
+    /**
+     * Returns the current vertical pan value, in content coordinates
+     * (that is, as if there was no zoom at all) referring to what was passed
+     * to [setContentSize].
+     */
+    @ZoomApi.AbsolutePan
+    internal val panY: Float
+        get() = scaledPanY / zoom
+
+    /**
+     * The current pan as an [AbsolutePoint].
+     * This field will be updated according to current pan when accessed.
+     */
+    internal val pan = AbsolutePoint()
+        get() {
+            field.set(panX, panY)
+            return field
+        }
+
+
+    internal fun post(action: Runnable) {
+        callback.post(action)
+    }
+
+    internal fun postOnAnimation(action: Runnable) {
+        callback.postOnAnimation(action)
+    }
+
+    /**
      * Clears our state.
      */
     internal fun clear() {
@@ -194,7 +242,7 @@ internal class MatrixController(
     }
 
     /**
-     * Applies the given zoom value, meant as a [Zoom] value (so not a [RealZoom]).
+     * Applies the given zoom value.
      * The zoom is applied so that the center point is kept in its place
      *
      * @param zoom           the new zoom value
@@ -203,7 +251,7 @@ internal class MatrixController(
      * @param zoomTargetY    the y-axis zoom target
      */
     internal fun applyZoom(
-            @Zoom zoom: Float,
+            @RealZoom zoom: Float,
             allowOverZoom: Boolean,
             allowOverPan: Boolean = false,
             zoomTargetX: Float = containerWidth / 2f,
@@ -212,10 +260,9 @@ internal class MatrixController(
     ) {
         if (!isInitialized) return
         val newZoom = zoomManager.checkBounds(zoom, allowOverZoom)
-        val scaleFactor = newZoom / engine.zoom
+        val scaleFactor = newZoom / this.zoom
         stub.postScale(scaleFactor, scaleFactor, zoomTargetX, zoomTargetY)
         sync()
-        engine.zoom = newZoom
         ensurePan(allowOverPan)
         if (notifyListeners) dispatch()
     }
@@ -260,7 +307,7 @@ internal class MatrixController(
      * @param notifyListeners when true listeners are informed about this zoom/pan, otherwise they wont
      */
     internal fun applyZoomAndAbsolutePan(
-            @Zoom zoom: Float,
+            @RealZoom zoom: Float,
             @ZoomApi.AbsolutePan x: Float,
             @ZoomApi.AbsolutePan y: Float,
             allowOverPan: Boolean,
@@ -271,13 +318,13 @@ internal class MatrixController(
     ) {
         if (!isInitialized) return
         // Translation
-        val delta = AbsolutePoint(x, y) - engine.pan
+        val delta = AbsolutePoint(x, y) - pan
         stub.preTranslate(delta.x, delta.y)
         sync()
 
         // Scale
         val newZoom = zoomManager.checkBounds(zoom, allowOverZoom)
-        val scaleFactor = newZoom / engine.zoom
+        val scaleFactor = newZoom / this.zoom
         // TODO: This used to work but I am not sure about it.
         // mMatrix.postScale(scaleFactor, scaleFactor, getScaledPanX(), getScaledPanY());
         // It keeps the pivot point at the scaled values 0, 0 (see applyPinch).
@@ -286,7 +333,6 @@ internal class MatrixController(
         val pivotY = zoomTargetY ?: 0F
         stub.postScale(scaleFactor, scaleFactor, pivotX, pivotY)
         sync()
-        engine.zoom = newZoom
         ensurePan(allowOverPan)
         if (notifyListeners) dispatch()
     }
@@ -346,11 +392,11 @@ internal class MatrixController(
      * @param zoom the new zoom
      * @param allowOverPinch whether overpinching is allowed
      */
-    internal fun animateZoom(@Zoom zoom: Float, allowOverPinch: Boolean) {
+    internal fun animateZoom(@RealZoom zoom: Float, allowOverPinch: Boolean) {
         if (!isInitialized) return
         if (!stateController.setAnimating()) return
-        @Zoom val startZoom = engine.zoom
-        @Zoom val endZoom = zoomManager.checkBounds(zoom, allowOverPinch)
+        @RealZoom val startZoom = this.zoom
+        @RealZoom val endZoom = zoomManager.checkBounds(zoom, allowOverPinch)
         ValueAnimator.ofFloat(startZoom, endZoom).prepare().start {
             LOG.v("animateZoom:", "animationStep:", it.animatedFraction)
             applyZoom(it.animatedValue as Float, allowOverPinch)
@@ -371,7 +417,7 @@ internal class MatrixController(
      */
     @SuppressLint("ObjectAnimatorBinding")
     internal fun animateZoomAndAbsolutePan(
-            @Zoom zoom: Float,
+            @RealZoom zoom: Float,
             @ZoomApi.AbsolutePan x: Float,
             @ZoomApi.AbsolutePan y: Float,
             allowOverScroll: Boolean,
@@ -381,9 +427,9 @@ internal class MatrixController(
     ) {
         if (!isInitialized) return
         if (!stateController.setAnimating()) return
-        @Zoom val startZoom = engine.zoom
+        @Zoom val startZoom = this.zoom
         @Zoom val endZoom = zoomManager.checkBounds(zoom, allowOverScroll)
-        val startPan = engine.pan
+        val startPan = pan
         val targetPan = AbsolutePoint(x, y)
         LOG.i("animateZoomAndAbsolutePan:", "starting.", "startX:", startPan.x, "endX:", x, "startY:", startPan.y, "endY:", y)
         LOG.i("animateZoomAndAbsolutePan:", "starting.", "startZoom:", startZoom, "endZoom:", endZoom)

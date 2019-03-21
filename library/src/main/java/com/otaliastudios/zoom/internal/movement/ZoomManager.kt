@@ -1,8 +1,7 @@
 package com.otaliastudios.zoom.internal.movement
 
-import android.annotation.SuppressLint
-import android.view.Gravity
 import com.otaliastudios.zoom.*
+import com.otaliastudios.zoom.internal.MatrixController
 
 /**
  * Contains:
@@ -11,10 +10,12 @@ import com.otaliastudios.zoom.*
  * - the min and max zoom values
  * - the zoom settings (whether it's enabled or not).
  *
- * Does NOT hold the current zoom value, which is done by the [engine].
+ * Does NOT hold the current zoom value, which is done by the [MatrixController].
+ * Holds the current [transformationZoom] so we can convert zoom types.
  */
-internal class ZoomManager(private val engine: ZoomEngine) {
+internal class ZoomManager(provider: () -> MatrixController) : MovementManager(provider) {
 
+    internal var transformationZoom = 0F
     internal var overZoomEnabled = true
     internal var zoomEnabled = true
 
@@ -22,6 +23,30 @@ internal class ZoomManager(private val engine: ZoomEngine) {
     private var minZoomMode = ZoomApi.MIN_ZOOM_DEFAULT_TYPE
     private var maxZoom = ZoomApi.MAX_ZOOM_DEFAULT
     private var maxZoomMode = ZoomApi.MAX_ZOOM_DEFAULT_TYPE
+
+    /**
+     * Clears the current variable state, that is,
+     * resets [transformationZoom].
+     */
+    internal fun clear() {
+        transformationZoom = 0F
+    }
+
+    /**
+     * Transforms a [ZoomApi.RealZoom] into a [ZoomApi.Zoom].
+     */
+    @ZoomApi.Zoom
+    internal fun realZoomToZoom(@ZoomApi.RealZoom realZoom: Float): Float {
+        return realZoom / transformationZoom
+    }
+
+    /**
+     * Transforms a [ZoomApi.Zoom] into a [ZoomApi.RealZoom].
+     */
+    @ZoomApi.RealZoom
+    internal fun zoomToRealZoom(@ZoomApi.Zoom zoom: Float): Float {
+        return zoom * transformationZoom
+    }
 
     /**
      * Sets the maximum zoom and type allowed.
@@ -49,33 +74,30 @@ internal class ZoomManager(private val engine: ZoomEngine) {
      * The amount of overzoom that is allowed in both directions. This is currently
      * a fixed value, but might be made configurable in the future.
      */
-    @ZoomApi.Zoom
+    @ZoomApi.RealZoom
     internal val maxOverZoom: Float
-        get() = DEFAULT_OVERZOOM_FACTOR * (getMaxZoom() - getMinZoom())
-
+        get() = DEFAULT_OVERZOOM_FACTOR * (getMaxZoom() - getMaxZoom())
 
     /**
-     * Returns the current minimum zoom as a [ZoomApi.Zoom] value, so not including
-     * the transformationZoom.
+     * Returns the current minimum zoom as a [ZoomApi.RealZoom] value.
      */
-    @ZoomApi.Zoom
+    @ZoomApi.RealZoom
     internal fun getMinZoom(): Float {
         return when (minZoomMode) {
-            ZoomApi.TYPE_ZOOM -> minZoom
-            ZoomApi.TYPE_REAL_ZOOM -> minZoom / engine.transformationZoom
+            ZoomApi.TYPE_REAL_ZOOM -> minZoom
+            ZoomApi.TYPE_ZOOM -> zoomToRealZoom(minZoom)
             else -> throw IllegalArgumentException("Unknown ZoomType $minZoomMode")
         }
     }
 
     /**
-     * Returns the current maximum zoom as a [ZoomApi.Zoom] value, so not including
-     * the transformationZoom.
+     * Returns the current maximum zoom as a [ZoomApi.RealZoom] value.
      */
-    @ZoomApi.Zoom
+    @ZoomApi.RealZoom
     internal fun getMaxZoom(): Float {
         return when (maxZoomMode) {
-            ZoomApi.TYPE_ZOOM -> maxZoom
-            ZoomApi.TYPE_REAL_ZOOM -> maxZoom / engine.transformationZoom
+            ZoomApi.TYPE_REAL_ZOOM -> maxZoom
+            ZoomApi.TYPE_ZOOM -> zoomToRealZoom(maxZoom)
             else -> throw IllegalArgumentException("Unknown ZoomType $maxZoomMode")
         }
     }
@@ -87,8 +109,8 @@ internal class ZoomManager(private val engine: ZoomEngine) {
      * @param allowOverZoom set to true if zoom values within overpinch range should be considered valid
      * @return the zoom level that will lead into a valid state when applied.
      */
-    @ZoomApi.Zoom
-    internal fun checkBounds(@ZoomApi.Zoom value: Float, allowOverZoom: Boolean): Float {
+    @ZoomApi.RealZoom
+    internal fun checkBounds(@ZoomApi.RealZoom value: Float, allowOverZoom: Boolean): Float {
         var minZoom = getMinZoom()
         var maxZoom = getMaxZoom()
         if (allowOverZoom && overZoomEnabled) {

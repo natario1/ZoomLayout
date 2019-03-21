@@ -65,36 +65,20 @@ internal constructor(context: Context) :
     // Options & state
     private var transformationType = ZoomApi.TRANSFORMATION_CENTER_INSIDE
     private var transformationGravity = ZoomApi.TRANSFORMATION_GRAVITY_AUTO
-    internal var transformationZoom = 0F // mZoom * transformationZoom matches the matrix scale.
-    internal var alignment = ZoomApi.ALIGNMENT_DEFAULT
 
     // Internal
     private lateinit var container: View
     private val dispatcher = UpdatesDispatcher(this)
-    private val controller = StateController(this)
-    private val panManager = PanManager(this)
-    private val zoomManager = ZoomManager(this)
-    private val matrixController = MatrixController(zoomManager, panManager, controller, this, this)
+    private val stateController = StateController(this)
+    private val panManager = PanManager { matrixController }
+    private val zoomManager = ZoomManager { matrixController }
+    private val matrixController: MatrixController = MatrixController(zoomManager, panManager, stateController, this)
 
     // Gestures
-    private val scrollFlingDetector = ScrollFlingDetector(context, controller, panManager, matrixController,this)
-    private val pinchDetector = PinchDetector(context, controller, zoomManager, panManager, matrixController,this)
+    private val scrollFlingDetector = ScrollFlingDetector(context, panManager, stateController, matrixController)
+    private val pinchDetector = PinchDetector(context, zoomManager, panManager, stateController, matrixController)
 
-    /**
-     * Gets the current zoom value, which can be used as a reference when calling
-     * [zoomTo] or [zoomBy].
-     *
-     * This can be different than the actual scale you get in the matrix, because at startup
-     * we apply a base transformation, see [setTransformation].
-     * All zoom calls, including min zoom and max zoom, refer to this axis, where zoom is set to 1
-     * right after the initial transformation.
-     *
-     * @return the current zoom
-     * @see realZoom
-     */
-    @Zoom
-    override var zoom = 1f // Not necessarily equal to the matrix scale.
-        internal set
+    //region MatrixController delegates
 
     /**
      * Gets the current zoom value, including the base zoom that was eventually applied during
@@ -105,18 +89,13 @@ internal constructor(context: Context) :
      * @return the real zoom
      */
     @RealZoom
-    override val realZoom: Float
-        get() = zoom * transformationZoom
+    override val realZoom get() = matrixController.zoom
 
     /**
      * The current pan as an [AbsolutePoint].
      * This field will be updated according to current pan when accessed.
      */
-    override val pan = AbsolutePoint()
-        get() {
-            field.set(panX, panY)
-            return field
-        }
+    override val pan get() = matrixController.pan
 
     /**
      * Returns the current horizontal pan value, in content coordinates
@@ -126,8 +105,7 @@ internal constructor(context: Context) :
      * @return the current horizontal pan
      */
     @AbsolutePan
-    override val panX: Float
-        get() = scaledPanX / realZoom
+    override val panX get() = matrixController.panX
 
     /**
      * Returns the current vertical pan value, in content coordinates
@@ -137,10 +115,7 @@ internal constructor(context: Context) :
      * @return the current vertical pan
      */
     @AbsolutePan
-    override val panY: Float
-        get() = scaledPanY / realZoom
-
-    //region MatrixController delegates
+    override val panY get() = matrixController.panY
 
     /**
      * Returns the current matrix. This can be changed from the outside, but is not
@@ -177,21 +152,22 @@ internal constructor(context: Context) :
      */
     val containerHeight get() = matrixController.containerHeight
 
-    @ScaledPan
-    internal val contentScaledWidth get() = matrixController.contentScaledWidth
-
-    @ScaledPan
-    internal val contentScaledHeight get() = matrixController.contentScaledHeight
-
-    internal val scaledPan get() = matrixController.scaledPan
-
-    @ScaledPan
-    internal val scaledPanX get() = matrixController.scaledPanX
-
-    @ScaledPan
-    internal val scaledPanY get() = matrixController.scaledPanY
-
     //endregion
+
+    /**
+     * Gets the current zoom value, which can be used as a reference when calling
+     * [zoomTo] or [zoomBy].
+     *
+     * This can be different than the actual scale you get in the matrix, because at startup
+     * we apply a base transformation, see [setTransformation].
+     * All zoom calls, including min zoom and max zoom, refer to this axis, where zoom is set to 1
+     * right after the initial transformation.
+     *
+     * @return the current zoom
+     * @see realZoom
+     */
+    @Zoom
+    override val zoom get() = zoomManager.realZoomToZoom(realZoom)
 
     //region Listeners
 
@@ -273,11 +249,11 @@ internal constructor(context: Context) :
 
     //region post utilities
 
-    internal fun post(action: Runnable) {
+    override fun post(action: Runnable) {
         container.post(action)
     }
 
-    internal fun postOnAnimation(action: Runnable) {
+    override fun postOnAnimation(action: Runnable) {
         container.postOnAnimation(action)
     }
 
@@ -430,7 +406,7 @@ internal constructor(context: Context) :
      * @param alignment the new alignment
      */
     override fun setAlignment(@ZoomApi.Alignment alignment: Int) {
-        this.alignment = alignment
+        panManager.alignment = alignment
     }
 
     //endregion
@@ -503,34 +479,31 @@ internal constructor(context: Context) :
     override fun onMatrixSizeChanged(firstTime: Boolean) {
         // See if we need to apply the transformation. This is the easier case, because
         // if we don't want to apply it, we must do extra computations to keep the appearance unchanged.
-        controller.makeIdle()
-        LOG.w("onSizeChanged: will apply?", firstTime, "transformation?", transformationType)
+        stateController.makeIdle()
+        LOG.w("onMatrixSizeChanged: will apply?", firstTime, "transformation?", transformationType)
         if (firstTime) {
             // First time. Apply base zoom, dispatch first event and return.
-            transformationZoom = computeTransformationZoom()
-            matrixController.setScale(transformationZoom)
-            zoom = 1f
-            LOG.i("onSizeChanged: newTransformationZoom:", transformationZoom, "newZoom:", zoom)
-            @Zoom val newZoom = zoomManager.checkBounds(zoom, false)
-            LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", newZoom - zoom)
-            if (newZoom != zoom) matrixController.applyZoom(newZoom, allowOverZoom = false)
+            zoomManager.transformationZoom = computeTransformationZoom()
+            matrixController.setScale(zoomManager.transformationZoom)
+            LOG.i("onMatrixSizeChanged: newTransformationZoom:", zoomManager.transformationZoom, "newZoom:", zoom)
+            @RealZoom val newZoom = zoomManager.checkBounds(realZoom, false)
+            LOG.i("onMatrixSizeChanged: scaleBounds:", "we need a zoom correction of", newZoom - realZoom)
+            if (newZoom != realZoom) matrixController.applyZoom(newZoom, allowOverZoom = false)
 
             // pan based on transformation gravity.
             @ScaledPan val newPan = computeTransformationPan()
-            @ScaledPan val deltaX = newPan[0] - scaledPanX
-            @ScaledPan val deltaY = newPan[1] - scaledPanY
+            @ScaledPan val deltaX = newPan[0] - matrixController.scaledPanX
+            @ScaledPan val deltaY = newPan[1] - matrixController.scaledPanY
             if (deltaX != 0f || deltaY != 0f) matrixController.applyScaledPan(deltaX, deltaY, false)
         } else {
             // We were initialized, but some size changed. Since applyTransformation is false,
             // we must do extra work: recompute the transformationZoom (since size changed, it makes no sense)
             // but also compute a new zoom such that the real zoom is kept unchanged.
             // So, this method triggers no Matrix updates.
-            LOG.i("onSizeChanged: Trying to keep real zoom to", realZoom)
-            LOG.i("onSizeChanged: oldTransformationZoom:", transformationZoom, "oldZoom:$zoom")
-            @RealZoom val realZoom = realZoom
-            transformationZoom = computeTransformationZoom()
-            zoom = realZoom / transformationZoom
-            LOG.i("onSizeChanged: newTransformationZoom:", transformationZoom, "newZoom:", zoom)
+            LOG.i("onMatrixSizeChanged: Trying to keep real zoom to", realZoom)
+            LOG.i("onMatrixSizeChanged: oldTransformationZoom:", zoomManager.transformationZoom, "oldZoom:", zoom)
+            zoomManager.transformationZoom = computeTransformationZoom()
+            LOG.i("onMatrixSizeChanged: newTransformationZoom:", zoomManager.transformationZoom, "newZoom:", zoom)
 
             // Now sync the content rect with the current matrix since we are trying to keep it.
             // This is to have consistent values for other calls here.
@@ -538,9 +511,9 @@ internal constructor(context: Context) :
 
             // If the new zoom value is invalid, though, we must bring it to the valid place.
             // This is a possible matrix update.
-            @Zoom val newZoom = zoomManager.checkBounds(zoom, false)
-            LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", newZoom - zoom)
-            if (newZoom != zoom) matrixController.applyZoom(newZoom, allowOverZoom = false)
+            @RealZoom val newZoom = zoomManager.checkBounds(realZoom, false)
+            LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", newZoom - realZoom)
+            if (newZoom != realZoom) matrixController.applyZoom(newZoom, allowOverZoom = false)
         }
 
         // If there was any, pan should be kept. I think there's nothing to do here:
@@ -556,8 +529,7 @@ internal constructor(context: Context) :
      * is called.
      */
     fun clear() {
-        zoom = 1f
-        transformationZoom = 0f
+        zoomManager.clear()
         matrixController.clear()
     }
 
@@ -567,14 +539,14 @@ internal constructor(context: Context) :
     private fun computeTransformationZoom(): Float {
         when (transformationType) {
             ZoomApi.TRANSFORMATION_CENTER_INSIDE -> {
-                val scaleX = containerWidth / contentScaledWidth
-                val scaleY = containerHeight / contentScaledHeight
+                val scaleX = containerWidth / matrixController.contentScaledWidth
+                val scaleY = containerHeight / matrixController.contentScaledHeight
                 LOG.v("computeTransformationZoom", "centerInside", "scaleX:", scaleX, "scaleY:", scaleY)
                 return Math.min(scaleX, scaleY)
             }
             ZoomApi.TRANSFORMATION_CENTER_CROP -> {
-                val scaleX = containerWidth / contentScaledWidth
-                val scaleY = containerHeight / contentScaledHeight
+                val scaleX = containerWidth / matrixController.contentScaledWidth
+                val scaleY = containerHeight / matrixController.contentScaledHeight
                 LOG.v("computeTransformationZoom", "centerCrop", "scaleX:", scaleX, "scaleY:", scaleY)
                 return Math.max(scaleX, scaleY)
             }
@@ -590,11 +562,11 @@ internal constructor(context: Context) :
     @ScaledPan
     private fun computeTransformationPan(): FloatArray {
         val result = floatArrayOf(0f, 0f)
-        val extraWidth = contentScaledWidth - containerWidth
-        val extraHeight = contentScaledHeight - containerHeight
+        val extraWidth = matrixController.contentScaledWidth - containerWidth
+        val extraHeight = matrixController.contentScaledHeight - containerHeight
         val gravity = computeTransformationGravity(transformationGravity)
-        result[0] = -applyGravity(gravity, extraWidth, true)
-        result[1] = -applyGravity(gravity, extraHeight, false)
+        result[0] = -panManager.applyGravity(gravity, extraWidth, true)
+        result[1] = -panManager.applyGravity(gravity, extraHeight, false)
         return result
     }
 
@@ -607,31 +579,11 @@ internal constructor(context: Context) :
     private fun computeTransformationGravity(input: Int): Int {
         return when (input) {
             ZoomApi.TRANSFORMATION_GRAVITY_AUTO -> {
-                val horizontal = Alignment.toHorizontalGravity(alignment, Gravity.CENTER_HORIZONTAL)
-                val vertical = Alignment.toVerticalGravity(alignment, Gravity.CENTER_VERTICAL)
+                val horizontal = Alignment.toHorizontalGravity(panManager.alignment, Gravity.CENTER_HORIZONTAL)
+                val vertical = Alignment.toVerticalGravity(panManager.alignment, Gravity.CENTER_VERTICAL)
                 return horizontal or vertical
             }
             else -> input
-        }
-    }
-
-    /**
-     * Returns 0 for 'start' gravities, [extraSpace] for 'end' gravities, and half of it
-     * for 'center' gravities.
-     */
-    @SuppressLint("RtlHardcoded")
-    internal fun applyGravity(gravity: Int, extraSpace: Float, horizontal: Boolean): Float {
-        val resolved = if (horizontal) {
-            // TODO support START and END correctly.
-            gravity and Gravity.HORIZONTAL_GRAVITY_MASK
-        } else {
-            gravity and Gravity.VERTICAL_GRAVITY_MASK
-        }
-        return when (resolved) {
-            Gravity.TOP, Gravity.LEFT -> 0F
-            Gravity.BOTTOM, Gravity.RIGHT -> extraSpace
-            Gravity.CENTER_VERTICAL, Gravity.CENTER_HORIZONTAL -> 0.5F * extraSpace
-            else -> 0F // Includes Gravity.NO_GRAVITY and unsupported mixes like FILL
         }
     }
 
@@ -645,7 +597,7 @@ internal constructor(context: Context) :
      * @return whether we want to intercept the event
      */
     fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-        return controller.onInterceptTouchEvent(ev)
+        return stateController.onInterceptTouchEvent(ev)
     }
 
     /**
@@ -656,7 +608,7 @@ internal constructor(context: Context) :
      * @return whether we want to steal the event
      */
     fun onTouchEvent(ev: MotionEvent): Boolean {
-        return controller.onTouchEvent(ev)
+        return stateController.onTouchEvent(ev)
     }
 
     //region Position APIs
@@ -673,11 +625,12 @@ internal constructor(context: Context) :
      * @param animate whether to animate the transition
      */
     override fun moveTo(@Zoom zoom: Float, @AbsolutePan x: Float, @AbsolutePan y: Float, animate: Boolean) {
+        val realZoom = zoomManager.zoomToRealZoom(zoom)
         if (animate) {
-            matrixController.animateZoomAndAbsolutePan(zoom, x, y, allowOverScroll = false)
+            matrixController.animateZoomAndAbsolutePan(realZoom, x, y, allowOverScroll = false)
         } else {
             cancelAnimations()
-            matrixController.applyZoomAndAbsolutePan(zoom, x, y, allowOverPan = false)
+            matrixController.applyZoomAndAbsolutePan(realZoom, x, y, allowOverPan = false)
         }
     }
 
@@ -709,10 +662,10 @@ internal constructor(context: Context) :
      */
     override fun panBy(@AbsolutePan dx: Float, @AbsolutePan dy: Float, animate: Boolean) {
         if (animate) {
-            matrixController.animateZoomAndAbsolutePan(zoom, panX + dx, panY + dy, allowOverScroll = false)
+            matrixController.animateZoomAndAbsolutePan(realZoom, panX + dx, panY + dy, allowOverScroll = false)
         } else {
             cancelAnimations()
-            matrixController.applyZoomAndAbsolutePan(zoom, panX + dx, panY + dy, allowOverPan = false)
+            matrixController.applyZoomAndAbsolutePan(realZoom, panX + dx, panY + dy, allowOverPan = false)
         }
     }
 
@@ -724,12 +677,8 @@ internal constructor(context: Context) :
      * @param animate whether to animate the transition
      */
     override fun zoomTo(@Zoom zoom: Float, animate: Boolean) {
-        if (animate) {
-            matrixController.animateZoom(zoom, allowOverPinch = false)
-        } else {
-            cancelAnimations()
-            matrixController.applyZoom(zoom, allowOverZoom = false)
-        }
+        val realZoom = zoomManager.zoomToRealZoom(zoom)
+        realZoomTo(realZoom, animate)
     }
 
     /**
@@ -763,8 +712,12 @@ internal constructor(context: Context) :
      * @param animate  whether to animate the transition
      */
     override fun realZoomTo(@RealZoom realZoom: Float, animate: Boolean) {
-        val zoom = realZoom / transformationZoom
-        zoomTo(zoom, animate)
+        if (animate) {
+            matrixController.animateZoom(realZoom, allowOverPinch = false)
+        } else {
+            cancelAnimations()
+            matrixController.applyZoom(realZoom, allowOverZoom = false)
+        }
     }
 
     /**
@@ -783,7 +736,7 @@ internal constructor(context: Context) :
     override fun setMaxZoom(maxZoom: Float, @ZoomType type: Int) {
         zoomManager.setMaxZoom(maxZoom, type)
         if (zoom > zoomManager.getMaxZoom()) {
-            zoomTo(zoomManager.getMaxZoom(), animate = true)
+            realZoomTo(zoomManager.getMaxZoom(), animate = true)
         }
     }
 
@@ -799,8 +752,8 @@ internal constructor(context: Context) :
      */
     override fun setMinZoom(minZoom: Float, @ZoomType type: Int) {
         zoomManager.setMinZoom(minZoom, type)
-        if (zoom <= zoomManager.getMinZoom()) {
-            zoomTo(zoomManager.getMinZoom(), animate = true)
+        if (realZoom <= zoomManager.getMinZoom()) {
+            realZoomTo(zoomManager.getMinZoom(), animate = true)
         }
     }
 
@@ -830,8 +783,8 @@ internal constructor(context: Context) :
      * @return true if anything was cancelled, false otherwise
      */
     override fun cancelAnimations(): Boolean {
-        if (controller.isFlinging() || controller.isAnimating()) {
-            controller.makeIdle()
+        if (stateController.isFlinging() || stateController.isAnimating()) {
+            stateController.makeIdle()
             return true
         }
         return false
@@ -848,7 +801,7 @@ internal constructor(context: Context) :
      * @return the horizontal scroll offset.
      */
     fun computeHorizontalScrollOffset(): Int {
-        return (-scaledPanX).toInt()
+        return (-matrixController.scaledPanX).toInt()
     }
 
     /**
@@ -858,7 +811,7 @@ internal constructor(context: Context) :
      * @return the horizontal scroll range.
      */
     fun computeHorizontalScrollRange(): Int {
-        return contentScaledWidth.toInt()
+        return matrixController.contentScaledWidth.toInt()
     }
 
     /**
@@ -868,7 +821,7 @@ internal constructor(context: Context) :
      * @return the vertical scroll offset.
      */
     fun computeVerticalScrollOffset(): Int {
-        return (-scaledPanY).toInt()
+        return (-matrixController.scaledPanY).toInt()
     }
 
     /**
@@ -878,7 +831,7 @@ internal constructor(context: Context) :
      * @return the vertical scroll range.
      */
     fun computeVerticalScrollRange(): Int {
-        return contentScaledHeight.toInt()
+        return matrixController.contentScaledHeight.toInt()
     }
 
     //endregion

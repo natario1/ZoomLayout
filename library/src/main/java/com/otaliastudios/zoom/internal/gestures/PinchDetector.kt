@@ -22,11 +22,10 @@ import com.otaliastudios.zoom.internal.movement.ZoomManager
  */
 internal class PinchDetector(
         context: Context,
-        private val stateController: StateController,
         private val zoomManager: ZoomManager,
         private val panManager: PanManager,
-        private val matrixController: MatrixController,
-        private val engine: ZoomEngine
+        private val stateController: StateController,
+        private val matrixController: MatrixController
 ) : ScaleGestureDetector.OnScaleGestureListener {
 
     private val detector = ScaleGestureDetector(context, this)
@@ -70,11 +69,10 @@ internal class PinchDetector(
             currentFocusOffset.set(initialFocusPoint - newAbsFocusPoint)
             LOG.i("onScale:", "Got focus offset:", currentFocusOffset)
         }
-        val newZoom = engine.zoom * detector.scaleFactor
-
+        val newZoom = matrixController.zoom * detector.scaleFactor
         matrixController.applyZoomAndAbsolutePan(newZoom,
-                engine.panX + currentFocusOffset.x,
-                engine.panY + currentFocusOffset.y,
+                matrixController.panX + currentFocusOffset.x,
+                matrixController.panY + currentFocusOffset.y,
                 allowOverPan = true,
                 allowOverZoom = true,
                 zoomTargetX = detector.focusX,
@@ -105,21 +103,21 @@ internal class PinchDetector(
         }
 
         // We might have over pinched/scrolled. Animate back to reasonable value.
-        @ZoomApi.Zoom val maxZoom = zoomManager.getMaxZoom()
-        @ZoomApi.Zoom val minZoom = zoomManager.getMinZoom()
+        @ZoomApi.RealZoom val maxZoom = zoomManager.getMaxZoom()
+        @ZoomApi.RealZoom val minZoom = zoomManager.getMinZoom()
         // check what zoom needs to be applied to get into a non-overpinched state
-        @ZoomApi.Zoom val newZoom = zoomManager.checkBounds(engine.zoom, allowOverZoom = false)
+        @ZoomApi.RealZoom val newZoom = zoomManager.checkBounds(matrixController.zoom, allowOverZoom = false)
 
         LOG.i("onScaleEnd:",
-                "zoom:", engine.zoom,
+                "zoom:", matrixController.zoom,
                 "newZoom:", newZoom,
                 "max:", maxZoom,
                 "min:", minZoom)
 
         // check what pan needs to be applied
         // to get into a non-overscrolled state
-        var panFix = panManager.correction.toAbsolute(engine.realZoom)
-        if (panFix.x == 0F && panFix.y == 0F && newZoom.compareTo(engine.zoom) == 0) {
+        var panFix = panManager.correction.toAbsolute(matrixController.zoom)
+        if (panFix.x == 0F && panFix.y == 0F && newZoom.compareTo(matrixController.zoom) == 0) {
             stateController.makeIdle()
             return
         }
@@ -128,24 +126,24 @@ internal class PinchDetector(
         val zoomTarget = computeZoomPivot(panFix)
 
         // calculate the new pan position
-        val newPan = engine.pan + panFix
-        if (newZoom.compareTo(engine.zoom) != 0) {
+        val newPan = matrixController.pan + panFix
+        if (newZoom.compareTo(matrixController.zoom) != 0) {
             // we have overpinched. to calculate how much pan needs to be applied
             // to fix overscrolling we need to simulate the target zoom (when overpinching has been corrected)
             // to calculate the needed pan correction for that zoom level
 
             // remember current pan and zoom value to reset to that state later
-            val oldPan = AbsolutePoint(engine.pan)
-            val oldZoom = engine.zoom
+            val oldPan = AbsolutePoint(matrixController.pan)
+            val oldZoom = matrixController.zoom
 
             // apply the target zoom with the currently known pivot point
             matrixController.applyZoom(newZoom, true, true, zoomTarget.x, zoomTarget.y, notifyListeners = false)
 
             // recalculate pan fix to account for additional borders that might overscroll when zooming out
-            panFix = panManager.correction.toAbsolute(engine.realZoom)
+            panFix = panManager.correction.toAbsolute(matrixController.zoom)
 
             // recalculate new pan location using the simulated target zoom level
-            newPan.set(engine.pan + panFix)
+            newPan.set(matrixController.pan + panFix)
 
             // revert simulation
             matrixController.applyZoomAndAbsolutePan(oldZoom, oldPan.x, oldPan.y, true, true, notifyListeners = false)
@@ -172,7 +170,7 @@ internal class PinchDetector(
      * @return x-axis and y-axis view coordinates
      */
     private fun computeZoomPivot(fixPan: AbsolutePoint): PointF {
-        if (engine.zoom <= 1F) {
+        if (matrixController.zoom <= 1F) {
             // The zoom pivot point here should be based on the gravity that is used
             // to initially transform the content.
             // Currently this is always [View.Gravity.CENTER] as indicated by [mTransformationGravity]
@@ -215,7 +213,7 @@ internal class PinchDetector(
                 matrixController.scaledPanX + containerPoint.x,
                 matrixController.scaledPanY + containerPoint.y)
         // Transform to an absolute, scale-independent value.
-        return scaledPoint.toAbsolute(engine.realZoom)
+        return scaledPoint.toAbsolute(matrixController.zoom)
     }
 
     /**
@@ -225,7 +223,7 @@ internal class PinchDetector(
      * @return the container coordinate
      */
     private fun contentPointToContainerPoint(contentPoint: AbsolutePoint): PointF {
-        val result = contentPoint.toScaled(engine.realZoom) - engine.scaledPan
+        val result = contentPoint.toScaled(matrixController.zoom) - matrixController.scaledPan
         return PointF(result.x, result.y)
     }
 

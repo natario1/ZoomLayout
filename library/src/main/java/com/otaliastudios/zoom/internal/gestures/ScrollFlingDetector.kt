@@ -22,10 +22,9 @@ import com.otaliastudios.zoom.internal.movement.PanManager
  */
 internal class ScrollFlingDetector(
         context: Context,
-        private val stateController: StateController,
         private val panManager: PanManager,
-        private val matrixController: MatrixController,
-        private val engine: ZoomEngine
+        private val stateController: StateController,
+        private val matrixController: MatrixController
 ) : GestureDetector.OnGestureListener {
 
     private val detector = GestureDetector(context, this).apply {
@@ -114,7 +113,7 @@ internal class ScrollFlingDetector(
                 minX, maxX, minY, maxY,
                 overScrollX, overScrollY)
 
-        engine.post(object : Runnable {
+        matrixController.post(object : Runnable {
             override fun run() {
                 if (flingScroller.isFinished) {
                     stateController.makeIdle()
@@ -123,10 +122,10 @@ internal class ScrollFlingDetector(
                     @ZoomApi.ScaledPan val newPanY = flingScroller.currY
                     // OverScroller will eventually go back to our bounds.
                     matrixController.applyScaledPan(
-                            newPanX - engine.scaledPanX,
-                            newPanY - engine.scaledPanY,
+                            newPanX - matrixController.scaledPanX,
+                            newPanY - matrixController.scaledPanY,
                             true)
-                    engine.postOnAnimation(this)
+                    matrixController.postOnAnimation(this)
                 }
             }
         })
