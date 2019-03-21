@@ -21,10 +21,16 @@ internal class PanManager(private val engine: ZoomEngine) {
     internal var horizontalPanEnabled = true
     internal var verticalPanEnabled = true
 
-    val isOverPanEnabled = horizontalOverPanEnabled || verticalOverPanEnabled
+    /** whether overpan is enabled, horizontally or vertically */
+    internal val isOverPanEnabled = horizontalOverPanEnabled || verticalOverPanEnabled
 
-    val isPanEnabled = horizontalPanEnabled || verticalPanEnabled
+    /** whether pan is enabled, horizontally or vertically */
+    internal val isPanEnabled = horizontalPanEnabled || verticalPanEnabled
 
+    /**
+     * Represent a snapshot of the current pan status along some dimension.
+     * This can be filled by calling [computeStatus].
+     */
     internal class Status {
         @ZoomApi.ScaledPan internal var minValue: Int = 0
         @ZoomApi.ScaledPan internal var currentValue: Int = 0
@@ -32,10 +38,11 @@ internal class PanManager(private val engine: ZoomEngine) {
         internal var isInOverPan: Boolean = false
     }
 
-
-    // Puts min, start and max values in the mTemp array.
-    // Since axes are shifted (pans are negative), min values are related to bottom-right,
-    // while max values are related to top-left.
+    /**
+     * Puts minimum, maximum and current values in the [Status] object.
+     * Since axes are shifted (pans are negative), min values are related to bottom-right,
+     * while max values are related to top-left.
+     */
     internal fun computeStatus(horizontal: Boolean, output: Status) {
         @ZoomApi.ScaledPan val currentPan = (if (horizontal) engine.scaledPanX else engine.scaledPanY).toInt()
         val containerDim = (if (horizontal) engine.containerWidth else engine.containerHeight).toInt()
@@ -111,7 +118,7 @@ internal class PanManager(private val engine: ZoomEngine) {
                 min = correction
                 max = correction
             } else {
-                // This is Alignment.NONE or NO_VALUE. Don't force a value, just stay in the container boundaries.
+                // This is Alignment.IDLE or NO_VALUE. Don't force a value, just stay in the container boundaries.
                 min = 0F
                 max = extraSpace
             }

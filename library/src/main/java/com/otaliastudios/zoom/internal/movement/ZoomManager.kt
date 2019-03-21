@@ -23,6 +23,9 @@ internal class ZoomManager(private val engine: ZoomEngine) {
     private var maxZoom = ZoomApi.MAX_ZOOM_DEFAULT
     private var maxZoomMode = ZoomApi.MAX_ZOOM_DEFAULT_TYPE
 
+    /**
+     * Sets the maximum zoom and type allowed.
+     */
     internal fun setMaxZoom(maxZoom: Float, @ZoomApi.ZoomType type: Int) {
         if (maxZoom < 0) {
             throw IllegalArgumentException("Max zoom should be >= 0.")
@@ -31,6 +34,9 @@ internal class ZoomManager(private val engine: ZoomEngine) {
         this.maxZoomMode = type
     }
 
+    /**
+     * Sets the minimum zoom and type allowed.
+     */
     internal fun setMinZoom(minZoom: Float, @ZoomApi.ZoomType type: Int) {
         if (minZoom < 0) {
             throw IllegalArgumentException("Min zoom should be >= 0")
@@ -48,6 +54,10 @@ internal class ZoomManager(private val engine: ZoomEngine) {
         get() = DEFAULT_OVERZOOM_FACTOR * (getMaxZoom() - getMinZoom())
 
 
+    /**
+     * Returns the current minimum zoom as a [ZoomApi.Zoom] value, so not including
+     * the transformationZoom.
+     */
     @ZoomApi.Zoom
     internal fun getMinZoom(): Float {
         return when (minZoomMode) {
@@ -57,6 +67,10 @@ internal class ZoomManager(private val engine: ZoomEngine) {
         }
     }
 
+    /**
+     * Returns the current maximum zoom as a [ZoomApi.Zoom] value, so not including
+     * the transformationZoom.
+     */
     @ZoomApi.Zoom
     internal fun getMaxZoom(): Float {
         return when (maxZoomMode) {

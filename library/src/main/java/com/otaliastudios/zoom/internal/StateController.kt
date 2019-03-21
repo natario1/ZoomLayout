@@ -8,9 +8,16 @@ import com.otaliastudios.zoom.ZoomLogger
  * Deals with touch input, holds the internal [state] integer,
  * and applies special logic to touch inputs and state changes to
  * prefer one gesture over the other, for example.
+ *
+ * Note: the [Callback] is responsible for actually trying to start
+ * the gesture in the callbacks. Whenever needed, [setState] must be called to keep
+ * this class in sync with what's happening.
  */
-internal class Controller(private val callback: Callback) {
+internal class StateController(private val callback: Callback) {
 
+    /**
+     * Receives callbacks from this controller.
+     */
     internal interface Callback {
         // State callbacks
         fun isStateAllowed(@State newState: Int): Boolean
@@ -23,23 +30,38 @@ internal class Controller(private val callback: Callback) {
         fun endScrollGesture()
     }
 
+    /**
+     * Returns the current state.
+     * One of the [State] constants.
+     */
     @State
-    internal var state: Int = NONE
+    internal var state: Int = IDLE
         private set
 
-    private fun setState(newState: Int): Boolean {
+
+    /**
+     * Whether this state needs cleanup even if called twice.
+     * The [ANIMATING] state currently needs it.
+     */
+    private fun needsCleanupWhenCalledTwice(@State state: Int): Boolean {
+        return state == ANIMATING
+    }
+
+    /**
+     * Private function to set the current state.
+     * External callers should use [setPinching], [setScrolling], [makeIdle]... instead.
+     */
+    private fun setState(@State newState: Int): Boolean {
         LOG.v("trySetState:", newState.toStateName())
         if (!callback.isStateAllowed(newState)) return false
-
-        // we need to do some cleanup in case of ANIMATING so we can't return just yet
-        if (newState == state && newState != ANIMATING) return true
+        if (newState == state && !needsCleanupWhenCalledTwice(newState)) return true
         val oldState = state
 
         when (newState) {
             SCROLLING -> if (oldState == PINCHING || oldState == ANIMATING) return false
             FLINGING -> if (oldState == ANIMATING) return false
             PINCHING -> if (oldState == ANIMATING) return false
-            NONE -> callback.onStateIdle()
+            IDLE -> callback.onStateIdle()
         }
 
         // Now that it succeeded, do some cleanup.
@@ -49,14 +71,26 @@ internal class Controller(private val callback: Callback) {
         return true
     }
 
+    /**
+     * Processes the event. Should be called during the
+     * [android.view.ViewGroup.onInterceptTouchEvent] callback.
+     */
     internal fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         return processTouchEvent(ev) > TOUCH_LISTEN
     }
 
+    /**
+     * Processes the event. Should be called during the
+     * [android.view.View.onTouchEvent] callback.
+     */
     internal fun onTouchEvent(ev: MotionEvent): Boolean {
         return processTouchEvent(ev) > TOUCH_NO
     }
 
+    /**
+     * Processes the touch event and returns one of [TOUCH_LISTEN],
+     * [TOUCH_STEAL] or [TOUCH_NO].
+     */
     private fun processTouchEvent(event: MotionEvent): Int {
         LOG.v("processTouchEvent:", "start.")
         if (isAnimating()) return TOUCH_STEAL
@@ -94,30 +128,50 @@ internal class Controller(private val callback: Callback) {
             return TOUCH_NO
         }
     }
-    
+
+    /** Whether we are in [FLINGING] state. */
     internal fun isFlinging() = state == FLINGING
 
+    /** Whether we are in [SCROLLING] state. */
     internal fun isScrolling() = state == SCROLLING
 
+    /** Whether we are in [PINCHING] state. */
     internal fun isPinching() = state == PINCHING
 
+    /** Whether we are in [ANIMATING] state. */
     internal fun isAnimating() = state == ANIMATING
 
-    internal fun isIdle() = state == NONE
+    /** Whether we are in [IDLE] state. */
+    internal fun isIdle() = state == IDLE
 
+    /**
+     * Moves state to [FLINGING]. Returns true if successful.
+     */
     internal fun setFlinging() = setState(FLINGING)
 
+    /**
+     * Moves state to [SCROLLING]. Returns true if successful.
+     */
     internal fun setScrolling() = setState(SCROLLING)
 
+    /**
+     * Moves state to [PINCHING]. Returns true if successful.
+     */
     internal fun setPinching() = setState(PINCHING)
 
+    /**
+     * Moves state to [ANIMATING]. Returns true if successful.
+     */
     internal fun setAnimating() = setState(ANIMATING)
 
-    internal fun makeIdle() = setState(NONE)
+    /**
+     * Moves state to [IDLE]. Returns true if successful.
+     */
+    internal fun makeIdle() = setState(IDLE)
 
     private fun Int.toStateName(): String {
         return when (this) {
-            NONE -> "NONE"
+            IDLE -> "IDLE"
             FLINGING -> "FLINGING"
             SCROLLING -> "SCROLLING"
             PINCHING -> "PINCHING"
@@ -127,22 +181,38 @@ internal class Controller(private val callback: Callback) {
     }
 
     @Retention(AnnotationRetention.SOURCE)
-    @IntDef(NONE, SCROLLING, PINCHING, ANIMATING, FLINGING)
+    @IntDef(IDLE, SCROLLING, PINCHING, ANIMATING, FLINGING)
     internal annotation class State
 
     companion object {
-        private val TAG = Controller::class.java.simpleName
+        private val TAG = StateController::class.java.simpleName
         private val LOG = ZoomLogger.create(TAG)
 
-        internal const val NONE = 0
+        internal const val IDLE = 0
         internal const val SCROLLING = 1
         internal const val PINCHING = 2
         internal const val ANIMATING = 3
         internal const val FLINGING = 4
-        
-        // Might make these public some day?
+
+        /**
+         * Constant for [processTouchEvent].
+         * Indicates that we are not interested in this event stream.
+         */
         private const val TOUCH_NO = 0
+
+        /**
+         * Constant for [processTouchEvent].
+         * Indicates that we are interested in this event stream,
+         * but we're not sure we have something just yet.
+         * The gesture might start at a later point.
+         */
         private const val TOUCH_LISTEN = 1
+
+        /**
+         * Constant for [processTouchEvent].
+         * Indicates that we want to own this stream and intercept
+         * it as long as this value is returned.
+         */
         private const val TOUCH_STEAL = 2
     }
 }

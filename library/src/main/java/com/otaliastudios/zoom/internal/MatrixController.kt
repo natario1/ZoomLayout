@@ -15,12 +15,12 @@ import com.otaliastudios.zoom.internal.movement.ZoomManager
  * Applies changes to the matrix, holds the content and container sizes and
  * transformed rects, dispatches updates.
  *
- * It also uses [Controller] because it can start (and end) animations.
+ * It also uses [StateController] because it can start (and end) animations.
  */
-internal class MatrixManager(
+internal class MatrixController(
         private val zoomManager: ZoomManager,
         private val panManager: PanManager,
-        private val controller: Controller,
+        private val stateController: StateController,
         private val callback: Callback,
         private val engine: ZoomEngine
 ) {
@@ -306,7 +306,7 @@ internal class MatrixManager(
         private fun cleanup(animator: Animator) {
             animator.removeListener(this)
             activeAnimators.remove(animator)
-            if (activeAnimators.isEmpty()) controller.makeIdle()
+            if (activeAnimators.isEmpty()) stateController.makeIdle()
         }
     }
 
@@ -348,7 +348,7 @@ internal class MatrixManager(
      */
     internal fun animateZoom(@Zoom zoom: Float, allowOverPinch: Boolean) {
         if (!isInitialized) return
-        if (!controller.setAnimating()) return
+        if (!stateController.setAnimating()) return
         @Zoom val startZoom = engine.zoom
         @Zoom val endZoom = zoomManager.checkBounds(zoom, allowOverPinch)
         ValueAnimator.ofFloat(startZoom, endZoom).prepare().start {
@@ -380,7 +380,7 @@ internal class MatrixManager(
             zoomTargetY: Float? = null
     ) {
         if (!isInitialized) return
-        if (!controller.setAnimating()) return
+        if (!stateController.setAnimating()) return
         @Zoom val startZoom = engine.zoom
         @Zoom val endZoom = zoomManager.checkBounds(zoom, allowOverScroll)
         val startPan = engine.pan
@@ -421,7 +421,7 @@ internal class MatrixManager(
             allowOverScroll: Boolean
     ) {
         if (!isInitialized) return
-        if (!controller.setAnimating()) return
+        if (!stateController.setAnimating()) return
         val startPan = scaledPan
         val endPan = startPan + ScaledPoint(deltaX, deltaY)
 
@@ -436,7 +436,7 @@ internal class MatrixManager(
 
 
     companion object {
-        private val TAG = MatrixManager::class.java.simpleName
+        private val TAG = MatrixController::class.java.simpleName
         private val LOG = ZoomLogger.create(TAG)
 
         // TODO Make public, add API. Use androidx.Interpolator?
