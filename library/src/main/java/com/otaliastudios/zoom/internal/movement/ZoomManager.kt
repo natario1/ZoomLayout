@@ -76,7 +76,7 @@ internal class ZoomManager(provider: () -> MatrixController) : MovementManager(p
      */
     @ZoomApi.RealZoom
     internal val maxOverZoom: Float
-        get() = DEFAULT_OVERZOOM_FACTOR * (getMaxZoom() - getMaxZoom())
+        get() = DEFAULT_OVERZOOM_FACTOR * (getMaxZoom() - getMinZoom())
 
     /**
      * Returns the current minimum zoom as a [ZoomApi.RealZoom] value.
