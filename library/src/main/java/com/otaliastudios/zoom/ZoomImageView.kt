@@ -15,22 +15,18 @@ import com.otaliastudios.zoom.ZoomApi.ZoomType
 
 /**
  * Uses [ZoomEngine] to allow zooming and pan events to the inner drawable.
- *
- *
- * TODO: support padding (from inside ZoomEngine that gets the view)
  */
 @SuppressLint("AppCompatCustomView")
-open class ZoomImageView
-private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAttr: Int, val engine: ZoomEngine = ZoomEngine(context))
-    : ImageView(context, attrs, defStyleAttr), ZoomEngine.Listener, ZoomApi by engine {
+open class ZoomImageView private constructor(
+        context: Context,
+        attrs: AttributeSet?,
+        @AttrRes defStyleAttr: Int,
+        val engine: ZoomEngine = ZoomEngine(context)
+) : ImageView(context, attrs, defStyleAttr), ZoomApi by engine {
 
     @JvmOverloads
     constructor(context: Context, attrs: AttributeSet? = null, @AttrRes defStyleAttr: Int = 0)
             : this(context, attrs, defStyleAttr, ZoomEngine(context))
-
-    //endregion
-
-    //region APIs
 
     private val mMatrix = Matrix()
 
@@ -58,7 +54,15 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
         a.recycle()
 
         engine.setContainer(this)
-        engine.addListener(this)
+        engine.addListener(object : ZoomEngine.Listener {
+            override fun onIdle(engine: ZoomEngine) {}
+            override fun onUpdate(engine: ZoomEngine, matrix: Matrix) {
+                mMatrix.set(matrix)
+                imageMatrix = mMatrix
+                awakenScrollBars()
+            }
+        })
+
         setTransformation(transformation, transformationGravity)
         setAlignment(alignment)
         setOverScrollHorizontal(overScrollHorizontal)
@@ -77,8 +81,6 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
         scaleType = ImageView.ScaleType.MATRIX
     }
 
-    //region Internal
-
     override fun setImageDrawable(drawable: Drawable?) {
         if (drawable != null) {
             engine.setContentSize(drawable.intrinsicWidth.toFloat(),
@@ -92,16 +94,6 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
         // Using | so click listeners work.
         return engine.onTouchEvent(ev) or super.onTouchEvent(ev)
     }
-
-    override fun onUpdate(engine: ZoomEngine, matrix: Matrix) {
-        // matrix.getValues(mTemp);
-        // Log.e("ZoomEngineDEBUG", "View - Received update, matrix scale = " + mTemp[Matrix.MSCALE_X]);
-        mMatrix.set(matrix)
-        imageMatrix = mMatrix
-        awakenScrollBars()
-    }
-
-    override fun onIdle(engine: ZoomEngine) {}
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -127,7 +119,4 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
     override fun computeVerticalScrollOffset(): Int = engine.computeVerticalScrollOffset()
 
     override fun computeVerticalScrollRange(): Int = engine.computeVerticalScrollRange()
-
-    //endregion
-
 }
