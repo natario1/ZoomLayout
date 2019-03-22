@@ -340,8 +340,12 @@ In any case the current scale is not considered, so your system won't change if 
 
 |API|Description|Default value|
 |---|-----------|-------------|
+|`getPan()`|Returns the current pan as a point.|`-`|
 |`getPanX()`|Returns the current horizontal pan.|`-`|
 |`getPanY()`|Returns the current vertical pan.|`-`|
+|`getScaledPan()`|Returns the current scaled pan as a point (pan * realZoom).|`-`|
+|`getScaledPanX()`|Returns the current scaled horizontal pan (panX * realZoom).|`-`|
+|`getScaledPanY()`|Returns the current scaled vertical pan (panY * realZoom).|`-`|
 |`setOverScrollHorizontal(boolean)`|If true, the content will be allowed to pan outside its horizontal bounds, then return to its position.|`true`|
 |`setOverScrollVertical(boolean)`|If true, the content will be allowed to pan outside its vertical bounds, then return to its position.|`true`|
 |`setHorizontalPanEnabled(boolean)`|If true, the content will be allowed to pan **horizontally** by user input.|`true`|

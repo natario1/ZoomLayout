@@ -39,15 +39,13 @@ interface ZoomApi {
     val realZoom: Float
     // TODO (v2) rename to zoom
 
-
     /**
      * The current pan as an [AbsolutePoint].
-     * This field will be updated according to current pan when accessed.
      */
     val pan: AbsolutePoint
 
     /**
-     * Returns the current horizontal pan value, in content coordinates
+     * Returns the current horizontal pan value, in content absolute coordinates
      * (that is, as if there was no zoom at all).
      *
      * @return the current horizontal pan
@@ -56,13 +54,39 @@ interface ZoomApi {
     val panX: Float
 
     /**
-     * Returns the current vertical pan value, in content coordinates
+     * Returns the current vertical pan value, in content absolute coordinates
      * (that is, as if there was no zoom at all).
      *
      * @return the current vertical pan
      */
     @AbsolutePan
     val panY: Float
+
+    /**
+     * The current pan as a [ScaledPoint], that is, taking into account the current zoom.
+     * This basically returns the [pan] value multiplied by the current [realZoom].
+     */
+    val scaledPan: ScaledPoint
+
+    /**
+     * Returns the current horizontal pan value, in content scaled coordinates
+     * (that is, including the current zoom).
+     * This is equivalent to [panX] multiplied by [realZoom].
+     *
+     * @return the current horizontal pan
+     */
+    @ScaledPan
+    val scaledPanX: Float
+
+    /**
+     * Returns the current vertical pan value, in content scaled coordinates
+     * (that is, including the current zoom).
+     * This is equivalent to [panY] multiplied by [realZoom].
+     *
+     * @return the current vertical pan
+     */
+    @ScaledPan
+    val scaledPanY: Float
 
     /**
      * Annotation to indicate a RealZoom value.

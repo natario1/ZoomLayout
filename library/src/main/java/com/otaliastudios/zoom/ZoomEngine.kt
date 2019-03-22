@@ -183,14 +183,13 @@ internal constructor(context: Context) : ZoomApi {
 
     /**
      * The current pan as an [AbsolutePoint].
-     * This field will be updated according to current pan when accessed.
      */
-    override val pan get() = matrixController.pan
+    // Make a copy so it is not changed from outside.
+    override val pan get() = matrixController.pan.copy()
 
     /**
-     * Returns the current horizontal pan value, in content coordinates
-     * (that is, as if there was no zoom at all) referring to what was passed
-     * to [setContentSize].
+     * Returns the current horizontal pan value, in content absolute coordinates
+     * (that is, as if there was no zoom at all).
      *
      * @return the current horizontal pan
      */
@@ -198,14 +197,35 @@ internal constructor(context: Context) : ZoomApi {
     override val panX get() = matrixController.panX
 
     /**
-     * Returns the current vertical pan value, in content coordinates
-     * (that is, as if there was no zoom at all) referring to what was passed
-     * to [setContentSize].
+     * Returns the current vertical pan value, in content absolute coordinates
+     * (that is, as if there was no zoom at all).
      *
      * @return the current vertical pan
      */
     @AbsolutePan
     override val panY get() = matrixController.panY
+
+    /**
+     * The current pan as a [ScaledPoint].
+     */
+    // Make a copy so it is not changed from outside.
+    override val scaledPan get() = matrixController.scaledPan.copy()
+
+    /**
+     * Returns the current horizontal pan value, in content scaled coordinates
+     * (that is, including the current zoom).
+     *
+     * @return the current horizontal pan
+     */
+    override val scaledPanX get() = matrixController.scaledPanX
+
+    /**
+     * Returns the current vertical pan value, in content scaled coordinates
+     * (that is, including the current zoom).
+     *
+     * @return the current vertical pan
+     */
+    override val scaledPanY get() = matrixController.scaledPanY
 
     /**
      * Returns the current matrix. This can be changed from the outside, but is not
@@ -276,6 +296,7 @@ internal constructor(context: Context) : ZoomApi {
          * @param matrix a matrix with the given updates
          */
         fun onUpdate(engine: ZoomEngine, matrix: Matrix)
+        // TODO (v2) remove matrix, users can use engine.matrix / engine.pan / engine.zoom whatever
 
         /**
          * Notifies that the engine is in an idle state. This means that (most probably)
@@ -291,6 +312,7 @@ internal constructor(context: Context) : ZoomApi {
      * and scale values from the output matrix.
      */
     @Suppress("unused")
+    // TODO (v2) remove this class, users can use engine.matrix / engine.pan / engine.zoom whatever
     abstract class SimpleListener : Listener {
 
         private val mMatrixValues = FloatArray(9)

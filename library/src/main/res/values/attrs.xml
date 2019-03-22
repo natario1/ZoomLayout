@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- TODO (v2) rename everything according to ZoomApi comments -->
+    <!-- TODO (v2) move to class explicit styleable so autocomplete works -->
     <declare-styleable name="ZoomEngine">
         <attr name="hasClickableChildren" format="boolean" />
         <attr name="overScrollHorizontal" format="boolean" />
