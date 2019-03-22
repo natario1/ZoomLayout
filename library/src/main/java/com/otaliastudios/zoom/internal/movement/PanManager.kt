@@ -24,10 +24,15 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
     internal var alignment = ZoomApi.ALIGNMENT_DEFAULT
 
     /** whether overpan is enabled, horizontally or vertically */
-    internal val isOverPanEnabled = horizontalOverPanEnabled || verticalOverPanEnabled
+    override val isOverEnabled get() = horizontalOverPanEnabled || verticalOverPanEnabled
 
     /** whether pan is enabled, horizontally or vertically */
-    internal val isPanEnabled = horizontalPanEnabled || verticalPanEnabled
+    override val isEnabled get() = horizontalPanEnabled || verticalPanEnabled
+
+
+    override fun clear() {
+        // We have no state to clear.
+    }
 
     /**
      * Represent a snapshot of the current pan status along some dimension.
@@ -102,7 +107,7 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
         val containerSize = if (horizontal) controller.containerWidth else controller.containerHeight
         @ZoomApi.ScaledPan val contentSize = if (horizontal) controller.contentScaledWidth else controller.contentScaledHeight
         val overScrollable = if (horizontal) horizontalOverPanEnabled else verticalOverPanEnabled
-        @ZoomApi.ScaledPan val overScroll = (if (overScrollable && allowOverScroll) maxOverPan else 0).toFloat()
+        @ZoomApi.ScaledPan val overScroll = if (overScrollable && allowOverScroll) maxOverPan else 0F
         val alignmentGravity = if (horizontal) {
             Alignment.toHorizontalGravity(alignment, Gravity.NO_GRAVITY)
         } else {
@@ -141,11 +146,11 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
      * a fixed value, but might be made configurable in the future.
      */
     @ZoomApi.ScaledPan
-    internal val maxOverPan: Int
+    internal val maxOverPan: Float
         get() {
             val overX = controller.containerWidth * DEFAULT_OVERPAN_FACTOR
             val overY = controller.containerHeight * DEFAULT_OVERPAN_FACTOR
-            return Math.min(overX, overY).toInt()
+            return Math.min(overX, overY)
         }
 
     /**

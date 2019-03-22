@@ -61,7 +61,7 @@ internal class ScrollFlingDetector(
      * idle state.
      */
     internal fun cancelScroll() {
-        if (panManager.isOverPanEnabled) {
+        if (panManager.isOverEnabled) {
             val fix = panManager.correction
             if (fix.x != 0f || fix.y != 0f) {
                 matrixController.animateUpdate { panBy(fix, true) }
@@ -80,7 +80,7 @@ internal class ScrollFlingDetector(
      */
     override fun onFling(e1: MotionEvent?, e2: MotionEvent?, velocityX: Float, velocityY: Float): Boolean {
         if (!flingEnabled) return false
-        if (!panManager.isPanEnabled) return false
+        if (!panManager.isEnabled) return false
         val velX = (if (panManager.horizontalPanEnabled) velocityX else 0F).toInt()
         val velY = (if (panManager.verticalPanEnabled) velocityY else 0F).toInt()
 
@@ -98,21 +98,21 @@ internal class ScrollFlingDetector(
             // Only allow new flings while overscrolled if explicitly enabled as this might causes artifacts.
             return false
         }
-        if (minX >= maxX && minY >= maxY && !panManager.isOverPanEnabled) {
+        if (minX >= maxX && minY >= maxY && !panManager.isOverEnabled) {
             return false
         }
         // Must be after the other conditions.
         if (!stateController.setFlinging()) return false
 
-        @ZoomApi.ScaledPan val overScrollX = if (panManager.horizontalOverPanEnabled) panManager.maxOverPan else 0
-        @ZoomApi.ScaledPan val overScrollY = if (panManager.verticalOverPanEnabled) panManager.maxOverPan else 0
+        @ZoomApi.ScaledPan val overScrollX = if (panManager.horizontalOverPanEnabled) panManager.maxOverPan else 0F
+        @ZoomApi.ScaledPan val overScrollY = if (panManager.verticalOverPanEnabled) panManager.maxOverPan else 0F
         LOG.i("startFling", "velocityX:", velX, "velocityY:", velY)
         LOG.i("startFling", "flingX:", "min:", minX, "max:", maxX, "start:", startX, "overScroll:", overScrollY)
         LOG.i("startFling", "flingY:", "min:", minY, "max:", maxY, "start:", startY, "overScroll:", overScrollX)
         flingScroller.fling(startX, startY,
                 velX, velY,
                 minX, maxX, minY, maxY,
-                overScrollX, overScrollY)
+                overScrollX.toInt(), overScrollY.toInt())
 
         matrixController.post(object : Runnable {
             override fun run() {
@@ -144,7 +144,7 @@ internal class ScrollFlingDetector(
             @ZoomApi.ScaledPan distanceX: Float,
             @ZoomApi.ScaledPan distanceY: Float
     ): Boolean {
-        if (!panManager.isPanEnabled) return false
+        if (!panManager.isEnabled) return false
         if (!stateController.setScrolling()) return false
 
         // Change sign, since we work with opposite values.

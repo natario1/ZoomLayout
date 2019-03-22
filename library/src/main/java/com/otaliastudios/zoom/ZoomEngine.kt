@@ -33,11 +33,7 @@ open class ZoomEngine
  *
  * @param context a valid context
  */
-internal constructor(context: Context) :
-        ViewTreeObserver.OnGlobalLayoutListener,
-        ZoomApi,
-        StateController.Callback,
-        MatrixController.Callback {
+internal constructor(context: Context) : ZoomApi {
 
     /**
      * Constructs an helper instance.
@@ -60,7 +56,99 @@ internal constructor(context: Context) :
     @Deprecated("Use [addListener] to add a listener.",
             replaceWith = ReplaceWith("constructor(context, container)"))
     constructor(context: Context, container: View, listener: Listener) : this(context, container) {
+        // TODO (v2) remove this
         addListener(listener)
+    }
+
+    /**
+     * Used for various components callbacks. We don't want to implement this in ZoomEngine
+     * itself or these APIs will be publicly exposed as interface methods are public.
+     */
+    private inner class Callbacks : ViewTreeObserver.OnGlobalLayoutListener,
+            StateController.Callback,
+            MatrixController.Callback {
+
+        override fun onGlobalLayout() {
+            setContainerSize(container.width.toFloat(), container.height.toFloat())
+        }
+
+        // Post utilities
+
+        override fun post(action: Runnable) {
+            container.post(action)
+        }
+
+        override fun postOnAnimation(action: Runnable) {
+            container.postOnAnimation(action)
+        }
+
+        // Matrix callbacks
+
+        override fun onMatrixUpdate() {
+            dispatcher.dispatchOnMatrix()
+        }
+
+        /**
+         * If we need to apply the transformation ([firstTime] is true), we do so.
+         * If we don't, we still do some computations to keep the appearance unchanged.
+         */
+        override fun onMatrixSizeChanged(oldZoom: Float, firstTime: Boolean) {
+            LOG.w("onMatrixSizeChanged: firstTime:", firstTime, "oldZoom:", oldZoom,
+                    "transformation:", transformationType,
+                    "transformationZoom:", zoomManager.transformationZoom)
+            stateController.makeIdle()
+            if (firstTime) {
+                // Compute the transformation zoom for the first time, which means applying the transformation.
+                // Then zoom to this value so we are left with @Zoom=1 and can apply the zoom boundaries.
+                zoomManager.transformationZoom = computeTransformationZoom()
+                matrixController.applyUpdate {
+                    zoomTo(zoomManager.transformationZoom, false)
+                    notify = false
+                }
+                // Apply the transformation pan through the transformation gravity.
+                val newPan = computeTransformationPan()
+                matrixController.applyUpdate { panTo(newPan, false) }
+            } else {
+                // We were initialized, but some size changed. We will:
+                // - Recompute the transformationZoom: since size changed, the old makes no sense
+                // - Reapply the old zoom so it is kept unchanged and bounds are applied
+                zoomManager.transformationZoom = computeTransformationZoom()
+                matrixController.applyUpdate { zoomTo(realZoom, false) }
+            }
+            LOG.i("onMatrixSizeChanged: newTransformationZoom:", zoomManager.transformationZoom,
+                    "newRealZoom:", realZoom, "newZoom:", zoom)
+        }
+
+        // State callbacks
+
+        override fun isStateAllowed(newState: Int): Boolean {
+            return matrixController.isInitialized
+        }
+
+        override fun onStateIdle() {
+            dispatcher.dispatchOnIdle()
+        }
+
+        override fun cleanupState(@StateController.State oldState: Int) {
+            when (oldState) {
+                StateController.ANIMATING -> matrixController.cancelAnimations()
+                StateController.FLINGING -> scrollFlingDetector.cancelFling()
+            }
+        }
+
+        // Gesture callbacks
+
+        override fun endScrollGesture() {
+            scrollFlingDetector.cancelScroll()
+        }
+
+        override fun maybeStartPinchGesture(event: MotionEvent): Boolean {
+            return pinchDetector.maybeStart(event)
+        }
+
+        override fun maybeStartScrollFlingGesture(event: MotionEvent): Boolean {
+            return scrollFlingDetector.maybeStart(event)
+        }
     }
 
     // Options & state
@@ -69,11 +157,12 @@ internal constructor(context: Context) :
 
     // Internal
     private lateinit var container: View
+    private val callbacks = Callbacks()
     private val dispatcher = UpdatesDispatcher(this)
-    private val stateController = StateController(this)
+    private val stateController = StateController(callbacks)
     private val panManager = PanManager { matrixController }
     private val zoomManager = ZoomManager { matrixController }
-    private val matrixController: MatrixController = MatrixController(zoomManager, panManager, stateController, this)
+    private val matrixController: MatrixController = MatrixController(zoomManager, panManager, stateController, callbacks)
 
     // Gestures
     private val scrollFlingDetector = ScrollFlingDetector(context, panManager, stateController, matrixController)
@@ -248,61 +337,6 @@ internal constructor(context: Context) :
 
     //endregion
 
-    //region post utilities
-
-    override fun post(action: Runnable) {
-        container.post(action)
-    }
-
-    override fun postOnAnimation(action: Runnable) {
-        container.postOnAnimation(action)
-    }
-
-    //endregion
-
-    //region Matrix callbacks
-
-    override fun onMatrixUpdate() {
-        dispatcher.dispatchOnMatrix()
-    }
-
-    //endregion
-
-    //region State callbacks
-
-    override fun isStateAllowed(newState: Int): Boolean {
-        return matrixController.isInitialized
-    }
-
-    override fun onStateIdle() {
-        dispatcher.dispatchOnIdle()
-    }
-
-    override fun cleanupState(@StateController.State oldState: Int) {
-        when (oldState) {
-            StateController.ANIMATING -> matrixController.cancelAnimations()
-            StateController.FLINGING -> scrollFlingDetector.cancelFling()
-        }
-    }
-
-    //endregion
-
-    //region Gesture callbacks
-
-    override fun endScrollGesture() {
-        scrollFlingDetector.cancelScroll()
-    }
-
-    override fun maybeStartPinchGesture(event: MotionEvent): Boolean {
-        return pinchDetector.maybeStart(event)
-    }
-
-    override fun maybeStartScrollFlingGesture(event: MotionEvent): Boolean {
-        return scrollFlingDetector.maybeStart(event)
-    }
-
-    //endregion
-
     //region Options
 
     /**
@@ -353,7 +387,7 @@ internal constructor(context: Context) :
      * @param overPinchable whether to allow over pinching
      */
     override fun setOverPinchable(overPinchable: Boolean) {
-        zoomManager.overZoomEnabled = overPinchable
+        zoomManager.isOverEnabled = overPinchable
     }
 
     /**
@@ -362,7 +396,7 @@ internal constructor(context: Context) :
      * @param enabled true enables zooming, false disables it
      */
     override fun setZoomEnabled(enabled: Boolean) {
-        zoomManager.zoomEnabled = enabled
+        zoomManager.isEnabled = enabled
     }
 
     /**
@@ -424,16 +458,12 @@ internal constructor(context: Context) :
         this.container = container
         this.container.addOnAttachStateChangeListener(object: View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(view: View) {
-                view.viewTreeObserver.addOnGlobalLayoutListener(this@ZoomEngine)
+                view.viewTreeObserver.addOnGlobalLayoutListener(callbacks)
             }
             override fun onViewDetachedFromWindow(view: View) {
-                view.viewTreeObserver.removeOnGlobalLayoutListener(this@ZoomEngine)
+                view.viewTreeObserver.removeOnGlobalLayoutListener(callbacks)
             }
         })
-    }
-
-    override fun onGlobalLayout() {
-        setContainerSize(container.width.toFloat(), container.height.toFloat())
     }
 
     /**
@@ -478,43 +508,13 @@ internal constructor(context: Context) :
     }
 
     /**
-     * If we need to apply the transformation ([firstTime] is true), we do so.
-     * If we don't, we still do some computations to keep the appearance unchanged.
-     */
-    override fun onMatrixSizeChanged(oldZoom: Float, firstTime: Boolean) {
-        LOG.w("onMatrixSizeChanged: firstTime:", firstTime,
-                "oldZoom:", oldZoom,
-                "transformation:", transformationType,
-                "transformationZoom:", zoomManager.transformationZoom)
-        stateController.makeIdle()
-        if (firstTime) {
-            // Compute the transformation zoom for the first time, which means applying the transformation.
-            // Then zoom to this value so we are left with @Zoom=1 and can apply the zoom boundaries.
-            zoomManager.transformationZoom = computeTransformationZoom()
-            matrixController.applyUpdate { zoomTo(zoomManager.transformationZoom, false) }
-            // Apply the transformation pan through the transformation gravity.
-            val newPan = computeTransformationPan()
-            matrixController.applyUpdate { panTo(newPan, false) }
-        } else {
-            // We were initialized, but some size changed. We will:
-            // - Recompute the transformationZoom: since size changed, the old makes no sense
-            // - Reapply the old zoom so it is kept unchanged and bounds are applied
-            zoomManager.transformationZoom = computeTransformationZoom()
-            matrixController.applyUpdate { zoomTo(realZoom, false) }
-        }
-        LOG.i("onMatrixSizeChanged:",
-                "newTransformationZoom:", zoomManager.transformationZoom,
-                "newRealZoom:", realZoom,
-                "newZoom:", zoom)
-    }
-
-    /**
      * Clears the current state, and stops dispatching matrix events
      * until the view is laid out again and [ZoomEngine.setContentSize]
      * is called.
      */
     fun clear() {
         zoomManager.clear()
+        panManager.clear()
         matrixController.clear()
     }
 

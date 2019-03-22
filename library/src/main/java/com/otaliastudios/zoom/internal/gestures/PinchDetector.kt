@@ -54,7 +54,7 @@ internal class PinchDetector(
     }
 
     override fun onScale(detector: ScaleGestureDetector): Boolean {
-        if (!zoomManager.zoomEnabled) return false
+        if (!zoomManager.isEnabled) return false
         if (!stateController.setPinching()) return false
 
         // get the absolute pan position of the detector focus point
@@ -89,14 +89,14 @@ internal class PinchDetector(
         LOG.i("onScaleEnd:",
                 "mInitialAbsFocusPoint.x:", initialFocusPoint.x,
                 "mInitialAbsFocusPoint.y:", initialFocusPoint.y,
-                "mOverZoomEnabled;", zoomManager.overZoomEnabled)
+                "mOverZoomEnabled;", zoomManager.isOverEnabled)
         handleOnScaleEnd()
         initialFocusPoint.set(Float.NaN, Float.NaN)
         currentFocusOffset.set(0F, 0F)
     }
 
     private fun handleOnScaleEnd() {
-        if (!zoomManager.overZoomEnabled && !panManager.isOverPanEnabled) {
+        if (!zoomManager.isOverEnabled && !panManager.isOverEnabled) {
             stateController.makeIdle()
             return
         }

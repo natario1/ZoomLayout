@@ -16,19 +16,20 @@ import com.otaliastudios.zoom.internal.matrix.MatrixController
 internal class ZoomManager(provider: () -> MatrixController) : MovementManager(provider) {
 
     internal var transformationZoom = 0F
-    internal var overZoomEnabled = true
-    internal var zoomEnabled = true
 
     private var minZoom = ZoomApi.MIN_ZOOM_DEFAULT
     private var minZoomMode = ZoomApi.MIN_ZOOM_DEFAULT_TYPE
     private var maxZoom = ZoomApi.MAX_ZOOM_DEFAULT
     private var maxZoomMode = ZoomApi.MAX_ZOOM_DEFAULT_TYPE
 
+    override var isEnabled = true
+    override var isOverEnabled = true
+
     /**
      * Clears the current variable state, that is,
      * resets [transformationZoom].
      */
-    internal fun clear() {
+    override fun clear() {
         transformationZoom = 0F
     }
 
@@ -113,7 +114,7 @@ internal class ZoomManager(provider: () -> MatrixController) : MovementManager(p
     internal fun checkBounds(@ZoomApi.RealZoom value: Float, allowOverZoom: Boolean): Float {
         var minZoom = getMinZoom()
         var maxZoom = getMaxZoom()
-        if (allowOverZoom && overZoomEnabled) {
+        if (allowOverZoom && isOverEnabled) {
             minZoom -= maxOverZoom
             maxZoom += maxOverZoom
         }
