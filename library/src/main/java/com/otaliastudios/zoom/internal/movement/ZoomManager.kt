@@ -1,7 +1,7 @@
 package com.otaliastudios.zoom.internal.movement
 
 import com.otaliastudios.zoom.*
-import com.otaliastudios.zoom.internal.MatrixController
+import com.otaliastudios.zoom.internal.matrix.MatrixController
 
 /**
  * Contains:

@@ -7,10 +7,11 @@ import android.graphics.RectF
 import android.view.*
 import com.otaliastudios.zoom.ZoomApi.*
 import com.otaliastudios.zoom.internal.UpdatesDispatcher
-import com.otaliastudios.zoom.internal.MatrixController
+import com.otaliastudios.zoom.internal.matrix.MatrixController
 import com.otaliastudios.zoom.internal.StateController
 import com.otaliastudios.zoom.internal.gestures.PinchDetector
 import com.otaliastudios.zoom.internal.gestures.ScrollFlingDetector
+import com.otaliastudios.zoom.internal.matrix.MatrixUpdate
 import com.otaliastudios.zoom.internal.movement.PanManager
 import com.otaliastudios.zoom.internal.movement.ZoomManager
 
@@ -476,51 +477,35 @@ internal constructor(context: Context) :
         matrixController.setContainerSize(width, height, applyTransformation)
     }
 
-    override fun onMatrixSizeChanged(firstTime: Boolean) {
-        // See if we need to apply the transformation. This is the easier case, because
-        // if we don't want to apply it, we must do extra computations to keep the appearance unchanged.
+    /**
+     * If we need to apply the transformation ([firstTime] is true), we do so.
+     * If we don't, we still do some computations to keep the appearance unchanged.
+     */
+    override fun onMatrixSizeChanged(oldZoom: Float, firstTime: Boolean) {
+        LOG.w("onMatrixSizeChanged: firstTime:", firstTime,
+                "oldZoom:", oldZoom,
+                "transformation:", transformationType,
+                "transformationZoom:", zoomManager.transformationZoom)
         stateController.makeIdle()
-        LOG.w("onMatrixSizeChanged: will apply?", firstTime, "transformation?", transformationType)
         if (firstTime) {
-            // First time. Apply base zoom, dispatch first event and return.
+            // Compute the transformation zoom for the first time, which means applying the transformation.
+            // Then zoom to this value so we are left with @Zoom=1 and can apply the zoom boundaries.
             zoomManager.transformationZoom = computeTransformationZoom()
-            matrixController.setScale(zoomManager.transformationZoom)
-            LOG.i("onMatrixSizeChanged: newTransformationZoom:", zoomManager.transformationZoom, "newZoom:", zoom)
-            @RealZoom val newZoom = zoomManager.checkBounds(realZoom, false)
-            LOG.i("onMatrixSizeChanged: scaleBounds:", "we need a zoom correction of", newZoom - realZoom)
-            if (newZoom != realZoom) matrixController.applyZoom(newZoom, allowOverZoom = false)
-
-            // pan based on transformation gravity.
-            @ScaledPan val newPan = computeTransformationPan()
-            @ScaledPan val deltaX = newPan[0] - matrixController.scaledPanX
-            @ScaledPan val deltaY = newPan[1] - matrixController.scaledPanY
-            if (deltaX != 0f || deltaY != 0f) matrixController.applyScaledPan(deltaX, deltaY, false)
+            matrixController.applyUpdate { zoomTo(zoomManager.transformationZoom, false) }
+            // Apply the transformation pan through the transformation gravity.
+            // TODO val newPan = computeTransformationPan()
+            // TODO matrixController.applyUpdate { panTo(newPan, false) }
         } else {
-            // We were initialized, but some size changed. Since applyTransformation is false,
-            // we must do extra work: recompute the transformationZoom (since size changed, it makes no sense)
-            // but also compute a new zoom such that the real zoom is kept unchanged.
-            // So, this method triggers no Matrix updates.
-            LOG.i("onMatrixSizeChanged: Trying to keep real zoom to", realZoom)
-            LOG.i("onMatrixSizeChanged: oldTransformationZoom:", zoomManager.transformationZoom, "oldZoom:", zoom)
+            // We were initialized, but some size changed. We will:
+            // - Recompute the transformationZoom: since size changed, the old makes no sense
+            // - Reapply the old zoom so it is kept unchanged and bounds are applied
             zoomManager.transformationZoom = computeTransformationZoom()
-            LOG.i("onMatrixSizeChanged: newTransformationZoom:", zoomManager.transformationZoom, "newZoom:", zoom)
-
-            // Now sync the content rect with the current matrix since we are trying to keep it.
-            // This is to have consistent values for other calls here.
-            matrixController.sync()
-
-            // If the new zoom value is invalid, though, we must bring it to the valid place.
-            // This is a possible matrix update.
-            @RealZoom val newZoom = zoomManager.checkBounds(realZoom, false)
-            LOG.i("onSizeChanged: scaleBounds:", "we need a zoom correction of", newZoom - realZoom)
-            if (newZoom != realZoom) matrixController.applyZoom(newZoom, allowOverZoom = false)
+            matrixController.applyUpdate { zoomTo(realZoom, false) }
         }
-
-        // If there was any, pan should be kept. I think there's nothing to do here:
-        // If the matrix is kept, and real zoom is kept, then also the real pan is kept.
-        // I am not 100% sure of this though, so I prefer to call a useless dispatch.
-        matrixController.ensurePan(allowOverPan = false)
-        matrixController.sync(true)
+        LOG.i("onMatrixSizeChanged:",
+                "newTransformationZoom:", zoomManager.transformationZoom,
+                "newRealZoom:", realZoom,
+                "newZoom:", zoom)
     }
 
     /**
@@ -539,14 +524,14 @@ internal constructor(context: Context) :
     private fun computeTransformationZoom(): Float {
         when (transformationType) {
             ZoomApi.TRANSFORMATION_CENTER_INSIDE -> {
-                val scaleX = containerWidth / matrixController.contentScaledWidth
-                val scaleY = containerHeight / matrixController.contentScaledHeight
+                val scaleX = containerWidth / contentWidth
+                val scaleY = containerHeight / contentHeight
                 LOG.v("computeTransformationZoom", "centerInside", "scaleX:", scaleX, "scaleY:", scaleY)
                 return Math.min(scaleX, scaleY)
             }
             ZoomApi.TRANSFORMATION_CENTER_CROP -> {
-                val scaleX = containerWidth / matrixController.contentScaledWidth
-                val scaleY = containerHeight / matrixController.contentScaledHeight
+                val scaleX = containerWidth / contentWidth
+                val scaleY = containerHeight / contentHeight
                 LOG.v("computeTransformationZoom", "centerCrop", "scaleX:", scaleX, "scaleY:", scaleY)
                 return Math.max(scaleX, scaleY)
             }
@@ -559,15 +544,13 @@ internal constructor(context: Context) :
      * Computes the starting pan coordinates, given the current content dimensions and container
      * dimensions. This means applying the transformation gravity.
      */
-    @ScaledPan
-    private fun computeTransformationPan(): FloatArray {
-        val result = floatArrayOf(0f, 0f)
-        val extraWidth = matrixController.contentScaledWidth - containerWidth
-        val extraHeight = matrixController.contentScaledHeight - containerHeight
+    private fun computeTransformationPan(): ScaledPoint {
+        val extraWidth = contentWidth - containerWidth
+        val extraHeight = contentHeight - containerHeight
         val gravity = computeTransformationGravity(transformationGravity)
-        result[0] = -panManager.applyGravity(gravity, extraWidth, true)
-        result[1] = -panManager.applyGravity(gravity, extraHeight, false)
-        return result
+        val x = -panManager.applyGravity(gravity, extraWidth, true)
+        val y = -panManager.applyGravity(gravity, extraHeight, false)
+        return ScaledPoint(x, y)
     }
 
     /**
@@ -626,11 +609,15 @@ internal constructor(context: Context) :
      */
     override fun moveTo(@Zoom zoom: Float, @AbsolutePan x: Float, @AbsolutePan y: Float, animate: Boolean) {
         val realZoom = zoomManager.zoomToRealZoom(zoom)
+        val update = MatrixUpdate.obtain {
+            zoomTo(realZoom, false)
+            panTo(AbsolutePoint(x, y), false)
+        }
         if (animate) {
-            matrixController.animateZoomAndAbsolutePan(realZoom, x, y, allowOverScroll = false)
+            matrixController.animateUpdate(update)
         } else {
             cancelAnimations()
-            matrixController.applyZoomAndAbsolutePan(realZoom, x, y, allowOverPan = false)
+            matrixController.applyUpdate(update)
         }
     }
 
@@ -661,11 +648,12 @@ internal constructor(context: Context) :
      * @param animate whether to animate the transition
      */
     override fun panBy(@AbsolutePan dx: Float, @AbsolutePan dy: Float, animate: Boolean) {
+        val update = MatrixUpdate.obtain { panBy(AbsolutePoint(dx, dy), false) }
         if (animate) {
-            matrixController.animateZoomAndAbsolutePan(realZoom, panX + dx, panY + dy, allowOverScroll = false)
+            matrixController.animateUpdate(update)
         } else {
             cancelAnimations()
-            matrixController.applyZoomAndAbsolutePan(realZoom, panX + dx, panY + dy, allowOverPan = false)
+            matrixController.applyUpdate(update)
         }
     }
 
@@ -712,11 +700,12 @@ internal constructor(context: Context) :
      * @param animate  whether to animate the transition
      */
     override fun realZoomTo(@RealZoom realZoom: Float, animate: Boolean) {
+        val update = MatrixUpdate.obtain { zoomTo(realZoom, false) }
         if (animate) {
-            matrixController.animateZoom(realZoom, allowOverPinch = false)
+            matrixController.animateUpdate(update)
         } else {
             cancelAnimations()
-            matrixController.applyZoom(realZoom, allowOverZoom = false)
+            matrixController.applyUpdate(update)
         }
     }
 

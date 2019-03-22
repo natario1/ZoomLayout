@@ -7,8 +7,9 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import com.otaliastudios.zoom.*
 import com.otaliastudios.zoom.ZoomApi.AbsolutePan
-import com.otaliastudios.zoom.internal.MatrixController
+import com.otaliastudios.zoom.internal.matrix.MatrixController
 import com.otaliastudios.zoom.internal.StateController
+import com.otaliastudios.zoom.internal.matrix.MatrixUpdate
 import com.otaliastudios.zoom.internal.movement.PanManager
 import com.otaliastudios.zoom.internal.movement.ZoomManager
 
@@ -70,13 +71,11 @@ internal class PinchDetector(
             LOG.i("onScale:", "Got focus offset:", currentFocusOffset)
         }
         val newZoom = matrixController.zoom * detector.scaleFactor
-        matrixController.applyZoomAndAbsolutePan(newZoom,
-                matrixController.panX + currentFocusOffset.x,
-                matrixController.panY + currentFocusOffset.y,
-                allowOverPan = true,
-                allowOverZoom = true,
-                zoomTargetX = detector.focusX,
-                zoomTargetY = detector.focusY)
+        matrixController.applyUpdate {
+            zoomTo(newZoom, true)
+            panBy(currentFocusOffset, true)
+            pivot(detector.focusX, detector.focusY)
+        }
         return true
     }
 
@@ -137,7 +136,12 @@ internal class PinchDetector(
             val oldZoom = matrixController.zoom
 
             // apply the target zoom with the currently known pivot point
-            matrixController.applyZoom(newZoom, true, true, zoomTarget.x, zoomTarget.y, notifyListeners = false)
+            matrixController.applyUpdate {
+                zoomTo(newZoom, true)
+                pivot(zoomTarget.x, zoomTarget.y)
+                overPan = true
+                notify = false
+            }
 
             // recalculate pan fix to account for additional borders that might overscroll when zooming out
             panFix = panManager.correction.toAbsolute(matrixController.zoom)
@@ -146,20 +150,24 @@ internal class PinchDetector(
             newPan.set(matrixController.pan + panFix)
 
             // revert simulation
-            matrixController.applyZoomAndAbsolutePan(oldZoom, oldPan.x, oldPan.y, true, true, notifyListeners = false)
+            matrixController.applyUpdate {
+                zoomTo(oldZoom, true)
+                panTo(oldPan, true)
+                notify = false
+            }
         }
 
         // New state will be ANIMATING
         if (panFix.x == 0F && panFix.y == 0F) {
             // no overpan to correct, only fix overzoom
-            matrixController.animateZoom(newZoom, allowOverPinch = true)
+            matrixController.animateUpdate { zoomTo(newZoom, true) }
         } else {
             // fix overpan (overzoom is also corrected in here if necessary)
-            matrixController.animateZoomAndAbsolutePan(newZoom,
-                    newPan.x, newPan.y,
-                    zoomTargetX = zoomTarget.x,
-                    zoomTargetY = zoomTarget.y,
-                    allowOverScroll = true, allowOverPinch = true)
+            matrixController.animateUpdate {
+                zoomTo(newZoom, true)
+                panTo(newPan, true)
+                pivot(zoomTarget.x, zoomTarget.y)
+            }
         }
     }
 

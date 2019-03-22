@@ -5,11 +5,12 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.widget.OverScroller
 import com.otaliastudios.zoom.AbsolutePoint
+import com.otaliastudios.zoom.ScaledPoint
 import com.otaliastudios.zoom.ZoomApi
-import com.otaliastudios.zoom.ZoomEngine
 import com.otaliastudios.zoom.ZoomLogger
-import com.otaliastudios.zoom.internal.MatrixController
+import com.otaliastudios.zoom.internal.matrix.MatrixController
 import com.otaliastudios.zoom.internal.StateController
+import com.otaliastudios.zoom.internal.matrix.MatrixUpdate
 import com.otaliastudios.zoom.internal.movement.PanManager
 
 /**
@@ -63,7 +64,7 @@ internal class ScrollFlingDetector(
         if (panManager.isOverPanEnabled) {
             val fix = panManager.correction
             if (fix.x != 0f || fix.y != 0f) {
-                matrixController.animateScaledPan(fix.x, fix.y, true)
+                matrixController.animateUpdate { panBy(fix, true) }
                 return
             }
         }
@@ -118,13 +119,9 @@ internal class ScrollFlingDetector(
                 if (flingScroller.isFinished) {
                     stateController.makeIdle()
                 } else if (flingScroller.computeScrollOffset()) {
-                    @ZoomApi.ScaledPan val newPanX = flingScroller.currX
-                    @ZoomApi.ScaledPan val newPanY = flingScroller.currY
+                    val newPan = ScaledPoint(flingScroller.currX.toFloat(), flingScroller.currY.toFloat())
                     // OverScroller will eventually go back to our bounds.
-                    matrixController.applyScaledPan(
-                            newPanX - matrixController.scaledPanX,
-                            newPanY - matrixController.scaledPanY,
-                            true)
+                    matrixController.applyUpdate { panTo(newPan, true) }
                     matrixController.postOnAnimation(this)
                 }
             }
@@ -144,14 +141,14 @@ internal class ScrollFlingDetector(
     override fun onScroll(
             e1: MotionEvent?,
             e2: MotionEvent?,
-            @ZoomApi.AbsolutePan distanceX: Float,
-            @ZoomApi.AbsolutePan distanceY: Float
+            @ZoomApi.ScaledPan distanceX: Float,
+            @ZoomApi.ScaledPan distanceY: Float
     ): Boolean {
         if (!panManager.isPanEnabled) return false
         if (!stateController.setScrolling()) return false
 
         // Change sign, since we work with opposite values.
-        val delta = AbsolutePoint(-distanceX, -distanceY)
+        val delta = ScaledPoint(-distanceX, -distanceY)
 
         // See if we are overscrolling.
         val panFix = panManager.correction
@@ -176,8 +173,9 @@ internal class ScrollFlingDetector(
         if (!panManager.horizontalPanEnabled) delta.x = 0f
         if (!panManager.verticalPanEnabled) delta.y = 0f
 
+
         if (delta.x != 0f || delta.y != 0f) {
-            matrixController.applyScaledPan(delta.x, delta.y, true)
+            matrixController.applyUpdate { panBy(delta, true) }
         }
         return true
     }
