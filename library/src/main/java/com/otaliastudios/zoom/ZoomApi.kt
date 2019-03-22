@@ -24,6 +24,7 @@ interface ZoomApi {
      */
     @Zoom
     val zoom: Float
+    // TODO (v2) rename to e.g. transformedZoom
 
     /**
      * Gets the current zoom value, including the base zoom that was eventually applied when
@@ -36,16 +37,15 @@ interface ZoomApi {
      */
     @RealZoom
     val realZoom: Float
-
+    // TODO (v2) rename to zoom
 
     /**
      * The current pan as an [AbsolutePoint].
-     * This field will be updated according to current pan when accessed.
      */
     val pan: AbsolutePoint
 
     /**
-     * Returns the current horizontal pan value, in content coordinates
+     * Returns the current horizontal pan value, in content absolute coordinates
      * (that is, as if there was no zoom at all).
      *
      * @return the current horizontal pan
@@ -54,13 +54,39 @@ interface ZoomApi {
     val panX: Float
 
     /**
-     * Returns the current vertical pan value, in content coordinates
+     * Returns the current vertical pan value, in content absolute coordinates
      * (that is, as if there was no zoom at all).
      *
      * @return the current vertical pan
      */
     @AbsolutePan
     val panY: Float
+
+    /**
+     * The current pan as a [ScaledPoint], that is, taking into account the current zoom.
+     * This basically returns the [pan] value multiplied by the current [realZoom].
+     */
+    val scaledPan: ScaledPoint
+
+    /**
+     * Returns the current horizontal pan value, in content scaled coordinates
+     * (that is, including the current zoom).
+     * This is equivalent to [panX] multiplied by [realZoom].
+     *
+     * @return the current horizontal pan
+     */
+    @ScaledPan
+    val scaledPanX: Float
+
+    /**
+     * Returns the current vertical pan value, in content scaled coordinates
+     * (that is, including the current zoom).
+     * This is equivalent to [panY] multiplied by [realZoom].
+     *
+     * @return the current vertical pan
+     */
+    @ScaledPan
+    val scaledPanY: Float
 
     /**
      * Annotation to indicate a RealZoom value.
@@ -70,6 +96,7 @@ interface ZoomApi {
     @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     annotation class RealZoom
+    // TODO (v2) rename to Zoom
 
     /**
      * Annotation to indicate a zoom value.
@@ -79,6 +106,7 @@ interface ZoomApi {
     @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.LOCAL_VARIABLE, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
     @Retention(AnnotationRetention.SOURCE)
     annotation class Zoom
+    // TODO (v2) rename to e.g. TransformedZoom
 
     /**
      * Annotation to indicate an AbsolutePan value.
@@ -147,6 +175,7 @@ interface ZoomApi {
      * @param overScroll whether to allow horizontal over scrolling
      */
     fun setOverScrollHorizontal(overScroll: Boolean)
+    // TODO (v2) rename to var isHorizontalOverPanEnabled
 
     /**
      * Controls whether the content should be over-scrollable vertically.
@@ -156,6 +185,7 @@ interface ZoomApi {
      * @param overScroll whether to allow vertical over scrolling
      */
     fun setOverScrollVertical(overScroll: Boolean)
+    // TODO (v2) rename to var isVerticalOverPanEnabled
 
     /**
      * Controls whether horizontal panning using gestures is enabled.
@@ -163,6 +193,7 @@ interface ZoomApi {
      * @param enabled true enables horizontal panning, false disables it
      */
     fun setHorizontalPanEnabled(enabled: Boolean)
+    // TODO (v2) rename to var isHorizontalPanEnabled
 
     /**
      * Controls whether vertical panning using gestures is enabled.
@@ -170,6 +201,7 @@ interface ZoomApi {
      * @param enabled true enables vertical panning, false disables it
      */
     fun setVerticalPanEnabled(enabled: Boolean)
+    // TODO (v2) rename to var isVerticalPanEnabled
 
     /**
      * Controls whether the content should be overPinchable.
@@ -179,6 +211,7 @@ interface ZoomApi {
      * @param overPinchable whether to allow over pinching
      */
     fun setOverPinchable(overPinchable: Boolean)
+    // TODO (v2) rename to var isOverZoomEnabled
 
     /**
      * Controls whether zoom using pinch gesture is enabled or not.
@@ -186,6 +219,7 @@ interface ZoomApi {
      * @param enabled true enables zooming, false disables it
      */
     fun setZoomEnabled(enabled: Boolean)
+    // TODO (v2) rename to var isZoomEnabled
 
     /**
      * Controls whether fling gesture is enabled or not.
@@ -193,6 +227,7 @@ interface ZoomApi {
      * @param enabled true enables fling gesture, false disables it
      */
     fun setFlingEnabled(enabled: Boolean)
+    // TODO (v2) rename to var isFlingEnabled or isGestureFlingEnabled to clearly differentiate gestures and engine movements (pan/zoom)
 
     /**
      * Controls whether fling events are allowed when the view is in an overscrolled state.
@@ -200,6 +235,7 @@ interface ZoomApi {
      * @param allow true allows fling in overscroll, false disables it
      */
     fun setAllowFlingInOverscroll(allow: Boolean)
+    // TODO (v2) see what to do with this, either it works or it doesn't
 
     /**
      * Sets the base transformation to be applied to the content.
@@ -244,6 +280,7 @@ interface ZoomApi {
      * @param animate whether to animate the transition
      */
     fun moveTo(@Zoom zoom: Float, @AbsolutePan x: Float, @AbsolutePan y: Float, animate: Boolean)
+    // TODO (v2) revisit these control APIs, possibly leveraging MatrixUpdate syntax and using AbsolutePoint
 
     /**
      * Pans the content until the top-left coordinates match the given x-y
@@ -277,6 +314,7 @@ interface ZoomApi {
      * @param animate whether to animate the transition
      */
     fun zoomTo(@Zoom zoom: Float, animate: Boolean)
+    // TODO (v2) if not removed, rename to e.g. transformedZoomTo
 
     /**
      * Applies the given factor to the current zoom.
@@ -303,6 +341,7 @@ interface ZoomApi {
      * @param animate  whether to animate the transition
      */
     fun realZoomTo(@RealZoom realZoom: Float, animate: Boolean)
+    // TODO (v2) if not removed, rename to zoomTo
 
     /**
      * Which is the max zoom that should be allowed.
@@ -355,6 +394,7 @@ interface ZoomApi {
          * @see realZoom
          */
         const val TYPE_ZOOM = 0
+        // TODO (v2) rename to e.g. TYPE_TRANSFORMED_ZOOM
 
         /**
          * Flag for zoom constraints and settings.
@@ -365,6 +405,7 @@ interface ZoomApi {
          * @see realZoom
          */
         const val TYPE_REAL_ZOOM = 1
+        // TODO (v2) rename to e.g. TYPE_ZOOM
 
         /**
          * Constant for [ZoomApi.setTransformation].
@@ -392,6 +433,9 @@ interface ZoomApi {
          * fallback to a reasonable default.
          */
         const val TRANSFORMATION_GRAVITY_AUTO = 0
+
+
+        // TODO (v2) move these below into the engine as they are engine defaults
 
         /**
          * The default [setMinZoom] applied by the engine if none is specified.

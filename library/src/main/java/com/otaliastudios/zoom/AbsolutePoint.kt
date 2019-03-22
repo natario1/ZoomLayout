@@ -1,7 +1,10 @@
 package com.otaliastudios.zoom
 
 /**
- * This class represents an absolute point on the ZoomEngine canvas (or beyond it's bounds)
+ * This class represents a point on the [ZoomEngine] content surface.
+ *
+ * It is absolute because it is defined with respect to the content own size & coordinate system,
+ * meaning that 0, 0 represents the content top-left corner.
  */
 data class AbsolutePoint(
         @ZoomApi.AbsolutePan var x: Float = 0F,
@@ -70,6 +73,15 @@ data class AbsolutePoint(
      */
     operator fun times(factor: Number): AbsolutePoint {
         return AbsolutePoint(factor.toFloat() * this.x, factor.toFloat() * this.y)
+    }
+
+    /**
+     * Returns a [ScaledPoint] for this point, assuming that
+     * the current zoom level is [scale].
+     */
+    internal fun toScaled(scale: Float, outPoint: ScaledPoint = ScaledPoint()): ScaledPoint {
+        outPoint.set(x * scale, y * scale)
+        return outPoint
     }
 
 }

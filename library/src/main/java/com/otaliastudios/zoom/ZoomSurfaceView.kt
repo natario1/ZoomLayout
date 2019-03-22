@@ -27,16 +27,17 @@ import javax.microedition.khronos.opengles.GL10
  * Uses [ZoomEngine] to allow zooming and pan events onto a GL rendered surface.
  */
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-open class ZoomSurfaceView
-private constructor(
+open class ZoomSurfaceView private constructor(
         context: Context,
         attrs: AttributeSet?,
         val engine: ZoomEngine = ZoomEngine(context)
-) : GLSurfaceView(context, attrs), ZoomEngine.Listener, ZoomApi by engine, GLSurfaceView.Renderer {
+) : GLSurfaceView(context, attrs),
+        ZoomApi by engine,
+        GLSurfaceView.Renderer {
 
     init {
         // See if the com.otaliastudios.opengl:egl-core was added.
-        val hasEglCore = kotlin.runCatching { EglRect() }
+        val hasEglCore = runCatching { EglRect() }
         if (hasEglCore.isFailure) {
             throw IllegalStateException("If you wish to use ZoomSurfaceView, you must" +
                     "add com.otaliastudios.opengl:egl-core to your dependencies.")
@@ -163,7 +164,13 @@ private constructor(
         a.recycle()
 
         engine.setContainer(this)
-        engine.addListener(this)
+        engine.addListener(object: ZoomEngine.Listener {
+            // When we have a zoom update, just request a new rendered frame.
+            // This will post the request on the renderer thread and finally invoke [onDrawFrame].
+            override fun onUpdate(engine: ZoomEngine, matrix: Matrix) { requestRender() }
+            override fun onIdle(engine: ZoomEngine) {}
+        })
+
         setOverScrollHorizontal(overScrollHorizontal)
         setOverScrollVertical(overScrollVertical)
         setTransformation(transformation, transformationGravity)
@@ -289,15 +296,6 @@ private constructor(
     }
 
     /**
-     * When we have a zoom update, just request a new rendered frame.
-     * This will post the request on the renderer thread and finally invoke
-     * [onDrawFrame].
-     */
-    override fun onUpdate(engine: ZoomEngine, matrix: Matrix) {
-        requestRender()
-    }
-
-    /**
      * Performs the texture and background drawing.
      *
      * An old version of this acted on surfaceTextureTransformMatrix instead of the rect modelMatrix.
@@ -363,8 +361,6 @@ private constructor(
      */
     @WorkerThread
     protected open fun onDraw(modelMatrix: FloatArray, textureTransformMatrix: FloatArray) {}
-
-    override fun onIdle(engine: ZoomEngine) {}
 
     companion object {
         private val TAG = ZoomSurfaceView::class.java.simpleName

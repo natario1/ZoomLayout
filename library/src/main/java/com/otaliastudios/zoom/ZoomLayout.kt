@@ -23,17 +23,20 @@ import com.otaliastudios.zoom.ZoomApi.ZoomType
  *
  * Currently padding to this view / margins to the child view are NOT supported.
  */
-open class ZoomLayout
-private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAttr: Int, val engine: ZoomEngine = ZoomEngine(context))
-    : FrameLayout(context, attrs, defStyleAttr), ViewTreeObserver.OnGlobalLayoutListener, ZoomEngine.Listener, ZoomApi by engine {
+open class ZoomLayout private constructor(
+        context: Context,
+        attrs: AttributeSet?,
+        @AttrRes defStyleAttr: Int,
+        val engine: ZoomEngine = ZoomEngine(context)
+) : FrameLayout(context, attrs, defStyleAttr),
+        ViewTreeObserver.OnGlobalLayoutListener,
+        ZoomApi by engine {
 
     @JvmOverloads
     constructor(context: Context, attrs: AttributeSet? = null, @AttrRes defStyleAttr: Int = 0)
             : this(context, attrs, defStyleAttr, ZoomEngine(context))
 
-    private val mMatrix = Matrix()
-    private val mMatrixValues = FloatArray(9)
-    private var mHasClickableChildren: Boolean = false
+    private var hasClickableChildren: Boolean = false
 
     init {
         val a = context.theme.obtainStyledAttributes(attrs, R.styleable.ZoomEngine, defStyleAttr, 0)
@@ -57,7 +60,10 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
         a.recycle()
 
         engine.setContainer(this)
-        engine.addListener(this)
+        engine.addListener(object: ZoomEngine.Listener {
+            override fun onIdle(engine: ZoomEngine) {}
+            override fun onUpdate(engine: ZoomEngine, matrix: Matrix) { onUpdate() }
+        })
         setTransformation(transformation, transformationGravity)
         setAlignment(alignment)
         setOverScrollHorizontal(overScrollHorizontal)
@@ -121,36 +127,31 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-        return engine.onInterceptTouchEvent(ev) || mHasClickableChildren && super.onInterceptTouchEvent(ev)
+        return engine.onInterceptTouchEvent(ev) || hasClickableChildren && super.onInterceptTouchEvent(ev)
     }
 
     override fun onTouchEvent(ev: MotionEvent): Boolean {
-        return engine.onTouchEvent(ev) || mHasClickableChildren && super.onTouchEvent(ev)
+        return engine.onTouchEvent(ev) || hasClickableChildren && super.onTouchEvent(ev)
     }
 
-    override fun onUpdate(engine: ZoomEngine, matrix: Matrix) {
-        mMatrix.set(matrix)
-        if (mHasClickableChildren) {
+    private fun onUpdate() {
+        if (hasClickableChildren) {
             if (childCount > 0) {
                 val child = getChildAt(0)
-                mMatrix.getValues(mMatrixValues)
                 child.pivotX = 0f
                 child.pivotY = 0f
-                child.translationX = mMatrixValues[Matrix.MTRANS_X]
-                child.translationY = mMatrixValues[Matrix.MTRANS_Y]
-                child.scaleX = mMatrixValues[Matrix.MSCALE_X]
-                child.scaleY = mMatrixValues[Matrix.MSCALE_Y]
+                child.translationX = engine.scaledPanX
+                child.translationY = engine.scaledPanY
+                child.scaleX = engine.realZoom
+                child.scaleY = engine.realZoom
             }
         } else {
             invalidate()
         }
-
         if ((isHorizontalScrollBarEnabled || isVerticalScrollBarEnabled) && !awakenScrollBars()) {
             invalidate()
         }
     }
-
-    override fun onIdle(engine: ZoomEngine) {}
 
     override fun computeHorizontalScrollOffset(): Int = engine.computeHorizontalScrollOffset()
 
@@ -163,9 +164,9 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
     override fun drawChild(canvas: Canvas, child: View, drawingTime: Long): Boolean {
         val result: Boolean
 
-        if (!mHasClickableChildren) {
+        if (!hasClickableChildren) {
             val save = canvas.save()
-            canvas.concat(mMatrix)
+            canvas.concat(engine.matrix)
             result = super.drawChild(canvas, child, drawingTime)
             canvas.restoreToCount(save)
         } else {
@@ -188,8 +189,8 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
      */
     @Suppress("MemberVisibilityCanBePrivate")
     fun setHasClickableChildren(hasClickableChildren: Boolean) {
-        LOG.i("setHasClickableChildren:", "old:", mHasClickableChildren, "new:", hasClickableChildren)
-        if (mHasClickableChildren && !hasClickableChildren) {
+        LOG.i("setHasClickableChildren:", "old:", this.hasClickableChildren, "new:", hasClickableChildren)
+        if (this.hasClickableChildren && !hasClickableChildren) {
             // Revert any transformation that was applied to our child.
             if (childCount > 0) {
                 val child = getChildAt(0)
@@ -199,12 +200,12 @@ private constructor(context: Context, attrs: AttributeSet?, @AttrRes defStyleAtt
                 child.translationY = 0f
             }
         }
-        mHasClickableChildren = hasClickableChildren
+        this.hasClickableChildren = hasClickableChildren
 
         // Update if we were laid out already.
         if (width > 0 && height > 0) {
-            if (mHasClickableChildren) {
-                onUpdate(engine, mMatrix)
+            if (this.hasClickableChildren) {
+                onUpdate()
             } else {
                 invalidate()
             }
