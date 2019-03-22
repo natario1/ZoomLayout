@@ -493,8 +493,8 @@ internal constructor(context: Context) :
             zoomManager.transformationZoom = computeTransformationZoom()
             matrixController.applyUpdate { zoomTo(zoomManager.transformationZoom, false) }
             // Apply the transformation pan through the transformation gravity.
-            // TODO val newPan = computeTransformationPan()
-            // TODO matrixController.applyUpdate { panTo(newPan, false) }
+            val newPan = computeTransformationPan()
+            matrixController.applyUpdate { panTo(newPan, false) }
         } else {
             // We were initialized, but some size changed. We will:
             // - Recompute the transformationZoom: since size changed, the old makes no sense
