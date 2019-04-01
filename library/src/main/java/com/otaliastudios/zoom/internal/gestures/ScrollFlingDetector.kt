@@ -37,6 +37,8 @@ internal class ScrollFlingDetector(
     private val panStatusY = PanManager.Status()
 
     internal var flingEnabled = true
+    internal var scrollEnabled = true
+    internal var singleFingerScrollEnabled = true
     internal var flingInOverPanEnabled = false
 
     /**
@@ -144,6 +146,8 @@ internal class ScrollFlingDetector(
             @ZoomApi.ScaledPan distanceX: Float,
             @ZoomApi.ScaledPan distanceY: Float
     ): Boolean {
+        if (!scrollEnabled) return false
+        if (!singleFingerScrollEnabled && e1 != null && e1.pointerCount == 1) return false
         if (!panManager.isEnabled) return false
         if (!stateController.setScrolling()) return false
 

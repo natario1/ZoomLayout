@@ -9,6 +9,8 @@
         <attr name="overPinchable" format="boolean" />
         <attr name="zoomEnabled" format="boolean" />
         <attr name="flingEnabled" format="boolean" />
+        <attr name="scrollEnabled" format="boolean" />
+        <attr name="singleFingerScrollEnabled" format="boolean" />
         <attr name="allowFlingInOverscroll" format="boolean" />
         <attr name="verticalPanEnabled" format="boolean" />
         <attr name="horizontalPanEnabled" format="boolean" />

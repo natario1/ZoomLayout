@@ -431,6 +431,24 @@ internal constructor(context: Context) : ZoomApi {
     }
 
     /**
+     * Controls whether scroll gesture is enabled or not.
+     *
+     * @param enabled true enables scroll gesture, false disables it
+     */
+    override fun setScrollEnabled(enabled: Boolean) {
+        scrollFlingDetector.scrollEnabled = enabled
+    }
+
+    /**
+     * Controls whether single finger scroll gesture is enabled or not.
+     *
+     * @param enabled true enables single finger scroll gesture, false disables it
+     */
+    override fun setSingleFingerScrollEnabled(enabled: Boolean) {
+        scrollFlingDetector.singleFingerScrollEnabled = enabled
+    }
+
+    /**
      * Controls whether fling events are allowed when the view is in an overscrolled state.
      *
      * @param allow true allows fling in overscroll, false disables it
