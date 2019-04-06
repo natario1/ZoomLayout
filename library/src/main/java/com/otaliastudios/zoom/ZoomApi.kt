@@ -246,7 +246,7 @@ interface ZoomApi {
     /**
      * Controls whether two fingers scroll gesture is enabled or not.
      *
-     * @param enabled true enables twi fingers scroll gesture, false disables it
+     * @param enabled true enables two fingers scroll gesture, false disables it
      */
     fun setTwoFingersScrollEnabled(enabled: Boolean)
 
