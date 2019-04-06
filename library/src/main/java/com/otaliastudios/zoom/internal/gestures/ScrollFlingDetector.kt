@@ -38,7 +38,9 @@ internal class ScrollFlingDetector(
 
     internal var flingEnabled = true
     internal var scrollEnabled = true
-    internal var singleFingerScrollEnabled = true
+    internal var oneFingerScrollEnabled = true
+    internal var twoFingersScrollEnabled = true
+    internal var threeFingersScrollEnabled = true
     internal var flingInOverPanEnabled = false
 
     /**
@@ -147,7 +149,14 @@ internal class ScrollFlingDetector(
             @ZoomApi.ScaledPan distanceY: Float
     ): Boolean {
         if (!scrollEnabled) return false
-        if (!singleFingerScrollEnabled && e1 != null && e1.pointerCount == 1) return false
+
+        val isOneFinger = e2?.pointerCount == 1
+        val isTwoFingers = e2?.pointerCount == 2
+        val isThreeFingers = e2?.pointerCount == 3
+
+        if (!oneFingerScrollEnabled && isOneFinger) return false
+        if (!twoFingersScrollEnabled && isTwoFingers) return false
+        if (!threeFingersScrollEnabled && isThreeFingers) return false
         if (!panManager.isEnabled) return false
         if (!stateController.setScrolling()) return false
 

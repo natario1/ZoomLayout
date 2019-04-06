@@ -237,11 +237,25 @@ interface ZoomApi {
     fun setScrollEnabled(enabled: Boolean)
 
     /**
-     * Controls whether single finger scroll gesture is enabled or not.
+     * Controls whether one finger scroll gesture is enabled or not.
      *
-     * @param enabled true enables single finger scroll gesture, false disables it
+     * @param enabled true enables one finger scroll gesture, false disables it
      */
-    fun setSingleFingerScrollEnabled(enabled: Boolean)
+    fun setOneFingerScrollEnabled(enabled: Boolean)
+
+    /**
+     * Controls whether two fingers scroll gesture is enabled or not.
+     *
+     * @param enabled true enables twi fingers scroll gesture, false disables it
+     */
+    fun setTwoFingersScrollEnabled(enabled: Boolean)
+
+    /**
+     * Controls whether three fingers scroll gesture is enabled or not.
+     *
+     * @param enabled true enables three fingers scroll gesture, false disables it
+     */
+    fun setThreeFingersScrollEnabled(enabled: Boolean)
 
     /**
      * Controls whether fling events are allowed when the view is in an overscrolled state.

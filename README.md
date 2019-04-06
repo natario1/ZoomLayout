@@ -52,6 +52,10 @@ A container for view hierarchies that can be panned or zoomed.
     app:verticalPanEnabled="true"
     app:zoomEnabled="true"
     app:flingEnabled="true"
+    app:scrollEnabled="true"
+    app:oneFingerScrollEnabled="true"
+    app:twoFingersScrollEnabled="true"
+    app:threeFingersScrollEnabled="true"
     app:minZoom="0.7"
     app:minZoomType="zoom"
     app:maxZoom="2.5"
@@ -106,6 +110,10 @@ An `ImageView` implementation to control pan and zoom over its Drawable or Bitma
     app:verticalPanEnabled="true"
     app:zoomEnabled="true"
     app:flingEnabled="true"
+    app:scrollEnabled="true"
+    app:oneFingerScrollEnabled="true"
+    app:twoFingersScrollEnabled="true"
+    app:threeFingersScrollEnabled="true"
     app:minZoom="0.7"
     app:minZoomType="zoom"
     app:maxZoom="2.5"
@@ -158,6 +166,10 @@ that streams image buffers into a `Surface`.
     app:verticalPanEnabled="true"
     app:zoomEnabled="true"
     app:flingEnabled="true"
+    app:scrollEnabled="true"
+    app:oneFingerScrollEnabled="true"
+    app:twoFingersScrollEnabled="true"
+    app:threeFingersScrollEnabled="true"
     app:minZoom="1"
     app:minZoomType="zoom"
     app:maxZoom="2.5"
@@ -351,6 +363,10 @@ In any case the current scale is not considered, so your system won't change if 
 |`setHorizontalPanEnabled(boolean)`|If true, the content will be allowed to pan **horizontally** by user input.|`true`|
 |`setVerticalPanEnabled(boolean)`|If true, the content will be allowed to pan **vertically** by user input.|`true`|
 |`setFlingEnabled(boolean)`|If true, fling gestures will be detected.|`true`|
+|`setScrollEnabled(boolean)`|If true, scroll gestures will be detected.|`true`|
+|`setOneFingerScrollEnabled(boolean)`|If true, one finger scroll gestures will be detected.|`true`|
+|`setTwoFingersScrollEnabled(boolean)`|If true, two fingers scroll gestures will be detected.|`true`|
+|`setThreeFingersScrollEnabled(boolean)`|If true, three fingers scroll gestures will be detected.|`true`|
 |`setAllowFlingInOverscroll(boolean)`|If true, fling gestures will be allowed even when detected while overscrolled. This might cause artifacts so it is disabled by default.|`false`|
 |`panTo(float, float, boolean)`|Pans to the given values, animating if needed.|`-`|
 |`panBy(float, float, boolean)`|Applies the given deltas to the current pan, animating if needed.|`-`|
