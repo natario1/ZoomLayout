@@ -230,6 +230,34 @@ interface ZoomApi {
     // TODO (v2) rename to var isFlingEnabled or isGestureFlingEnabled to clearly differentiate gestures and engine movements (pan/zoom)
 
     /**
+     * Controls whether scroll gesture is enabled or not.
+     *
+     * @param enabled true enables scroll gesture, false disables it
+     */
+    fun setScrollEnabled(enabled: Boolean)
+
+    /**
+     * Controls whether one finger scroll gesture is enabled or not.
+     *
+     * @param enabled true enables one finger scroll gesture, false disables it
+     */
+    fun setOneFingerScrollEnabled(enabled: Boolean)
+
+    /**
+     * Controls whether two fingers scroll gesture is enabled or not.
+     *
+     * @param enabled true enables two fingers scroll gesture, false disables it
+     */
+    fun setTwoFingersScrollEnabled(enabled: Boolean)
+
+    /**
+     * Controls whether three fingers scroll gesture is enabled or not.
+     *
+     * @param enabled true enables three fingers scroll gesture, false disables it
+     */
+    fun setThreeFingersScrollEnabled(enabled: Boolean)
+
+    /**
      * Controls whether fling events are allowed when the view is in an overscrolled state.
      *
      * @param allow true allows fling in overscroll, false disables it
