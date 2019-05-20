@@ -346,7 +346,7 @@ All pan APIs accept x and y coordinates. These refer to the top-left visible pix
 - If using `ZoomLayout`, the coordinate system is that of the inner view
 - If using `ZoomImageView`, the coordinate system is that of the drawable intrinsic width and height
 - If using `ZoomSurfaceView`, the coordinate system is that of the view dimensions
-- If using the engine directly, the coordinate system is that of the rect you passed in `setContentRect`
+- If using the engine directly, the coordinate system is that of the rect starting at `(0f, 0f)` and having the size you passed in `setContentSize`
 
 In any case the current scale is not considered, so your system won't change if zoom changes.
 
