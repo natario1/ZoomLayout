@@ -1,3 +1,11 @@
+### v1.6.1
+
+- Enhancement: Internal refactoring into smaller components [@natario1][natario1] ([#97][97]) 
+- Enhancement: Added scrollEnabled, oneFingerScrollEnabled, twoFingersScrollEnabled and threeFingersScrollEnabled [@RayyanTahir][RayyanTahir] ([#102][102])
+- Fix: fixed invalid use of `setContentRect` in README [@r4zzz4k][r4zzz4k] ([#105][105])
+
+https://github.com/natario1/ZoomLayout/compare/v1.6.0...v1.6.1
+
 ### v1.6.0
 
 - Introduces ZoomSurfaceView, a zoomable and pannable Surface container. Please read docs for usage ([#94][94]).
@@ -28,12 +36,16 @@ https://github.com/natario1/ZoomLayout/compare/v1.5.0...v1.5.1
 
 https://github.com/natario1/ZoomLayout/compare/v1.4.0...v1.5.0
 
+[natario1]: https://github.com/natario1
 [markusressel]: https://github.com/markusressel
 [nil2l]: https://github.com/nil2l
 [LRP-sgravel]: https://github.com/LRP-sgravel
 [dmazzoni]: https://github.com/dmazzoni
 [asclepix]: https://github.com/asclepix
 [Sly112]: https://github.com/Sly112
+[RayyanTahir]: https://github.com/RayyanTahir
+[r4zzz4k]: https://github.com/r4zzz4k
+
 
 [38]: https://github.com/natario1/ZoomLayout/pull/38
 [70]: https://github.com/natario1/ZoomLayout/pull/70
@@ -47,3 +59,6 @@ https://github.com/natario1/ZoomLayout/compare/v1.4.0...v1.5.0
 [90]: https://github.com/natario1/ZoomLayout/pull/90
 [92]: https://github.com/natario1/ZoomLayout/pull/92
 [94]: https://github.com/natario1/ZoomLayout/pull/94
+[97]: https://github.com/natario1/ZoomLayout/pull/97
+[102]: https://github.com/natario1/ZoomLayout/pull/102
+[105]: https://github.com/natario1/ZoomLayout/pull/105
