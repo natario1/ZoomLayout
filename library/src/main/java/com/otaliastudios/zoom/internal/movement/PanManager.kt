@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.view.Gravity
 import com.otaliastudios.zoom.*
 import com.otaliastudios.zoom.internal.matrix.MatrixController
+import kotlin.math.min
 
 /**
  * Contains:
@@ -56,6 +57,7 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
         @ZoomApi.ScaledPan val contentDim = (if (horizontal) controller.contentScaledWidth else controller.contentScaledHeight).toInt()
         val fix = checkBounds(horizontal, false).toInt()
         val alignment = if (horizontal) Alignment.getHorizontal(alignment) else Alignment.getVertical(alignment)
+        @Suppress("CascadeIf")
         if (contentDim > containerDim) {
             // Content is bigger. We can move between 0 and extraSpace, but since our pans
             // are negative, we must invert the sign.
@@ -150,7 +152,7 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
         get() {
             val overX = controller.containerWidth * DEFAULT_OVERPAN_FACTOR
             val overY = controller.containerHeight * DEFAULT_OVERPAN_FACTOR
-            return Math.min(overX, overY)
+            return min(overX, overY)
         }
 
     /**

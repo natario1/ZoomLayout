@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
-import android.view.Gravity
 import android.view.MotionEvent
 import android.widget.ImageView
 import androidx.annotation.AttrRes
@@ -16,12 +15,13 @@ import com.otaliastudios.zoom.ZoomApi.ZoomType
 /**
  * Uses [ZoomEngine] to allow zooming and pan events to the inner drawable.
  */
+@Suppress("LeakingThis")
 @SuppressLint("AppCompatCustomView")
 open class ZoomImageView private constructor(
         context: Context,
         attrs: AttributeSet?,
         @AttrRes defStyleAttr: Int,
-        val engine: ZoomEngine = ZoomEngine(context)
+        @Suppress("MemberVisibilityCanBePrivate") val engine: ZoomEngine = ZoomEngine(context)
 ) : ImageView(context, attrs, defStyleAttr), ZoomApi by engine {
 
     @JvmOverloads
@@ -86,7 +86,7 @@ open class ZoomImageView private constructor(
         setMaxZoom(maxZoom, maxZoomMode)
 
         imageMatrix = mMatrix
-        scaleType = ImageView.ScaleType.MATRIX
+        scaleType = ScaleType.MATRIX
     }
 
     override fun setImageDrawable(drawable: Drawable?) {

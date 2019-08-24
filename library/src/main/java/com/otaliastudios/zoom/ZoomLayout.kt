@@ -1,5 +1,6 @@
 package com.otaliastudios.zoom
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Matrix
@@ -23,11 +24,12 @@ import com.otaliastudios.zoom.ZoomApi.ZoomType
  *
  * Currently padding to this view / margins to the child view are NOT supported.
  */
+@Suppress("LeakingThis")
 open class ZoomLayout private constructor(
         context: Context,
         attrs: AttributeSet?,
         @AttrRes defStyleAttr: Int,
-        val engine: ZoomEngine = ZoomEngine(context)
+        @Suppress("MemberVisibilityCanBePrivate") val engine: ZoomEngine = ZoomEngine(context)
 ) : FrameLayout(context, attrs, defStyleAttr),
         ViewTreeObserver.OnGlobalLayoutListener,
         ZoomApi by engine {
@@ -113,17 +115,17 @@ open class ZoomLayout private constructor(
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
 
         // Measure ourselves as MATCH_PARENT
-        val widthMode = View.MeasureSpec.getMode(widthMeasureSpec)
-        val heightMode = View.MeasureSpec.getMode(heightMeasureSpec)
-        if (widthMode == View.MeasureSpec.UNSPECIFIED || heightMode == View.MeasureSpec.UNSPECIFIED) {
+        val widthMode = MeasureSpec.getMode(widthMeasureSpec)
+        val heightMode = MeasureSpec.getMode(heightMeasureSpec)
+        if (widthMode == MeasureSpec.UNSPECIFIED || heightMode == MeasureSpec.UNSPECIFIED) {
             throw RuntimeException("$TAG must be used with fixed dimensions (e.g. match_parent)")
         }
-        val widthSize = View.MeasureSpec.getSize(widthMeasureSpec)
-        val heightSize = View.MeasureSpec.getSize(heightMeasureSpec)
+        val widthSize = MeasureSpec.getSize(widthMeasureSpec)
+        val heightSize = MeasureSpec.getSize(heightMeasureSpec)
         setMeasuredDimension(widthSize, heightSize)
 
         // Measure our child as unspecified.
-        val spec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        val spec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
         measureChildren(spec, spec)
     }
 
@@ -138,6 +140,7 @@ open class ZoomLayout private constructor(
         return engine.onInterceptTouchEvent(ev) || hasClickableChildren && super.onInterceptTouchEvent(ev)
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(ev: MotionEvent): Boolean {
         return engine.onTouchEvent(ev) || hasClickableChildren && super.onTouchEvent(ev)
     }

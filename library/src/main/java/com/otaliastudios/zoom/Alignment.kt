@@ -9,10 +9,10 @@ import android.view.Gravity
 object Alignment {
 
     // Will use one hexadecimal value for each axis, so 16 possible values.
-    internal const val MASK = 0xF0     // 1111 0000
+    private const val MASK = 0xF0     // 1111 0000
 
     // A special value meaning that the flag for some axis was not set.
-    internal const val NO_VALUE = 0x0
+    private const val NO_VALUE = 0x0
 
     // Vertical
 
@@ -91,23 +91,24 @@ object Alignment {
      * In case [alignment] includes both axes, both are required to be 'none' or [NO_VALUE].
      */
     internal fun isNone(alignment: Int): Boolean {
-        return alignment == Alignment.NONE
-                || alignment == Alignment.NO_VALUE
-                || alignment == Alignment.NONE_HORIZONTAL
-                || alignment == Alignment.NONE_VERTICAL
+        return alignment == NONE
+                || alignment == NO_VALUE
+                || alignment == NONE_HORIZONTAL
+                || alignment == NONE_VERTICAL
     }
 
     /**
      * Transforms this alignment to a horizontal gravity value.
      */
+    @Suppress("MoveVariableDeclarationIntoWhen")
     @SuppressLint("RtlHardcoded")
     internal fun toHorizontalGravity(alignment: Int, valueIfNone: Int): Int {
         val horizontalAlignment = getHorizontal(alignment)
         return when (horizontalAlignment) {
-            Alignment.LEFT -> Gravity.LEFT
-            Alignment.RIGHT -> Gravity.RIGHT
-            Alignment.CENTER_HORIZONTAL -> Gravity.CENTER_HORIZONTAL
-            Alignment.NONE_HORIZONTAL -> valueIfNone
+            LEFT -> Gravity.LEFT
+            RIGHT -> Gravity.RIGHT
+            CENTER_HORIZONTAL -> Gravity.CENTER_HORIZONTAL
+            NONE_HORIZONTAL -> valueIfNone
             else -> valueIfNone
         }
     }
@@ -115,13 +116,14 @@ object Alignment {
     /**
      * Transforms this alignment to a vertical gravity value.
      */
+    @Suppress("MoveVariableDeclarationIntoWhen")
     internal fun toVerticalGravity(alignment: Int, valueIfNone: Int): Int {
         val verticalAlignment = getVertical(alignment)
         return when (verticalAlignment) {
-            Alignment.TOP -> Gravity.TOP
-            Alignment.BOTTOM -> Gravity.BOTTOM
-            Alignment.CENTER_VERTICAL -> Gravity.CENTER_VERTICAL
-            Alignment.NONE_VERTICAL -> valueIfNone
+            TOP -> Gravity.TOP
+            BOTTOM -> Gravity.BOTTOM
+            CENTER_VERTICAL -> Gravity.CENTER_VERTICAL
+            NONE_VERTICAL -> valueIfNone
             else -> valueIfNone
         }
     }

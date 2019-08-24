@@ -9,7 +9,6 @@ import com.otaliastudios.zoom.*
 import com.otaliastudios.zoom.ZoomApi.AbsolutePan
 import com.otaliastudios.zoom.internal.matrix.MatrixController
 import com.otaliastudios.zoom.internal.StateController
-import com.otaliastudios.zoom.internal.matrix.MatrixUpdate
 import com.otaliastudios.zoom.internal.movement.PanManager
 import com.otaliastudios.zoom.internal.movement.ZoomManager
 
@@ -211,8 +210,7 @@ internal class PinchDetector(
      * When the viewport is 1000x1000 and the [ZoomLayout] content is 3000x3000 and exactly centered
      * and you call [containerPointToContentPoint(-500,-500)] the result will be 1500x1500
      *
-     * @param x x-axis screen value
-     * @param y y-axis screen value
+     * @param containerPoint screen point
      * @return the content absolute coordinate
      */
     private fun containerPointToContentPoint(containerPoint: PointF): AbsolutePoint {

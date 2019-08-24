@@ -116,16 +116,16 @@ internal class StateController(private val callback: Callback) {
             }
         }
 
-        if (result && !isIdle()) {
+        return if (result && !isIdle()) {
             LOG.v("processTouchEvent:", "returning: TOUCH_STEAL")
-            return TOUCH_STEAL
+            TOUCH_STEAL
         } else if (result) {
             LOG.v("processTouchEvent:", "returning: TOUCH_LISTEN")
-            return TOUCH_LISTEN
+            TOUCH_LISTEN
         } else {
             LOG.v("processTouchEvent:", "returning: TOUCH_NO")
             makeIdle()
-            return TOUCH_NO
+            TOUCH_NO
         }
     }
 
@@ -133,15 +133,18 @@ internal class StateController(private val callback: Callback) {
     internal fun isFlinging() = state == FLINGING
 
     /** Whether we are in [SCROLLING] state. */
+    @Suppress("MemberVisibilityCanBePrivate")
     internal fun isScrolling() = state == SCROLLING
 
     /** Whether we are in [PINCHING] state. */
+    @Suppress("MemberVisibilityCanBePrivate")
     internal fun isPinching() = state == PINCHING
 
     /** Whether we are in [ANIMATING] state. */
     internal fun isAnimating() = state == ANIMATING
 
     /** Whether we are in [IDLE] state. */
+    @Suppress("MemberVisibilityCanBePrivate")
     internal fun isIdle() = state == IDLE
 
     /**

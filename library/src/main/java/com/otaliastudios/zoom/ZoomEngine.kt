@@ -14,6 +14,8 @@ import com.otaliastudios.zoom.internal.gestures.ScrollFlingDetector
 import com.otaliastudios.zoom.internal.matrix.MatrixUpdate
 import com.otaliastudios.zoom.internal.movement.PanManager
 import com.otaliastudios.zoom.internal.movement.ZoomManager
+import kotlin.math.max
+import kotlin.math.min
 
 
 /**
@@ -158,6 +160,7 @@ internal constructor(context: Context) : ZoomApi {
     // Internal
     private lateinit var container: View
     private val callbacks = Callbacks()
+    @Suppress("LeakingThis")
     private val dispatcher = UpdatesDispatcher(this)
     private val stateController = StateController(callbacks)
     private val panManager = PanManager { matrixController }
@@ -570,6 +573,7 @@ internal constructor(context: Context) : ZoomApi {
      * until the view is laid out again and [ZoomEngine.setContentSize]
      * is called.
      */
+    @Suppress("unused")
     fun clear() {
         zoomManager.clear()
         panManager.clear()
@@ -585,13 +589,13 @@ internal constructor(context: Context) : ZoomApi {
                 val scaleX = containerWidth / contentWidth
                 val scaleY = containerHeight / contentHeight
                 LOG.v("computeTransformationZoom", "centerInside", "scaleX:", scaleX, "scaleY:", scaleY)
-                return Math.min(scaleX, scaleY)
+                return min(scaleX, scaleY)
             }
             ZoomApi.TRANSFORMATION_CENTER_CROP -> {
                 val scaleX = containerWidth / contentWidth
                 val scaleY = containerHeight / contentHeight
                 LOG.v("computeTransformationZoom", "centerCrop", "scaleX:", scaleX, "scaleY:", scaleY)
-                return Math.max(scaleX, scaleY)
+                return max(scaleX, scaleY)
             }
             ZoomApi.TRANSFORMATION_NONE -> return 1f
             else -> return 1f

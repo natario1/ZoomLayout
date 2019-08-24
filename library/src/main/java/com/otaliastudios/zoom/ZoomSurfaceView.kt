@@ -7,7 +7,6 @@ import android.opengl.GLSurfaceView
 import android.os.Build
 import android.util.AttributeSet
 import android.view.*
-import androidx.annotation.ColorInt
 import androidx.annotation.RequiresApi
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
@@ -26,11 +25,12 @@ import javax.microedition.khronos.opengles.GL10
 /**
  * Uses [ZoomEngine] to allow zooming and pan events onto a GL rendered surface.
  */
+@Suppress("LeakingThis")
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 open class ZoomSurfaceView private constructor(
         context: Context,
         attrs: AttributeSet?,
-        val engine: ZoomEngine = ZoomEngine(context)
+        @Suppress("MemberVisibilityCanBePrivate") val engine: ZoomEngine = ZoomEngine(context)
 ) : GLSurfaceView(context, attrs),
         ZoomApi by engine,
         GLSurfaceView.Renderer {
@@ -68,6 +68,7 @@ open class ZoomSurfaceView private constructor(
      *
      * This class cares about releasing this object when done.
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     var surfaceTexture: SurfaceTexture? = null
         private set
 
@@ -114,6 +115,7 @@ open class ZoomSurfaceView private constructor(
     /**
      * Removes a [Callback] previously added with [addCallback].
      */
+    @Suppress("unused")
     fun removeCallback(callback: Callback) {
         callbacks.remove(callback)
     }
@@ -196,7 +198,7 @@ open class ZoomSurfaceView private constructor(
         setEGLContextFactory(EglContextFactory.GLES2)
         setEGLConfigChooser(EglConfigChooser.GLES2)
         setRenderer(this)
-        renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+        renderMode = RENDERMODE_WHEN_DIRTY
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -249,6 +251,7 @@ open class ZoomSurfaceView private constructor(
         ))
     }
 
+    @SuppressLint("Recycle")
     @WorkerThread
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         LOG.i("onSurfaceCreated")

@@ -6,8 +6,6 @@ import android.graphics.Matrix
 import android.graphics.RectF
 import android.view.animation.AccelerateDecelerateInterpolator
 import com.otaliastudios.zoom.*
-import com.otaliastudios.zoom.ZoomApi.RealZoom
-import com.otaliastudios.zoom.ZoomApi.Zoom
 import com.otaliastudios.zoom.internal.StateController
 import com.otaliastudios.zoom.internal.movement.PanManager
 import com.otaliastudios.zoom.internal.movement.ZoomManager
