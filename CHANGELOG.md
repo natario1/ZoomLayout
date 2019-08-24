@@ -1,4 +1,4 @@
-### v1.7.0
+## v1.7.0
 
 - BREAKING CHANGE: To use ZoomSurfaceView, you need to use `com.otaliastudios.opengl:egloo:0.2.3` instead of `com.otaliastudios.opengl:egl-core`. ([#114][114]) 
 - Dependencies and tools updates ([#114][114])
@@ -13,13 +13,13 @@ https://github.com/natario1/ZoomLayout/compare/v1.6.1...v1.7.0
 
 https://github.com/natario1/ZoomLayout/compare/v1.6.0...v1.6.1
 
-### v1.6.0
+## v1.6.0
 
 - Introduces ZoomSurfaceView, a zoomable and pannable Surface container. Please read docs for usage ([#94][94]).
 
 https://github.com/natario1/ZoomLayout/compare/v1.5.1...v1.6.0
 
-## v1.5.1
+### v1.5.1
 
 - Fix: fix a context leak in ZoomLayout thanks to [@dmazzoni][dmazzoni] ([#92][92]).
 - Fix: fix a bug in vertical Alignment thanks to  leak in ZoomLayout thanks to [@asclepix][asclepix] ([#90][90]).
