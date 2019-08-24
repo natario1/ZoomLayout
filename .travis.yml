@@ -15,7 +15,7 @@ android:
     - tools
     - platform-tools
     # https://developer.android.com/studio/releases/build-tools
-    - build-tools-29.0.2
+    - build-tools-29.0.0
     - android-29
     - doc-29
 
