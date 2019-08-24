@@ -28,7 +28,7 @@ ext {
     compileSdkVersion = 29
     minSdkVersion = 16
     targetSdkVersion = 29
-    eglCoreVersion = '0.1.1'
+    eglooVersion = '0.2.3'
 }
 
 task clean(type: Delete) {
