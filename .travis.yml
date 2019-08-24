@@ -15,9 +15,9 @@ android:
     - tools
     - platform-tools
     # https://developer.android.com/studio/releases/build-tools
-    - build-tools-29.0.0
-    - android-29
-    - doc-29
+    - build-tools-28.0.3
+    - android-28
+    - doc-28
 
 cache:
   directories:
