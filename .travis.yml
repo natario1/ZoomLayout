@@ -14,6 +14,7 @@ android:
   components:
     - tools
     - platform-tools
+    # https://developer.android.com/studio/releases/build-tools
     - build-tools-28.0.3
     - android-28
     - doc-28

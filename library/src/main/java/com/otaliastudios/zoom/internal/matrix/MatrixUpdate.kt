@@ -42,6 +42,7 @@ internal class MatrixUpdate private constructor(
 
         private var zoom: Float = Float.NaN
         private var zoomRelative = false
+        @Suppress("MemberVisibilityCanBePrivate")
         internal var overZoom: Boolean = false
 
         private var pan: AbsolutePoint? = null
@@ -59,6 +60,7 @@ internal class MatrixUpdate private constructor(
             this.overZoom = overZoom
         }
 
+        @Suppress("unused")
         internal fun zoomBy(zoom: Float, overZoom: Boolean) {
             this.zoom = zoom
             this.zoomRelative = true
@@ -112,6 +114,7 @@ internal class MatrixUpdate private constructor(
 
     companion object {
         private val TAG = MatrixUpdate::class.java.simpleName
+        @Suppress("unused")
         private val LOG = ZoomLogger.create(TAG)
 
         /**

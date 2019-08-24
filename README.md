@@ -10,7 +10,7 @@ Flexible utilities to control and animate zoom and translation of Views and much
 programmatically or through touch events.
 
 ```groovy
-implementation 'com.otaliastudios:zoomlayout:1.6.1'
+implementation 'com.otaliastudios:zoomlayout:1.7.0'
 ```
 
 <p>
@@ -186,12 +186,11 @@ There are a few special things about `ZoomSurfaceView` with respect to the other
 - You **must** either call `ZoomSurfaceView.setContentSize()` passing the stream size, or measure the
   view so that it matches the stream aspect ratio.
 
-To use `ZoomSurfaceView` you must add the [EglCore](https://github.com/natario1/EglCore) library to your
-dependencies or the view will crash. Please take a look at the sample app to see which version you
-should be using.
+To use `ZoomSurfaceView` you must add the [Egloo](https://github.com/natario1/Egloo) library to your
+dependencies or the view will crash. You should also use the exact version that this library is expecting.
 
 ```groovy
-implementation 'com.otaliastudios.opengl:egl-core:<version>'
+implementation 'com.otaliastudios.opengl:egloo:0.2.3'
 ```
 
 ### Usage

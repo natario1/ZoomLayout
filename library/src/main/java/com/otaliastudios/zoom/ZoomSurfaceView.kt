@@ -7,18 +7,18 @@ import android.opengl.GLSurfaceView
 import android.os.Build
 import android.util.AttributeSet
 import android.view.*
-import androidx.annotation.ColorInt
 import androidx.annotation.RequiresApi
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import com.otaliastudios.zoom.ZoomApi.ZoomType
 import com.otaliastudios.opengl.core.EglConfigChooser
 import com.otaliastudios.opengl.core.EglContextFactory
-import com.otaliastudios.opengl.core.makeIdentity
-import com.otaliastudios.opengl.draw.EglRect
-import com.otaliastudios.opengl.program.EglFlatProgram
-import com.otaliastudios.opengl.program.EglTextureProgram
-import com.otaliastudios.opengl.scene.EglScene
+import com.otaliastudios.opengl.draw.GlRect
+import com.otaliastudios.opengl.extensions.clear
+import com.otaliastudios.opengl.extensions.scale
+import com.otaliastudios.opengl.extensions.translate
+import com.otaliastudios.opengl.program.GlFlatProgram
+import com.otaliastudios.opengl.program.GlTextureProgram
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -26,21 +26,32 @@ import javax.microedition.khronos.opengles.GL10
 /**
  * Uses [ZoomEngine] to allow zooming and pan events onto a GL rendered surface.
  */
+@Suppress("LeakingThis")
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 open class ZoomSurfaceView private constructor(
         context: Context,
         attrs: AttributeSet?,
-        val engine: ZoomEngine = ZoomEngine(context)
+        @Suppress("MemberVisibilityCanBePrivate") val engine: ZoomEngine = ZoomEngine(context)
 ) : GLSurfaceView(context, attrs),
         ZoomApi by engine,
         GLSurfaceView.Renderer {
 
     init {
-        // See if the com.otaliastudios.opengl:egl-core was added.
-        val hasEglCore = runCatching { EglRect() }
-        if (hasEglCore.isFailure) {
-            throw IllegalStateException("If you wish to use ZoomSurfaceView, you must" +
-                    "add com.otaliastudios.opengl:egl-core to your dependencies.")
+        // See if the OpenGL dependency was added.
+        val hasEgloo = runCatching { GlRect() }
+        if (hasEgloo.isFailure) {
+            val hasEglCore = runCatching {
+                Class.forName("com.otaliastudios.opengl.draw.EglRect").newInstance()
+            }
+            if (hasEglCore.isSuccess) {
+                throw RuntimeException("Starting from ZoomLayout v1.7.0, you should replace " +
+                        "com.otaliastudios.opengl:egl-core with com.otaliastudios.opengl:egloo. " +
+                        "Check documentation for version.")
+            } else {
+                throw RuntimeException("To use ZoomSurfaceView, you have to add " +
+                        "com.otaliastudios.opengl:egloo to your dependencies. " +
+                        "Check documentation for version.")
+            }
         }
     }
 
@@ -49,7 +60,6 @@ open class ZoomSurfaceView private constructor(
             : this(context, attrs, ZoomEngine(context))
 
     private val callbacks = mutableListOf<Callback>()
-    private val surfaceTextureTransformMatrix = FloatArray(16)
 
     /**
      * A [Surface] that can be consumed by some buffer provider.
@@ -68,17 +78,16 @@ open class ZoomSurfaceView private constructor(
      *
      * This class cares about releasing this object when done.
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     var surfaceTexture: SurfaceTexture? = null
         private set
 
+    private val glTextureRect = GlRect()
+    private val glFlatRect = GlRect()
+    private var glTextureProgram: GlTextureProgram? = null
+    private var glFlatProgram: GlFlatProgram? = null
 
-    private val scene = EglScene()
-    private val textureRect = EglRect()
-    private var textureProgram: EglTextureProgram? = null
-    private var textureId = 0
-    private var flatProgram: EglFlatProgram? = null
-    private val flatRect = EglRect()
-    private var flatColor = floatArrayOf(0.1F, 0.1F, 0.1F, 1F)
+    private var backgroundColor: Int = Color.rgb(25, 25, 25)
     private var drawsBackgroundColor = false
     private var hasExplicitContentSize = false
 
@@ -114,6 +123,7 @@ open class ZoomSurfaceView private constructor(
     /**
      * Removes a [Callback] previously added with [addCallback].
      */
+    @Suppress("unused")
     fun removeCallback(callback: Callback) {
         callbacks.remove(callback)
     }
@@ -124,10 +134,10 @@ open class ZoomSurfaceView private constructor(
      */
     override fun setBackgroundColor(color: Int) {
         drawsBackgroundColor = Color.alpha(color) > 0
-        flatColor[0] = (Color.red(color).toFloat() / 255F).coerceIn(0F, 1F)
-        flatColor[1] = (Color.green(color).toFloat() / 255F).coerceIn(0F, 1F)
-        flatColor[2] = (Color.blue(color).toFloat() / 255F).coerceIn(0F, 1F)
-        flatColor[3] = (Color.alpha(color).toFloat() / 255F).coerceIn(0F, 1F)
+        backgroundColor = color
+        if (glFlatProgram != null) {
+            glFlatProgram!!.setColor(color)
+        }
     }
 
     /**
@@ -196,7 +206,7 @@ open class ZoomSurfaceView private constructor(
         setEGLContextFactory(EglContextFactory.GLES2)
         setEGLConfigChooser(EglConfigChooser.GLES2)
         setRenderer(this)
-        renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+        renderMode = RENDERMODE_WHEN_DIRTY
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -234,28 +244,26 @@ open class ZoomSurfaceView private constructor(
      * engine and this invalidates the meaning of the engine updates.
      */
     private fun onContentOrContainerSizeChanged() {
-        val fullSize = EGL_RECT_FULL_SIZE // Full size of EglRect()
+        val fullSize = EGLOO_DRAWABLE_FULL_SIZE // Full size of GlRect()
         val width = fullSize * engine.contentWidth / engine.containerWidth
         val height = fullSize * engine.contentHeight / engine.containerHeight
-        val originX = EGL_RECT_TOPLEFT_X
-        val originY = EGL_RECT_TOPLEFT_Y
-        val endX = originX + width
-        val endY = originY - height // Y is opposite in GL
-        textureRect.setVertexCoords(floatArrayOf(
-                originX, endY,
-                endX, endY,
-                originX, originY,
-                endX, originY
-        ))
+        val rect = RectF(
+                EGLOO_DRAWABLE_TOPLEFT_X,
+                EGLOO_DRAWABLE_TOPLEFT_Y,
+                EGLOO_DRAWABLE_TOPLEFT_X + width,
+                EGLOO_DRAWABLE_TOPLEFT_Y - height // y is opposite in GL
+        )
+        glTextureRect.setVertexArray(rect)
     }
 
+    @SuppressLint("Recycle")
     @WorkerThread
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         LOG.i("onSurfaceCreated")
-        flatProgram = EglFlatProgram()
-        textureProgram = EglTextureProgram()
-        textureId = textureProgram!!.createTexture()
-        surfaceTexture = SurfaceTexture(textureId).also {
+        glFlatProgram = GlFlatProgram()
+        glFlatProgram!!.setColor(backgroundColor)
+        glTextureProgram = GlTextureProgram()
+        surfaceTexture = SurfaceTexture(glTextureProgram!!.textureId).also {
             // Since we are using RENDERMODE_WHEN_DIRTY, we must notify the SurfaceView
             // of dirtyness, so that it draws again. This is how it's done. requestRender is thread-safe.
             it.setOnFrameAvailableListener { requestRender() }
@@ -271,10 +279,6 @@ open class ZoomSurfaceView private constructor(
     @WorkerThread
     override fun onSurfaceChanged(gl: GL10, width: Int, height: Int) {
         gl.glViewport(0, 0, width, height)
-        // Another option, like CameraView/GlCameraPreview does/did, is to force
-        // recreate the GL thread using onPause() + onResume() [if width or height changed].
-        // That relies on the fact that the initial glViewport is that of the surface and was
-        // a workaround. It's better to update the viewport than force a recreation.
     }
 
     override fun onDetachedFromWindow() {
@@ -288,8 +292,8 @@ open class ZoomSurfaceView private constructor(
     private fun releaseCurrentSurface() {
         val hasSurface = surfaceTexture != null
         surfaceTexture?.release()
-        textureProgram?.release()
-        flatProgram?.release()
+        glTextureProgram?.release()
+        glFlatProgram?.release()
         surface?.release()
         if (hasSurface) {
             callbacks.forEach {
@@ -297,8 +301,8 @@ open class ZoomSurfaceView private constructor(
             }
         }
         surfaceTexture = null // Keep these non-null in the callback
-        textureProgram = null
-        flatProgram = null
+        glTextureProgram = null
+        glFlatProgram = null
         surface = null
 
     }
@@ -327,39 +331,46 @@ open class ZoomSurfaceView private constructor(
     @WorkerThread
     override fun onDrawFrame(gl: GL10) {
         val texture = surfaceTexture ?: return
-        val program = textureProgram ?: return
-        val flatProgram = flatProgram ?: return
+        val textureProgram = glTextureProgram ?: return
+        val flatProgram = glFlatProgram ?: return
+
         // Latch the latest frame. If there isn't anything new, we'll just re-use whatever was there before.
         texture.updateTexImage()
-        texture.getTransformMatrix(surfaceTextureTransformMatrix)
+        texture.getTransformMatrix(textureProgram.textureTransform)
         LOG.i("onDrawFrame: zoom:${engine.realZoom} panX:${engine.panX} panY:${engine.panY}")
-        // Note that the textureRect has size 2x2 due to how it is defined (full rect coords).
+
+        // The textureRect has size 2x2 (goes from -1 to 1 in both dimensions).
         // It applies translation first then scale, scaling WRT the translated container center.
-        val textureWidth = EGL_RECT_FULL_SIZE * engine.contentWidth / engine.containerWidth
-        val textureHeight = EGL_RECT_FULL_SIZE * engine.contentHeight / engine.containerHeight
+        val textureWidth = EGLOO_DRAWABLE_FULL_SIZE * engine.contentWidth / engine.containerWidth
+        val textureHeight = EGLOO_DRAWABLE_FULL_SIZE * engine.contentHeight / engine.containerHeight
         val translX = textureWidth * (panX / engine.contentWidth)
         val translY = -textureHeight * (panY / engine.contentHeight)
         val scaleX = realZoom
         val scaleY = realZoom
         LOG.i("onDrawFrame: translX:$translX translY:$translY scaleX:$scaleX scaleY:$scaleY")
-        textureRect.modelMatrix.makeIdentity()
-        // 1. translate with our pan values.
-        android.opengl.Matrix.translateM(textureRect.modelMatrix, 0, translX, translY, 0F)
-        // 2. Scale, but with respect to the top-left point (0,1). This is achieved by translating then translating back.
-        // In this case we also have to account for translation - we want to scale WRT to the TEXTURE point, not the container point.
-        android.opengl.Matrix.translateM(textureRect.modelMatrix, 0, EGL_RECT_TOPLEFT_X - translX, EGL_RECT_TOPLEFT_Y - translY, 0f)
-        android.opengl.Matrix.scaleM(textureRect.modelMatrix, 0, scaleX, scaleY, 1F)
-        android.opengl.Matrix.translateM(textureRect.modelMatrix, 0, -EGL_RECT_TOPLEFT_X + translX, -EGL_RECT_TOPLEFT_Y + translY, 0f)
-        onDraw(textureRect.modelMatrix, surfaceTextureTransformMatrix)
-        // 3. Perform actual drawing. If set, draw a full screen color as background to avoid the SV full black.
+
+        // Apply the transformations
+        glTextureRect.modelMatrix.apply {
+            clear()
+            // 1. translate with our pan values.
+            translate(x = translX, y = translY)
+            // 2. Scale, but with respect to the top-left point (0,1). This is achieved by translating then translating back.
+            // In this case we also have to account for translation - we want to scale WRT to the TEXTURE point, not the container point.
+            translate(x = EGLOO_DRAWABLE_TOPLEFT_X - translX, y = EGLOO_DRAWABLE_TOPLEFT_Y - translY)
+            scale(x = scaleX, y = scaleY)
+            translate(x = -EGLOO_DRAWABLE_TOPLEFT_X + translX, y = -EGLOO_DRAWABLE_TOPLEFT_Y + translY)
+        }
+
+        // Perform actual drawing. If set, draw a full screen color as background to avoid the SV full black.
+        onDraw(glTextureRect.modelMatrix, textureProgram.textureTransform)
         if (drawsBackgroundColor) {
-            scene.drawFlat(flatRect, flatProgram, flatColor)
+            flatProgram.draw(glFlatRect)
         } else {
             // Need to clear the buffer in case we were underpinching or overscrolling or any other
             // condition that shows some black background.
             gl.glClear(GL10.GL_COLOR_BUFFER_BIT)
         }
-        scene.drawTexture(textureRect, program, textureId, surfaceTextureTransformMatrix)
+        textureProgram.draw(glTextureRect)
     }
 
     /**
@@ -374,9 +385,9 @@ open class ZoomSurfaceView private constructor(
         private val TAG = ZoomSurfaceView::class.java.simpleName
         private val LOG = ZoomLogger.create(TAG)
 
-        private const val EGL_RECT_FULL_SIZE = 2
-        private const val EGL_RECT_TOPLEFT_X = -1F
-        private const val EGL_RECT_TOPLEFT_Y = 1F
+        private const val EGLOO_DRAWABLE_FULL_SIZE = 2
+        private const val EGLOO_DRAWABLE_TOPLEFT_X = -1F
+        private const val EGLOO_DRAWABLE_TOPLEFT_Y = 1F
     }
 
 }

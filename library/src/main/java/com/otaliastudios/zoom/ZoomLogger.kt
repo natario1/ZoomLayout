@@ -12,6 +12,7 @@ class ZoomLogger private constructor(private val mTag: String) {
     @Retention(AnnotationRetention.SOURCE)
     internal annotation class LogLevel
 
+    @Suppress("unused")
     internal fun v(message: String) {
         if (should(LEVEL_VERBOSE)) {
             Log.v(mTag, message)
@@ -28,6 +29,7 @@ class ZoomLogger private constructor(private val mTag: String) {
         }
     }
 
+    @Suppress("MemberVisibilityCanBePrivate")
     internal fun w(message: String) {
         if (should(LEVEL_WARNING)) {
             Log.w(mTag, message)
@@ -36,6 +38,7 @@ class ZoomLogger private constructor(private val mTag: String) {
         }
     }
 
+    @Suppress("MemberVisibilityCanBePrivate")
     internal fun e(message: String) {
         if (should(LEVEL_ERROR)) {
             Log.e(mTag, message)
@@ -67,6 +70,7 @@ class ZoomLogger private constructor(private val mTag: String) {
         w(string(LEVEL_WARNING, *data))
     }
 
+    @Suppress("unused")
     internal fun e(vararg data: Any) {
         e(string(LEVEL_ERROR, *data))
     }

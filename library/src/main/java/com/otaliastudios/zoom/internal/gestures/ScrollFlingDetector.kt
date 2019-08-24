@@ -4,14 +4,14 @@ import android.content.Context
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.widget.OverScroller
-import com.otaliastudios.zoom.AbsolutePoint
 import com.otaliastudios.zoom.ScaledPoint
 import com.otaliastudios.zoom.ZoomApi
 import com.otaliastudios.zoom.ZoomLogger
 import com.otaliastudios.zoom.internal.matrix.MatrixController
 import com.otaliastudios.zoom.internal.StateController
-import com.otaliastudios.zoom.internal.matrix.MatrixUpdate
 import com.otaliastudios.zoom.internal.movement.PanManager
+import kotlin.math.abs
+import kotlin.math.pow
 
 /**
  * Deals with scroll and fling gestures.
@@ -137,7 +137,7 @@ internal class ScrollFlingDetector(
     /**
      * Scroll event detected.
      *
-     * We assume overScroll is true. If this is the case, it will be reset in [endScrollGesture].
+     * We assume overScroll is true. If this is the case, it will be reset in [cancelScroll].
      * If not, the applyScaledPan function will ignore our delta.
      *
      * TODO this this not true! ^
@@ -170,14 +170,14 @@ internal class ScrollFlingDetector(
         if (panFix.x < 0 && delta.x > 0 || panFix.x > 0 && delta.x < 0) {
             // Compute friction: a factor for distances. Must be 1 if we are not overscrolling,
             // and 0 if we are at the end of the available overscroll. This works:
-            val overScrollX = Math.abs(panFix.x) / panManager.maxOverPan // 0 ... 1
-            val frictionX = 0.6f * (1f - Math.pow(overScrollX.toDouble(), 0.4).toFloat()) // 0 ... 0.6
+            val overScrollX = abs(panFix.x) / panManager.maxOverPan // 0 ... 1
+            val frictionX = 0.6f * (1f - overScrollX.toDouble().pow(0.4).toFloat()) // 0 ... 0.6
             LOG.i("onScroll", "applying friction X:", frictionX)
             delta.x *= frictionX
         }
         if (panFix.y < 0 && delta.y > 0 || panFix.y > 0 && delta.y < 0) {
-            val overScrollY = Math.abs(panFix.y) / panManager.maxOverPan // 0 ... 1
-            val frictionY = 0.6f * (1f - Math.pow(overScrollY.toDouble(), 0.4).toFloat()) // 0 ... 10.6
+            val overScrollY = abs(panFix.y) / panManager.maxOverPan // 0 ... 1
+            val frictionY = 0.6f * (1f - overScrollY.toDouble().pow(0.4).toFloat()) // 0 ... 10.6
             LOG.i("onScroll", "applying friction Y:", frictionY)
             delta.y *= frictionY
         }

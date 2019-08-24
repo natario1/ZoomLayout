@@ -5,7 +5,7 @@ apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
 
 ext {
-    libVersion = '1.6.1'
+    libVersion = '1.7.0'
     libGroup = 'com.otaliastudios'
     libName = 'ZoomLayout'
     libDescription = 'A View container that supports zooming and panning of View hierarchies, images and more.'
@@ -35,21 +35,21 @@ android {
 }
 
 dependencies {
-    api "androidx.annotation:annotation:1.0.2"
+    api "androidx.annotation:annotation:1.1.0"
     api "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    compileOnly "com.otaliastudios.opengl:egl-core:$eglCoreVersion"
+    compileOnly "com.otaliastudios.opengl:egloo:$eglooVersion"
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.3.1"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.3.1"
 }
 
 task sourcesJar(type: Jar) {
-    classifier = 'sources'
+    archiveClassifier.set('sources')
     from android.sourceSets.main.java.srcDirs
 }
 
 task dokkaJar(type: Jar, dependsOn: dokka) {
-    classifier = 'javadoc'
+    archiveClassifier.set('javadoc')
     from dokka.outputDirectory
 }
 

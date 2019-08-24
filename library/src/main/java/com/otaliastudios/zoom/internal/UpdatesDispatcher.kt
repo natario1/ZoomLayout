@@ -1,6 +1,5 @@
 package com.otaliastudios.zoom.internal
 
-import com.otaliastudios.zoom.ZoomApi
 import com.otaliastudios.zoom.ZoomEngine
 import com.otaliastudios.zoom.ZoomEngine.Listener
 
@@ -13,7 +12,7 @@ import com.otaliastudios.zoom.ZoomEngine.Listener
  */
 internal class UpdatesDispatcher(private val engine: ZoomEngine) {
 
-    private val listeners = mutableListOf<ZoomEngine.Listener>()
+    private val listeners = mutableListOf<Listener>()
 
     /**
      * Dispatches [ZoomEngine.Listener.onUpdate] updates.
