@@ -5,10 +5,14 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.util.AttributeSet
-import android.view.*
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import androidx.annotation.AttrRes
 import com.otaliastudios.zoom.ZoomApi.ZoomType
+import com.otaliastudios.zoom.internal.movement.PanManager
 
 
 /**
@@ -63,6 +67,9 @@ open class ZoomLayout private constructor(
         val transformationGravity = a.getInt(R.styleable.ZoomEngine_transformationGravity, ZoomApi.TRANSFORMATION_GRAVITY_AUTO)
         val alignment = a.getInt(R.styleable.ZoomEngine_alignment, ZoomApi.ALIGNMENT_DEFAULT)
         val animationDuration = a.getInt(R.styleable.ZoomEngine_animationDuration, ZoomEngine.DEFAULT_ANIMATION_DURATION.toInt()).toLong()
+        val horizontalShift = a.getInt(R.styleable.ZoomEngine_panHorizontalShift, ZoomApi.PAN_HORIZONTAL_SHIFT_DEFAULT)
+        val verticalShift = a.getInt(R.styleable.ZoomEngine_panVerticalShift, ZoomApi.PAN_VERTICAL_SHIFT_DEFAULT)
+        val overpanFactor = a.getFloat(R.styleable.ZoomEngine_overpanFactor, PanManager.DEFAULT_OVERPAN_FACTOR)
         a.recycle()
 
         engine.setContainer(this)
@@ -88,6 +95,9 @@ open class ZoomLayout private constructor(
         setMinZoom(minZoom, minZoomMode)
         setMaxZoom(maxZoom, maxZoomMode)
         setHasClickableChildren(hasChildren)
+        setPanHorizontalShift(horizontalShift)
+        setPanVeritcalShift(verticalShift)
+        setOverpanFactor(overpanFactor)
 
         setWillNotDraw(false)
     }

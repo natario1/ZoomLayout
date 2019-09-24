@@ -4,13 +4,16 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Matrix
 import android.graphics.RectF
-import android.view.*
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewTreeObserver
 import com.otaliastudios.zoom.ZoomApi.*
-import com.otaliastudios.zoom.internal.UpdatesDispatcher
-import com.otaliastudios.zoom.internal.matrix.MatrixController
 import com.otaliastudios.zoom.internal.StateController
+import com.otaliastudios.zoom.internal.UpdatesDispatcher
 import com.otaliastudios.zoom.internal.gestures.PinchDetector
 import com.otaliastudios.zoom.internal.gestures.ScrollFlingDetector
+import com.otaliastudios.zoom.internal.matrix.MatrixController
 import com.otaliastudios.zoom.internal.matrix.MatrixUpdate
 import com.otaliastudios.zoom.internal.movement.PanManager
 import com.otaliastudios.zoom.internal.movement.ZoomManager
@@ -566,6 +569,19 @@ internal constructor(context: Context) : ZoomApi {
     @JvmOverloads
     fun setContainerSize(width: Float, height: Float, applyTransformation: Boolean = false) {
         matrixController.setContainerSize(width, height, applyTransformation)
+    }
+
+
+    override fun setPanVeritcalShift(shift: Int) {
+        panManager.panVerticalShift = shift
+    }
+
+    override fun setPanHorizontalShift(shift: Int) {
+        panManager.panHorizontalShift = shift
+    }
+
+    override fun setOverpanFactor(factor: Float) {
+        panManager.overpanFactor = factor
     }
 
     /**

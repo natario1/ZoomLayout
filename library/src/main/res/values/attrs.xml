@@ -54,6 +54,9 @@
             <flag name="none" value="0x44" />
         </attr>
         <attr name="animationDuration" format="integer" />
+        <attr name="panVerticalShift" format="integer" />
+        <attr name="panHorizontalShift" format="integer" />
+        <attr name="overpanFactor" format="float"/>
     </declare-styleable>
 
 </resources>

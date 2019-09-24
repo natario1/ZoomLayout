@@ -411,6 +411,12 @@ interface ZoomApi {
      */
     fun cancelAnimations(): Boolean
 
+    fun setPanVeritcalShift(shift: Int)
+
+    fun setPanHorizontalShift(shift: Int)
+
+    fun setOverpanFactor(factor: Float)
+
     companion object {
 
         /**
@@ -489,5 +495,8 @@ interface ZoomApi {
          * The default value for [setAlignment].
          */
         const val ALIGNMENT_DEFAULT = com.otaliastudios.zoom.Alignment.CENTER
+
+        const val PAN_VERTICAL_SHIFT_DEFAULT = 0
+        const val PAN_HORIZONTAL_SHIFT_DEFAULT = 0
     }
 }

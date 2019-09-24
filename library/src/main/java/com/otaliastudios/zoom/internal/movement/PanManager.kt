@@ -2,7 +2,9 @@ package com.otaliastudios.zoom.internal.movement
 
 import android.annotation.SuppressLint
 import android.view.Gravity
-import com.otaliastudios.zoom.*
+import com.otaliastudios.zoom.Alignment
+import com.otaliastudios.zoom.ScaledPoint
+import com.otaliastudios.zoom.ZoomApi
 import com.otaliastudios.zoom.internal.matrix.MatrixController
 import kotlin.math.min
 
@@ -23,6 +25,9 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
     internal var horizontalPanEnabled = true
     internal var verticalPanEnabled = true
     internal var alignment = ZoomApi.ALIGNMENT_DEFAULT
+    internal var panVerticalShift = 0
+    internal var panHorizontalShift = 0
+    internal var overpanFactor = DEFAULT_OVERPAN_FACTOR
 
     /** whether overpan is enabled, horizontally or vertically */
     override val isOverEnabled get() = horizontalOverPanEnabled || verticalOverPanEnabled
@@ -58,7 +63,9 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
         val fix = checkBounds(horizontal, false).toInt()
         val alignment = if (horizontal) Alignment.getHorizontal(alignment) else Alignment.getVertical(alignment)
         @Suppress("CascadeIf")
-        if (contentDim > containerDim) {
+        if (contentDim > containerDim &&
+                panHorizontalShift == ZoomApi.PAN_HORIZONTAL_SHIFT_DEFAULT &&
+                panVerticalShift == ZoomApi.PAN_VERTICAL_SHIFT_DEFAULT) {
             // Content is bigger. We can move between 0 and extraSpace, but since our pans
             // are negative, we must invert the sign.
             val extraSpace = contentDim - containerDim
@@ -139,7 +146,9 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
         }
         min -= overScroll
         max += overScroll
-        val desired = value.coerceIn(min, max)
+//        shift = abs(shift)
+        val shift = if (horizontal) panHorizontalShift else panVerticalShift
+        val desired = value.coerceIn(min - shift, max + shift)
         return desired - value
     }
 
@@ -150,8 +159,8 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
     @ZoomApi.ScaledPan
     internal val maxOverPan: Float
         get() {
-            val overX = controller.containerWidth * DEFAULT_OVERPAN_FACTOR
-            val overY = controller.containerHeight * DEFAULT_OVERPAN_FACTOR
+            val overX = controller.containerWidth * overpanFactor
+            val overY = controller.containerHeight * overpanFactor
             return min(overX, overY)
         }
 
@@ -184,6 +193,6 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
         /**
          * The default overscrolling factor
          */
-        private const val DEFAULT_OVERPAN_FACTOR = 0.10f
+        internal const val DEFAULT_OVERPAN_FACTOR = 0.10f
     }
 }
