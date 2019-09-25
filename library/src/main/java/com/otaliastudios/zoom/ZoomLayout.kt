@@ -67,8 +67,8 @@ open class ZoomLayout private constructor(
         val transformationGravity = a.getInt(R.styleable.ZoomEngine_transformationGravity, ZoomApi.TRANSFORMATION_GRAVITY_AUTO)
         val alignment = a.getInt(R.styleable.ZoomEngine_alignment, ZoomApi.ALIGNMENT_DEFAULT)
         val animationDuration = a.getInt(R.styleable.ZoomEngine_animationDuration, ZoomEngine.DEFAULT_ANIMATION_DURATION.toInt()).toLong()
-        val horizontalShift = a.getInt(R.styleable.ZoomEngine_panHorizontalShift, ZoomApi.PAN_HORIZONTAL_SHIFT_DEFAULT)
-        val verticalShift = a.getInt(R.styleable.ZoomEngine_panVerticalShift, ZoomApi.PAN_VERTICAL_SHIFT_DEFAULT)
+        val horizontalPadding = a.getInt(R.styleable.ZoomEngine_panHorizontalPadding, ZoomApi.PAN_HORIZONTAL_PADDING_DEFAULT)
+        val verticalPadding = a.getInt(R.styleable.ZoomEngine_panVerticalPadding, ZoomApi.PAN_VERTICAL_PADDING_DEFAULT)
         val overpanFactor = a.getFloat(R.styleable.ZoomEngine_overpanFactor, PanManager.DEFAULT_OVERPAN_FACTOR)
         a.recycle()
 
@@ -95,8 +95,8 @@ open class ZoomLayout private constructor(
         setMinZoom(minZoom, minZoomMode)
         setMaxZoom(maxZoom, maxZoomMode)
         setHasClickableChildren(hasChildren)
-        setPanHorizontalShift(horizontalShift)
-        setPanVeritcalShift(verticalShift)
+        setPanHorizontalPadding(horizontalPadding)
+        setPanVerticalPadding(verticalPadding)
         setOverpanFactor(overpanFactor)
 
         setWillNotDraw(false)

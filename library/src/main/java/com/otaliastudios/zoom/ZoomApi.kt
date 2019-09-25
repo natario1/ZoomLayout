@@ -411,9 +411,9 @@ interface ZoomApi {
      */
     fun cancelAnimations(): Boolean
 
-    fun setPanVeritcalShift(shift: Int)
+    fun setPanVerticalPadding(padding: Int)
 
-    fun setPanHorizontalShift(shift: Int)
+    fun setPanHorizontalPadding(padding: Int)
 
     fun setOverpanFactor(factor: Float)
 
@@ -496,7 +496,7 @@ interface ZoomApi {
          */
         const val ALIGNMENT_DEFAULT = com.otaliastudios.zoom.Alignment.CENTER
 
-        const val PAN_VERTICAL_SHIFT_DEFAULT = 0
-        const val PAN_HORIZONTAL_SHIFT_DEFAULT = 0
+        const val PAN_VERTICAL_PADDING_DEFAULT = 0
+        const val PAN_HORIZONTAL_PADDING_DEFAULT = 0
     }
 }

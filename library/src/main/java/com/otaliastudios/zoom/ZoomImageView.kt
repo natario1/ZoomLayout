@@ -10,6 +10,7 @@ import android.view.MotionEvent
 import android.widget.ImageView
 import androidx.annotation.AttrRes
 import com.otaliastudios.zoom.ZoomApi.ZoomType
+import com.otaliastudios.zoom.internal.movement.PanManager
 
 
 /**
@@ -55,6 +56,9 @@ open class ZoomImageView private constructor(
         val transformationGravity = a.getInt(R.styleable.ZoomEngine_transformationGravity, ZoomApi.TRANSFORMATION_GRAVITY_AUTO)
         val alignment = a.getInt(R.styleable.ZoomEngine_alignment, ZoomApi.ALIGNMENT_DEFAULT)
         val animationDuration = a.getInt(R.styleable.ZoomEngine_animationDuration, ZoomEngine.DEFAULT_ANIMATION_DURATION.toInt()).toLong()
+        val horizontalPadding = a.getInt(R.styleable.ZoomEngine_panHorizontalPadding, ZoomApi.PAN_HORIZONTAL_PADDING_DEFAULT)
+        val verticalPadding = a.getInt(R.styleable.ZoomEngine_panVerticalPadding, ZoomApi.PAN_VERTICAL_PADDING_DEFAULT)
+        val overpanFactor = a.getFloat(R.styleable.ZoomEngine_overpanFactor, PanManager.DEFAULT_OVERPAN_FACTOR)
         a.recycle()
 
         engine.setContainer(this)
@@ -84,6 +88,9 @@ open class ZoomImageView private constructor(
         setAnimationDuration(animationDuration)
         setMinZoom(minZoom, minZoomMode)
         setMaxZoom(maxZoom, maxZoomMode)
+        setPanHorizontalPadding(horizontalPadding)
+        setPanVerticalPadding(verticalPadding)
+        setOverpanFactor(overpanFactor)
 
         imageMatrix = mMatrix
         scaleType = ScaleType.MATRIX

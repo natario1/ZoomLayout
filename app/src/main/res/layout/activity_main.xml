@@ -15,8 +15,8 @@
         app:hasClickableChildren="true"
         app:horizontalPanEnabled="true"
         app:verticalPanEnabled="true"
-        app:panVerticalShift="200"
-        app:panHorizontalShift="100"
+        app:panVerticalPadding="200"
+        app:panHorizontalPadding="100"
         app:overpanFactor=".3"
         app:zoomEnabled="true">
 

@@ -25,8 +25,8 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
     internal var horizontalPanEnabled = true
     internal var verticalPanEnabled = true
     internal var alignment = ZoomApi.ALIGNMENT_DEFAULT
-    internal var panVerticalShift = 0
-    internal var panHorizontalShift = 0
+    internal var panVerticalPadding = 0
+    internal var panHorizontalPadding = 0
     internal var overpanFactor = DEFAULT_OVERPAN_FACTOR
 
     /** whether overpan is enabled, horizontally or vertically */
@@ -64,8 +64,8 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
         val alignment = if (horizontal) Alignment.getHorizontal(alignment) else Alignment.getVertical(alignment)
         @Suppress("CascadeIf")
         if (contentDim > containerDim &&
-                panHorizontalShift == ZoomApi.PAN_HORIZONTAL_SHIFT_DEFAULT &&
-                panVerticalShift == ZoomApi.PAN_VERTICAL_SHIFT_DEFAULT) {
+                panHorizontalPadding == ZoomApi.PAN_HORIZONTAL_PADDING_DEFAULT &&
+                panVerticalPadding == ZoomApi.PAN_VERTICAL_PADDING_DEFAULT) {
             // Content is bigger. We can move between 0 and extraSpace, but since our pans
             // are negative, we must invert the sign.
             val extraSpace = contentDim - containerDim
@@ -146,9 +146,8 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
         }
         min -= overScroll
         max += overScroll
-//        shift = abs(shift)
-        val shift = if (horizontal) panHorizontalShift else panVerticalShift
-        val desired = value.coerceIn(min - shift, max + shift)
+        val padding = if (horizontal) panHorizontalPadding else panVerticalPadding
+        val desired = value.coerceIn(min - padding, max + padding)
         return desired - value
     }
 

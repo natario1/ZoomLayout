@@ -572,12 +572,12 @@ internal constructor(context: Context) : ZoomApi {
     }
 
 
-    override fun setPanVeritcalShift(shift: Int) {
-        panManager.panVerticalShift = shift
+    override fun setPanVerticalPadding(padding: Int) {
+        panManager.panVerticalPadding = padding
     }
 
-    override fun setPanHorizontalShift(shift: Int) {
-        panManager.panHorizontalShift = shift
+    override fun setPanHorizontalPadding(padding: Int) {
+        panManager.panHorizontalPadding = padding
     }
 
     override fun setOverpanFactor(factor: Float) {
