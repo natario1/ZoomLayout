@@ -1,8 +1,16 @@
 [![Build Status](https://travis-ci.org/natario1/ZoomLayout.svg?branch=master)](https://travis-ci.org/natario1/ZoomLayout)
+[![Release](https://img.shields.io/github/release/natario1/ZoomLayout.svg)](https://github.com/natario1/ZoomLayout/releases)
+[![Issues](https://img.shields.io/github/issues-raw/natario1/ZoomLayout.svg)](https://github.com/natario1/ZoomLayout/issues)
+
+&#10240;  <!-- Hack to add whitespace -->
 
 <p align="center">
-  <img src="art/logo_800.png" vspace="10" width="250" height="250">
+  <img src="art/banner.png" width="100%">
 </p>
+
+*Need support, consulting, or have any other business-related question? Feel free to <a href="mailto:mat.iavarone@gmail.com">get in touch</a>.*
+
+*Like the project, make profit from it, or simply want to thank back? Please consider [sponsoring](https://github.com/sponsors/natario1)!*
 
 # ZoomLayout & ZoomEngine
 
@@ -13,12 +21,17 @@ programmatically or through touch events.
 implementation 'com.otaliastudios:zoomlayout:1.7.0'
 ```
 
+&#10240;  <!-- Hack to add whitespace -->
+
 <p>
-  <img src="art/preview_hierarchy.gif" width="250" vspace="20" hspace="5">
-  <img src="art/preview_bitmap.gif" width="250" vspace="20" hspace="5">
+  <img src="art/preview_hierarchy.gif" width="250" hspace="5">
+  <img src="art/preview_bitmap.gif" width="250" hspace="5">
 </p>
 
-*Want to see `ZoomLayout` in action? Try the demo app or take a look at [ViewPrinter](https://github.com/natario1/ViewPrinter), a printing library heavily based on this.*
+&#10240;  <!-- Hack to add whitespace -->
+
+You can see `ZoomLayout` in action through our demo app, or if you're curious, in 
+[ViewPrinter](https://github.com/natario1/ViewPrinter), a printing library heavily based on this.
 
 ## Features
 
