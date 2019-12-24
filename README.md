@@ -37,7 +37,7 @@ that makes it very flexible.
 &#10240;  <!-- Hack to add whitespace -->
 
 <p align="center">
-  <img src="docs/static/screenshot-1.png" width="250" hspace="25"><img src="docs/static/screenshot-2.png" width="250" hspace="25">
+  <img src="docs/static/gif-1.gif" width="250" hspace="15"><img src="docs/static/gif-2.gif" width="250" hspace="15"><img src="docs/static/gif-3.gif" width="250" hspace="15">
 </p>
 
 &#10240;  <!-- Hack to add whitespace -->
