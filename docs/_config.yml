@@ -12,7 +12,7 @@ description: A collection of Android components that support zooming and panning
 # Can't remember what this does.
 github: [metadata]
 
-# Should be used by some plugins but we're not using any,
+# Should be used by some plugins but we're not using any ,
 author:
   name: Mattia Iavarone
   email: mat.iavarone@gmail.com
