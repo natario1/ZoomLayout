@@ -136,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
         DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(this,
                 Util.getUserAgent(this, "ZoomLayoutLib"));
         MediaSource videoSource = new ExtractorMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(Uri.parse("https://html5demos.com/assets/dizzy.mp4"));
+                .createMediaSource(Uri.parse("https://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4"));
         player.prepare(videoSource);
     }
 

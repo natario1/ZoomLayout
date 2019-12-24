@@ -1,0 +1,83 @@
+# Glide: https://github.com/bumptech/glide/blob/gh-pages/_config.yml
+# Source repo: https://github.com/bruth/jekyll-docs-template
+# Source site: http://bruth.github.io/jekyll-docs-template/
+# Ref guide: https://visualstudiomagazine.com/Articles/2015/03/01/GitHub-Pages.aspx?Page=2
+
+title: ZoomLayout
+
+# subtitle is used by ourselves, description is used by seo tag.
+subtitle: A collection of Android components that support zooming and panning of View hierarchies, images, video streams, and much more.
+description: A collection of Android components that support zooming and panning of View hierarchies, images, video streams, and much more.
+
+# Can't remember what this does.
+github: [metadata]
+
+# Should be used by some plugins but we're not using any,
+author:
+  name: Mattia Iavarone
+  email: mat.iavarone@gmail.com
+  github: natario1
+
+# Add head tags.
+plugins:
+  - jekyll-seo-tag
+
+# if you wish to integrate disqus on pages set your shortname here
+disqus_shortname: 'zoomlayout'
+
+# if you use google analytics, add your tracking id here
+google_analytics_id: ''
+
+# Enable/show navigation. There are there options:
+#   0 - always hide
+#   1 - always show
+#   2 - show only if posts are present
+navigation: 2
+
+# URL to source code, used in _includes/footer.html
+codeurl: 'https://github.com/natario1/ZoomLayout'
+
+# relative URL for donations, used in footer.html
+donateurl: '/extra/donate.html'
+
+# Default categories (in order) to appear in the navigation
+# (Missing: DOCS and DONATE info)
+sections: [
+    ['about', 'Overview'],
+    ['docs', 'Documentation'],
+    ['extra', 'More']
+]
+
+# Keep as an empty string if served up at the root. If served up at a specific
+# path (e.g. on GitHub pages) leave off the trailing slash, e.g. /my-project
+baseurl: '/ZoomLayout'
+
+# Ensure permalinks have no date nor extension
+permalink: /:categories/:title
+
+# Syntax highlighting
+highlighter: rouge
+
+# Since these are pages, it doesn't really matter
+future: true
+
+# Exclude non-site files
+exclude: ['script', 'README.md']
+
+# Use the kramdown Markdown renderer
+markdown: kramdown
+redcarpet:
+    extensions: [
+        'no_intra_emphasis',
+        'fenced_code_blocks',
+        'autolink',
+        'strikethrough',
+        'superscript',
+        'with_toc_data',
+        'tables',
+        'hardwrap'
+    ]
+
+# Use Github Flavored Markdown
+kramdown:
+  input: GFM

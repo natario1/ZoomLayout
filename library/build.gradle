@@ -8,10 +8,12 @@ ext {
     libVersion = '1.7.0'
     libGroup = 'com.otaliastudios'
     libName = 'ZoomLayout'
-    libDescription = 'A View container that supports zooming and panning of View hierarchies, images and more.'
+    libDescription = 'A collection of Android components that support zooming and panning of View hierarchies, images, video streams, and much more.'
     libArtifactId = 'zoomlayout'
     githubUrl = "https://github.com/natario1/${libName}"
     githubGit = "https://github.com/natario1/${libName}.git"
+    libLicenseName = 'The Apache Software License, Version 2.0'
+    libLicenseUrl = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
 }
 
 
@@ -73,8 +75,8 @@ install.repositories.mavenInstaller.pom.project {
     }
     licenses {
         license {
-            name 'The Apache Software License, Version 2.0'
-            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+            name libLicenseName
+            url libLicenseUrl
         }
     }
     developers {
@@ -87,41 +89,34 @@ install.repositories.mavenInstaller.pom.project {
 
 def bintrayUser
 def bintrayKey
-def hasBintray = false
 if (System.getenv('TRAVIS') == 'true') {
-    if (System.getenv('TRAVIS_SECURE_ENV_VARS') == 'true') {
-        bintrayUser = System.getenv("BINTRAY_USER")
-        bintrayKey = System.getenv("BINTRAY_KEY")
-        hasBintray = true
-    }
+    bintrayUser = System.getenv("BINTRAY_USER")
+    bintrayKey = System.getenv("BINTRAY_KEY")
 } else {
     Properties props = new Properties()
     props.load(project.rootProject.file('local.properties').newDataInputStream())
     bintrayUser = props.getProperty('bintray.user')
     bintrayKey = props.get('bintray.key')
-    hasBintray = true
 }
 
-if (hasBintray) {
-    bintray {
-        // https://github.com/bintray/gradle-bintray-plugin
-        user = bintrayUser
-        key = bintrayKey
-        configurations = ['archives']
-        publish = true
-        override = true
-        pkg {
-            repo = 'android'
-            name = libName
-            licenses = ['Apache-2.0']
-            vcsUrl = githubGit
-            desc = libDescription
-            version {
-                name = libVersion
-                desc = libName + ' v' + libVersion
-                released = new Date()
-                vcsTag = 'v' + libVersion
-            }
+bintray {
+    // https://github.com/bintray/gradle-bintray-plugin
+    user = bintrayUser
+    key = bintrayKey
+    configurations = ['archives']
+    publish = true
+    override = true
+    pkg {
+        repo = 'android'
+        name = libName
+        licenses = [libLicenseName]
+        vcsUrl = githubGit
+        desc = libDescription
+        version {
+            name = libVersion
+            desc = libName + ' v' + libVersion
+            released = new Date()
+            vcsTag = 'v' + libVersion
         }
     }
 }
