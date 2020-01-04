@@ -1,0 +1,43 @@
+@import "fonts.css";
+@import "colors.css";
+
+:root {
+    --color-gradient-1: #f4e6ff;
+    --color-gradient-2: white;
+}
+
+html {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    background: radial-gradient(ellipse, var(--color-gradient-1), var(--color-gradient-2)) fixed !important;
+}
+
+#logo {
+    width: 45%;
+    max-width: 340px;
+}
+
+h1 {
+    color: black;
+}
+
+p {
+    color: rgba(20, 20, 20, 0.6);
+    font-size: 1.2em;
+    line-height: 100%;
+}
+
+.btn {
+    color: rgba(0, 0, 0, 0.7) !important;
+    background-color: rgba(130, 130, 130, 0.2);
+    font-size: 1.3em;
+}
+
+.btn:hover {
+    color: rgba(0, 0, 0, 0.7) !important;
+    background-color: rgba(130, 130, 130, 0.4);
+}

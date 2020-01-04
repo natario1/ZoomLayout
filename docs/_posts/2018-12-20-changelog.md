@@ -19,7 +19,7 @@ Companies can share a tiny part of their revenue and get private support hours i
 
 <https://github.com/natario1/ZoomLayout/compare/v1.6.1...v1.7.0>
 
-### v1.6.1
+#### v1.6.1
 
 - Enhancement: Internal refactoring into smaller components [@natario1][natario1] ([#97][97]) 
 - Enhancement: Added scrollEnabled, oneFingerScrollEnabled, twoFingersScrollEnabled and threeFingersScrollEnabled [@RayyanTahir][RayyanTahir] ([#102][102])
@@ -33,7 +33,7 @@ Companies can share a tiny part of their revenue and get private support hours i
 
 <https://github.com/natario1/ZoomLayout/compare/v1.5.1...v1.6.0>
 
-### v1.5.1
+#### v1.5.1
 
 - Fix: fix a context leak in ZoomLayout thanks to [@dmazzoni][dmazzoni] ([#92][92]).
 - Fix: fix a bug in vertical Alignment thanks to  leak in ZoomLayout thanks to [@asclepix][asclepix] ([#90][90]).

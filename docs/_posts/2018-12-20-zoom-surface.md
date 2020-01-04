@@ -1,7 +1,6 @@
 ---
 layout: page
 title: "ZoomSurfaceView"
-subtitle: "A SurfaceView implementation supporting zoom and pan"
 description: "A SurfaceView implementation supporting zoom and pan"
 category: docs
 date: 2018-12-20 20:02:08

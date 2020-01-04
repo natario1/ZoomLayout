@@ -3,81 +3,48 @@
 # Source site: http://bruth.github.io/jekyll-docs-template/
 # Ref guide: https://visualstudiomagazine.com/Articles/2015/03/01/GitHub-Pages.aspx?Page=2
 
+# Used by us
 title: ZoomLayout
-
-# subtitle is used by ourselves, description is used by seo tag.
-subtitle: A collection of Android components that support zooming and panning of View hierarchies, images, video streams, and much more.
-description: A collection of Android components that support zooming and panning of View hierarchies, images, video streams, and much more.
-
-# Can't remember what this does.
-github: [metadata]
-
-# Should be used by some plugins but we're not using any ,
-author:
-  name: Mattia Iavarone
-  email: mat.iavarone@gmail.com
-  github: natario1
-
-# Add head tags.
-plugins:
-  - jekyll-seo-tag
-
-# if you wish to integrate disqus on pages set your shortname here
+color: '#f8f8f8'
+description: A collection of Android components that support zooming and panning of View hierarchies, images, video streams, and much more. # used by ourselves and by seo tag.
 disqus_shortname: 'zoomlayout'
-
-# if you use google analytics, add your tracking id here
 google_analytics_id: 'UA-155077779-4'
-
-# Enable/show navigation. There are there options:
-#   0 - always hide
-#   1 - always show
-#   2 - show only if posts are present
-navigation: 2
-
-# URL to source code, used in _includes/footer.html
-codeurl: 'https://github.com/natario1/ZoomLayout'
-
-# relative URL for donations, used in footer.html
-donateurl: '/extra/donate.html'
-
-# Default categories (in order) to appear in the navigation
-# (Missing: DOCS and DONATE info)
+google_site_verification: '4x49i17ABIrSvUl52SeL0-t0341aTnWWaC62-FYCRT4'
+github: [metadata] # TODO What's this?
+github_repo: ZoomLayout
+github_version: 0.7.4
+donateurl: '/extra/donate' # relative URL for donations, used in footer.html
+baseurl: '/ZoomLayout' # Keep as an empty string if served up at the root
 sections: [
-    ['about', 'Overview'],
-    ['docs', 'Documentation'],
-    ['extra', 'More']
+['about', 'Overview'],
+['docs', 'Documentation'],
+['extra', 'More']
 ]
 
-# Keep as an empty string if served up at the root. If served up at a specific
-# path (e.g. on GitHub pages) leave off the trailing slash, e.g. /my-project
-baseurl: '/ZoomLayout'
+# Jekyll specific stuff
+author:
+  name: Mattia Iavarone # Should appear in <head>.
+  email: mat.iavarone@gmail.com
+  github: natario1
+  website: https://natario.dev
+plugins:
+  - jekyll-seo-tag # Add SEO tags
+permalink: /:categories/:title # Ensure permalinks have no date nor extension
+exclude: ['script', 'README.md'] # Exclude non-site files
 
-# Ensure permalinks have no date nor extension
-permalink: /:categories/:title
-
-# Syntax highlighting
-highlighter: rouge
-
-# Since these are pages, it doesn't really matter
-future: true
-
-# Exclude non-site files
-exclude: ['script', 'README.md']
-
-# Use the kramdown Markdown renderer
-markdown: kramdown
+highlighter: rouge # Syntax highlighting
+future: true # What's this?
+markdown: kramdown # Use the kramdown Markdown renderer
 redcarpet:
-    extensions: [
-        'no_intra_emphasis',
-        'fenced_code_blocks',
-        'autolink',
-        'strikethrough',
-        'superscript',
-        'with_toc_data',
-        'tables',
-        'hardwrap'
-    ]
-
-# Use Github Flavored Markdown
+  extensions: [
+    'no_intra_emphasis',
+    'fenced_code_blocks',
+    'autolink',
+    'strikethrough',
+    'superscript',
+    'with_toc_data',
+    'tables',
+    'hardwrap'
+  ]
 kramdown:
-  input: GFM
+  input: GFM # Use Github Flavored Markdown

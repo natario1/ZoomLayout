@@ -1,7 +1,6 @@
 ---
 layout: page
 title: "Internal Engine"
-subtitle: "Advanced usage through the internal ZoomEngine"
 description: "Advanced usage through the internal ZoomEngine"
 category: docs
 date: 2018-12-20 20:02:08
