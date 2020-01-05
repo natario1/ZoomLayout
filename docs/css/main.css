@@ -77,13 +77,11 @@ footer {
 
 /* drawer */
 
-.drawer-toggle {
-    background-color: transparent;
-    border-radius: 50%;
-}
-
-.drawer-toggle:hover {
-    background-color: rgba(240, 240, 240, 0.25);
+@media (hover: hover) {
+    .drawer-toggle:hover {
+        background-color: rgba(240, 240, 240, 0.15);
+        border-radius: 50%;
+    }
 }
 
 @media (max-width: 768px) {
@@ -234,6 +232,13 @@ td {
 .page-header span {
     font-size: 0.9em;
     color: var(--color-text-muted);
+}
+
+.page-footer a {
+    color: black;
+    font-family: var(--font-display), cursive;
+    font-weight: 700;
+    font-size: 1.2em;
 }
 
 /* code */
