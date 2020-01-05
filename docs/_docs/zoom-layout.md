@@ -2,8 +2,6 @@
 layout: page
 title: "ZoomLayout"
 description: "A flexible ViewGroup supporting zoom and pan"
-category: docs
-date: 2018-12-20 20:02:08
 order: 1
 disqus: 1
 ---

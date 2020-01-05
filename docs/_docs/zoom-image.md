@@ -2,8 +2,6 @@
 layout: page
 title: "ZoomImageView"
 description: "An ImageView implementation supporting zoom and pan"
-category: docs
-date: 2018-12-20 20:02:08
 order: 2
 disqus: 1
 ---

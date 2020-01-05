@@ -2,8 +2,6 @@
 layout: page
 title: "Zoom APIs"
 description: "Zoom controls common to all Zoom classes"
-category: docs
-date: 2018-12-20 20:02:08
 order: 4
 disqus: 1
 ---
