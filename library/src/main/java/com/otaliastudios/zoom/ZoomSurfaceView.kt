@@ -19,6 +19,7 @@ import com.otaliastudios.opengl.extensions.scale
 import com.otaliastudios.opengl.extensions.translate
 import com.otaliastudios.opengl.program.GlFlatProgram
 import com.otaliastudios.opengl.program.GlTextureProgram
+import com.otaliastudios.opengl.texture.GlTexture
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -35,25 +36,6 @@ open class ZoomSurfaceView private constructor(
 ) : GLSurfaceView(context, attrs),
         ZoomApi by engine,
         GLSurfaceView.Renderer {
-
-    init {
-        // See if the OpenGL dependency was added.
-        val hasEgloo = runCatching { GlRect() }
-        if (hasEgloo.isFailure) {
-            val hasEglCore = runCatching {
-                Class.forName("com.otaliastudios.opengl.draw.EglRect").newInstance()
-            }
-            if (hasEglCore.isSuccess) {
-                throw RuntimeException("Starting from ZoomLayout v1.7.0, you should replace " +
-                        "com.otaliastudios.opengl:egl-core with com.otaliastudios.opengl:egloo. " +
-                        "Check documentation for version.")
-            } else {
-                throw RuntimeException("To use ZoomSurfaceView, you have to add " +
-                        "com.otaliastudios.opengl:egloo to your dependencies. " +
-                        "Check documentation for version.")
-            }
-        }
-    }
 
     @JvmOverloads
     constructor(context: Context, attrs: AttributeSet? = null)
@@ -253,7 +235,7 @@ open class ZoomSurfaceView private constructor(
                 EGLOO_DRAWABLE_TOPLEFT_X + width,
                 EGLOO_DRAWABLE_TOPLEFT_Y - height // y is opposite in GL
         )
-        glTextureRect.setVertexArray(rect)
+        glTextureRect.setRect(rect)
     }
 
     @SuppressLint("Recycle")
@@ -263,7 +245,8 @@ open class ZoomSurfaceView private constructor(
         glFlatProgram = GlFlatProgram()
         glFlatProgram!!.setColor(backgroundColor)
         glTextureProgram = GlTextureProgram()
-        surfaceTexture = SurfaceTexture(glTextureProgram!!.textureId).also {
+        glTextureProgram!!.texture = GlTexture()
+        surfaceTexture = SurfaceTexture(glTextureProgram!!.texture!!.id).also {
             // Since we are using RENDERMODE_WHEN_DIRTY, we must notify the SurfaceView
             // of dirtyness, so that it draws again. This is how it's done. requestRender is thread-safe.
             it.setOnFrameAvailableListener { requestRender() }

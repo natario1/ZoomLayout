@@ -45,12 +45,8 @@ There are a few special things about `ZoomSurfaceView` with respect to the other
 - You **must** either call `ZoomSurfaceView.setContentSize()` passing the stream size, or measure the
   view so that it matches the stream aspect ratio.
 
-To use `ZoomSurfaceView` you must add the [Egloo](https://github.com/natario1/Egloo) library to your
-dependencies or the view will crash. You should also use the exact version that this library is expecting.
-
-```groovy
-implementation 'com.otaliastudios.opengl:egloo:0.2.3'
-```
+> Starting from v1.7.1, you do not need to add the [Egloo](https://github.com/natario1/Egloo) dependency
+in order to use `ZoomSurfaceView`.
 
 ### Usage
 
