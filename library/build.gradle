@@ -5,7 +5,7 @@ apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
 
 ext {
-    libVersion = '1.7.0'
+    libVersion = '1.7.1'
     libGroup = 'com.otaliastudios'
     libName = 'ZoomLayout'
     libDescription = 'A collection of Android components that support zooming and panning of View hierarchies, images, video streams, and much more.'

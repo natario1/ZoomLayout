@@ -1,3 +1,9 @@
+### v1.7.1
+
+- Enhancement: the Egloo library is now a declared dependency and you don't need to add it separately. ([#136][136]) 
+
+https://github.com/natario1/ZoomLayout/compare/v1.7.0...v1.7.1
+
 ## v1.7.0
 
 - BREAKING CHANGE: To use ZoomSurfaceView, you need to use `com.otaliastudios.opengl:egloo:0.2.3` instead of `com.otaliastudios.opengl:egl-core`. ([#114][114]) 
@@ -70,3 +76,4 @@ https://github.com/natario1/ZoomLayout/compare/v1.4.0...v1.5.0
 [102]: https://github.com/natario1/ZoomLayout/pull/102
 [105]: https://github.com/natario1/ZoomLayout/pull/105
 [114]: https://github.com/natario1/ZoomLayout/pull/114
+[136]: https://github.com/natario1/ZoomLayout/pull/136
