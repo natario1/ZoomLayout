@@ -22,7 +22,7 @@ allprojects {
 Then simply download the latest version:
 
 ```groovy
-implementation 'com.otaliastudios:zoomlayout:1.7.1'
+implementation 'com.otaliastudios:zoomlayout:{{ site.github_version }}'
 ```
 
 No other configuration steps are needed.

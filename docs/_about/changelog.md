@@ -9,6 +9,11 @@ New versions are released through GitHub, so the reference page is the [GitHub R
 Starting from 1.7.0, you can now [support development](https://github.com/natario1/ZoomLayout/issues/125) through the GitHub Sponsors program. 
 Companies can share a tiny part of their revenue and get private support hours in return. Thanks!
 
+#### v1.7.1
+
+- Enhancement: the Egloo library is now a declared dependency and you don't need to add it separately. ([#136][136]) 
+
+<https://github.com/natario1/ZoomLayout/compare/v1.7.0...v1.7.1>
 
 ## v1.7.0
 
@@ -82,3 +87,4 @@ Companies can share a tiny part of their revenue and get private support hours i
 [102]: https://github.com/natario1/ZoomLayout/pull/102
 [105]: https://github.com/natario1/ZoomLayout/pull/105
 [114]: https://github.com/natario1/ZoomLayout/pull/114
+[136]: https://github.com/natario1/ZoomLayout/pull/136
