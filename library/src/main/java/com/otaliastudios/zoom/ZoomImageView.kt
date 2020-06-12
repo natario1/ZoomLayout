@@ -91,6 +91,9 @@ open class ZoomImageView private constructor(
 
     override fun setImageDrawable(drawable: Drawable?) {
         if (drawable != null) {
+            if (drawable.intrinsicWidth == -1 || drawable.intrinsicHeight == -1) {
+                throw IllegalArgumentException("Drawables without intrinsic dimensions (such as a solid color) are not supported")
+            }
             engine.setContentSize(drawable.intrinsicWidth.toFloat(),
                     drawable.intrinsicHeight.toFloat())
         }
