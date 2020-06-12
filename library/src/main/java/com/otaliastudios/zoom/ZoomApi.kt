@@ -204,6 +204,14 @@ interface ZoomApi {
     // TODO (v2) rename to var isVerticalPanEnabled
 
     /**
+     * Controls whether zoom using pinch gesture is enabled or not.
+     *
+     * @param enabled true enables zooming, false disables it
+     */
+    fun setZoomEnabled(enabled: Boolean)
+    // TODO (v2) rename to var isZoomEnabled
+
+    /**
      * Controls whether the content should be overPinchable.
      * If it is, pinch events can change the zoom outside the safe bounds,
      * than return to safe values.
@@ -214,12 +222,12 @@ interface ZoomApi {
     // TODO (v2) rename to var isOverZoomEnabled
 
     /**
-     * Controls whether zoom using pinch gesture is enabled or not.
+     * Set the [OverZoomRangeProvider] that specifies the amount of
+     * overzoom to allow.
      *
-     * @param enabled true enables zooming, false disables it
+     * @param provider the range provider
      */
-    fun setZoomEnabled(enabled: Boolean)
-    // TODO (v2) rename to var isZoomEnabled
+    fun setOverZoomRange(provider: OverZoomRangeProvider)
 
     /**
      * Controls whether fling gesture is enabled or not.

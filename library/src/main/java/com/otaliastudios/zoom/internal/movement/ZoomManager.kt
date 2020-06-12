@@ -1,6 +1,8 @@
 package com.otaliastudios.zoom.internal.movement
 
-import com.otaliastudios.zoom.*
+import com.otaliastudios.zoom.OverZoomRangeProvider
+import com.otaliastudios.zoom.ZoomApi
+import com.otaliastudios.zoom.ZoomEngine
 import com.otaliastudios.zoom.internal.matrix.MatrixController
 
 /**
@@ -13,7 +15,9 @@ import com.otaliastudios.zoom.internal.matrix.MatrixController
  * Does NOT hold the current zoom value, which is done by the [MatrixController].
  * Holds the current [transformationZoom] so we can convert zoom types.
  */
-internal class ZoomManager(provider: () -> MatrixController) : MovementManager(provider) {
+internal class ZoomManager(
+        private val engine: ZoomEngine,
+        provider: () -> MatrixController) : MovementManager(provider) {
 
     internal var transformationZoom = 0F
 
@@ -21,6 +25,8 @@ internal class ZoomManager(provider: () -> MatrixController) : MovementManager(p
     private var minZoomMode = ZoomApi.MIN_ZOOM_DEFAULT_TYPE
     private var maxZoom = ZoomApi.MAX_ZOOM_DEFAULT
     private var maxZoomMode = ZoomApi.MAX_ZOOM_DEFAULT_TYPE
+
+    internal var overZoomRangeProvider: OverZoomRangeProvider = DEFAULT_OVERZOOM_PROVIDER
 
     override var isEnabled = true
     override var isOverEnabled = true
@@ -72,12 +78,12 @@ internal class ZoomManager(provider: () -> MatrixController) : MovementManager(p
     }
 
     /**
-     * The amount of overzoom that is allowed in both directions. This is currently
-     * a fixed value, but might be made configurable in the future.
+     * The amount of overzoom that is allowed in both directions.
+     * This value is calculated by the [overZoomRangeProvider].
      */
     @ZoomApi.RealZoom
     internal val maxOverZoom: Float
-        get() = DEFAULT_OVERZOOM_FACTOR * (getMaxZoom() - getMinZoom())
+        get() = overZoomRangeProvider.getOverZoomRange(engine)
 
     /**
      * Returns the current minimum zoom as a [ZoomApi.RealZoom] value.
@@ -122,6 +128,12 @@ internal class ZoomManager(provider: () -> MatrixController) : MovementManager(p
     }
 
     companion object {
-        private const val DEFAULT_OVERZOOM_FACTOR = 0.1f
+        const val DEFAULT_OVERZOOM_FACTOR = 0.1f
+        val DEFAULT_OVERZOOM_PROVIDER = object : OverZoomRangeProvider {
+            override fun getOverZoomRange(engine: ZoomEngine): Float {
+                return DEFAULT_OVERZOOM_FACTOR * (engine.zoomManager.getMaxZoom() - engine.zoomManager.getMinZoom())
+            }
+        }
     }
+
 }

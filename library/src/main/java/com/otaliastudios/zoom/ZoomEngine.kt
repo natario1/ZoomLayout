@@ -159,11 +159,14 @@ internal constructor(context: Context) : ZoomApi {
     // Internal
     private lateinit var container: View
     private val callbacks = Callbacks()
+
     @Suppress("LeakingThis")
     private val dispatcher = UpdatesDispatcher(this)
     private val stateController = StateController(callbacks)
     private val panManager = PanManager { matrixController }
-    private val zoomManager = ZoomManager { matrixController }
+
+    @Suppress("LeakingThis")
+    internal val zoomManager = ZoomManager(this) { matrixController }
     private val matrixController: MatrixController = MatrixController(zoomManager, panManager, stateController, callbacks)
 
     // Gestures
@@ -412,6 +415,14 @@ internal constructor(context: Context) : ZoomApi {
      */
     override fun setOverPinchable(overPinchable: Boolean) {
         zoomManager.isOverEnabled = overPinchable
+    }
+
+    /**
+     * Set the [OverZoomRangeProvider] that specifies the amount of
+     * overzoom to allow.
+     */
+    override fun setOverZoomRange(provider: OverZoomRangeProvider) {
+        zoomManager.overZoomRangeProvider = provider
     }
 
     /**
