@@ -4,13 +4,16 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Matrix
 import android.graphics.RectF
-import android.view.*
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewTreeObserver
 import com.otaliastudios.zoom.ZoomApi.*
-import com.otaliastudios.zoom.internal.UpdatesDispatcher
-import com.otaliastudios.zoom.internal.matrix.MatrixController
 import com.otaliastudios.zoom.internal.StateController
+import com.otaliastudios.zoom.internal.UpdatesDispatcher
 import com.otaliastudios.zoom.internal.gestures.PinchDetector
 import com.otaliastudios.zoom.internal.gestures.ScrollFlingDetector
+import com.otaliastudios.zoom.internal.matrix.MatrixController
 import com.otaliastudios.zoom.internal.matrix.MatrixUpdate
 import com.otaliastudios.zoom.internal.movement.PanManager
 import com.otaliastudios.zoom.internal.movement.ZoomManager
@@ -603,8 +606,8 @@ internal constructor(context: Context) : ZoomApi {
      * dimensions. This means applying the transformation gravity.
      */
     private fun computeTransformationPan(): ScaledPoint {
-        val extraWidth = contentWidth - containerWidth
-        val extraHeight = contentHeight - containerHeight
+        val extraWidth = contentWidth * realZoom - containerWidth
+        val extraHeight = contentHeight * realZoom - containerHeight
         val gravity = computeTransformationGravity(transformationGravity)
         val x = -panManager.applyGravity(gravity, extraWidth, true)
         val y = -panManager.applyGravity(gravity, extraHeight, false)
