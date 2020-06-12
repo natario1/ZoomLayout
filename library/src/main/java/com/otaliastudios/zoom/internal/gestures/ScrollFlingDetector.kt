@@ -118,6 +118,9 @@ internal class ScrollFlingDetector(
         }
         // Must be after the other conditions.
         if (!stateController.setFlinging()) return false
+        // disable long press detection while we are flinging
+        // to prevent long presses from interrupting a possible followup scroll gesture
+        detector.setIsLongpressEnabled(false)
 
         @ZoomApi.ScaledPan val overScrollX = if (panManager.horizontalOverPanEnabled) panManager.maxOverPan else 0F
         @ZoomApi.ScaledPan val overScrollY = if (panManager.verticalOverPanEnabled) panManager.maxOverPan else 0F
@@ -133,6 +136,8 @@ internal class ScrollFlingDetector(
             override fun run() {
                 if (flingScroller.isFinished) {
                     stateController.makeIdle()
+                    // re-enable long press detection
+                    detector.setIsLongpressEnabled(true)
                 } else if (flingScroller.computeScrollOffset()) {
                     val newPan = ScaledPoint(flingScroller.currX.toFloat(), flingScroller.currY.toFloat())
                     // OverScroller will eventually go back to our bounds.
