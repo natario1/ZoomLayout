@@ -26,7 +26,7 @@ internal class MatrixController(
     internal interface Callback {
         fun onMatrixUpdate()
         fun onMatrixSizeChanged(oldZoom: Float, firstTime: Boolean)
-        fun post(action: Runnable)
+        fun post(action: Runnable): Boolean
         fun postOnAnimation(action: Runnable)
     }
 
@@ -151,13 +151,9 @@ internal class MatrixController(
         }
 
 
-    internal fun post(action: Runnable) {
-        callback.post(action)
-    }
+    internal fun post(action: Runnable) = callback.post(action)
 
-    internal fun postOnAnimation(action: Runnable) {
-        callback.postOnAnimation(action)
-    }
+    internal fun postOnAnimation(action: Runnable) = callback.postOnAnimation(action)
 
     /**
      * Clears our state.
@@ -213,7 +209,7 @@ internal class MatrixController(
     private fun sync() {
         stub.mapRect(contentScaledRect, contentRect)
     }
-    
+
     private fun dispatch() {
         callback.onMatrixUpdate()
     }
