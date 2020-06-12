@@ -66,12 +66,10 @@ internal class StateController(private val callback: Callback) {
             IDLE -> callback.onStateIdle()
         }
 
-        LOG.i("setState:", newState.toStateName())
-        state = newState
-
         // Now that it succeeded, do some cleanup.
         callback.cleanupState(oldState)
-
+        LOG.i("setState:", newState.toStateName())
+        state = newState
         return true
     }
 
@@ -97,9 +95,7 @@ internal class StateController(private val callback: Callback) {
      */
     private fun processTouchEvent(event: MotionEvent): Int {
         LOG.v("processTouchEvent:", "start.")
-        if (isAnimating()) {
-            return TOUCH_STEAL
-        }
+        if (isAnimating()) return TOUCH_STEAL
 
         var result = callback.maybeStartPinchGesture(event)
         LOG.v("processTouchEvent:", "scaleResult:", result)
