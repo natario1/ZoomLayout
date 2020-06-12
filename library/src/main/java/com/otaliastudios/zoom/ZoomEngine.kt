@@ -76,13 +76,9 @@ internal constructor(context: Context) : ZoomApi {
 
         // Post utilities
 
-        override fun post(action: Runnable) {
-            container.post(action)
-        }
+        override fun post(action: Runnable): Boolean = container.post(action)
 
-        override fun postOnAnimation(action: Runnable) {
-            container.postOnAnimation(action)
-        }
+        override fun postOnAnimation(action: Runnable) = container.postOnAnimation(action)
 
         // Matrix callbacks
 
