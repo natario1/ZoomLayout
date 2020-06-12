@@ -65,21 +65,24 @@ internal class ScrollFlingDetector(
      * idle state.
      */
     internal fun cancelScroll() {
-        correctOverpan()
-        stateController.makeIdle()
+        if (!correctOverpan()) {
+            stateController.makeIdle()
+        }
     }
 
     /**
      * Initiates an animation to correct any existing overpan
+     * @return true if a correction was initiated, false otherwise
      */
-    private fun correctOverpan() {
+    private fun correctOverpan(): Boolean {
         if (panManager.isOverEnabled) {
             val fix = panManager.correction
             if (fix.x != 0f || fix.y != 0f) {
                 matrixController.animateUpdate { panBy(fix, true) }
-                return
+                return true
             }
         }
+        return false
     }
 
     override fun onDown(e: MotionEvent): Boolean {
