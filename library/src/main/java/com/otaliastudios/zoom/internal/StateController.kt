@@ -3,6 +3,7 @@ package com.otaliastudios.zoom.internal
 import android.view.MotionEvent
 import androidx.annotation.IntDef
 import com.otaliastudios.zoom.ZoomLogger
+import com.otaliastudios.zoom.internal.StateController.Callback
 
 /**
  * Deals with touch input, holds the internal [state] integer,
@@ -50,6 +51,7 @@ internal class StateController(private val callback: Callback) {
     /**
      * Private function to set the current state.
      * External callers should use [setPinching], [setScrolling], [makeIdle]... instead.
+     * @return true if the new state was applied, false otherwise
      */
     private fun setState(@State newState: Int): Boolean {
         LOG.v("trySetState:", newState.toStateName())
@@ -64,10 +66,12 @@ internal class StateController(private val callback: Callback) {
             IDLE -> callback.onStateIdle()
         }
 
-        // Now that it succeeded, do some cleanup.
-        callback.cleanupState(oldState)
         LOG.i("setState:", newState.toStateName())
         state = newState
+
+        // Now that it succeeded, do some cleanup.
+        callback.cleanupState(oldState)
+
         return true
     }
 
@@ -93,7 +97,9 @@ internal class StateController(private val callback: Callback) {
      */
     private fun processTouchEvent(event: MotionEvent): Int {
         LOG.v("processTouchEvent:", "start.")
-        if (isAnimating()) return TOUCH_STEAL
+        if (isAnimating()) {
+            return TOUCH_STEAL
+        }
 
         var result = callback.maybeStartPinchGesture(event)
         LOG.v("processTouchEvent:", "scaleResult:", result)

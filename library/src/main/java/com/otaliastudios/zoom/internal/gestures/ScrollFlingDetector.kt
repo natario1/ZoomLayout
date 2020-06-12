@@ -7,8 +7,8 @@ import android.widget.OverScroller
 import com.otaliastudios.zoom.ScaledPoint
 import com.otaliastudios.zoom.ZoomApi
 import com.otaliastudios.zoom.ZoomLogger
-import com.otaliastudios.zoom.internal.matrix.MatrixController
 import com.otaliastudios.zoom.internal.StateController
+import com.otaliastudios.zoom.internal.matrix.MatrixController
 import com.otaliastudios.zoom.internal.movement.PanManager
 import kotlin.math.abs
 import kotlin.math.pow
@@ -65,6 +65,14 @@ internal class ScrollFlingDetector(
      * idle state.
      */
     internal fun cancelScroll() {
+        correctOverpan()
+        stateController.makeIdle()
+    }
+
+    /**
+     * Initiates an animation to correct any existing overpan
+     */
+    private fun correctOverpan() {
         if (panManager.isOverEnabled) {
             val fix = panManager.correction
             if (fix.x != 0f || fix.y != 0f) {
@@ -72,10 +80,10 @@ internal class ScrollFlingDetector(
                 return
             }
         }
-        stateController.makeIdle()
     }
 
     override fun onDown(e: MotionEvent): Boolean {
+        cancelFling()
         return true // We are interested in the gesture.
     }
 
