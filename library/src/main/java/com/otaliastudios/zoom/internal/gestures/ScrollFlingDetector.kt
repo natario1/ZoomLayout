@@ -7,8 +7,8 @@ import android.widget.OverScroller
 import com.otaliastudios.zoom.ScaledPoint
 import com.otaliastudios.zoom.ZoomApi
 import com.otaliastudios.zoom.ZoomLogger
-import com.otaliastudios.zoom.internal.matrix.MatrixController
 import com.otaliastudios.zoom.internal.StateController
+import com.otaliastudios.zoom.internal.matrix.MatrixController
 import com.otaliastudios.zoom.internal.movement.PanManager
 import kotlin.math.abs
 import kotlin.math.pow
@@ -65,17 +65,28 @@ internal class ScrollFlingDetector(
      * idle state.
      */
     internal fun cancelScroll() {
+        if (!correctOverpan()) {
+            stateController.makeIdle()
+        }
+    }
+
+    /**
+     * Initiates an animation to correct any existing overpan
+     * @return true if a correction was initiated, false otherwise
+     */
+    private fun correctOverpan(): Boolean {
         if (panManager.isOverEnabled) {
             val fix = panManager.correction
             if (fix.x != 0f || fix.y != 0f) {
                 matrixController.animateUpdate { panBy(fix, true) }
-                return
+                return true
             }
         }
-        stateController.makeIdle()
+        return false
     }
 
     override fun onDown(e: MotionEvent): Boolean {
+        cancelFling()
         return true // We are interested in the gesture.
     }
 
@@ -107,6 +118,9 @@ internal class ScrollFlingDetector(
         }
         // Must be after the other conditions.
         if (!stateController.setFlinging()) return false
+        // disable long press detection while we are flinging
+        // to prevent long presses from interrupting a possible followup scroll gesture
+        detector.setIsLongpressEnabled(false)
 
         @ZoomApi.ScaledPan val overScrollX = if (panManager.horizontalOverPanEnabled) panManager.maxOverPan else 0F
         @ZoomApi.ScaledPan val overScrollY = if (panManager.verticalOverPanEnabled) panManager.maxOverPan else 0F
@@ -122,6 +136,8 @@ internal class ScrollFlingDetector(
             override fun run() {
                 if (flingScroller.isFinished) {
                     stateController.makeIdle()
+                    // re-enable long press detection
+                    detector.setIsLongpressEnabled(true)
                 } else if (flingScroller.computeScrollOffset()) {
                     val newPan = ScaledPoint(flingScroller.currX.toFloat(), flingScroller.currY.toFloat())
                     // OverScroller will eventually go back to our bounds.

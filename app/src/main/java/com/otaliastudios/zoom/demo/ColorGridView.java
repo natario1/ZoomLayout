@@ -5,15 +5,16 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.drawable.ColorDrawable;
-import androidx.annotation.AttrRes;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.view.View;
 import android.widget.GridLayout;
+
+import androidx.annotation.AttrRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.Random;
 
@@ -63,6 +64,13 @@ public class ColorGridView extends GridLayout {
             @Override
             public void onClick(View view) {
                 view.setBackgroundColor(Color.BLACK);
+            }
+        });
+        view.setOnLongClickListener(new OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                view.setBackgroundColor(Color.WHITE);
+                return true;
             }
         });
         return view;
