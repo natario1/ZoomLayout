@@ -93,6 +93,7 @@ will make more sense than the other - e. g., in a PDF viewer, you might want to 
 |`setMinZoom(float, @ZoomType int)`|Sets the lower bound when pinching out.|`0.8`, `TYPE_ZOOM`|
 |`setMaxZoom(float, @ZoomType int)`|Sets the upper bound when pinching in.|`2.5`, `TYPE_REAL_ZOOM`|
 |`setOverPinchable(boolean)`|If true, the content will be allowed to zoom outside its bounds, then return to its position.|`true`|
+|`setOverZoomRange(provider)`|Sets an OverZoomRangeProvider that defines the allowed amount to zoom outside the content's bounds.|`DEFAULT_OVERZOOM_PROVIDER`|
 |`realZoomTo(float, boolean)`|Moves the real zoom to the given value, animating if needed.|`-`|
 |`zoomTo(float, boolean)`|Moves the zoom to the given value, animating if needed.|`-`|
 |`zoomBy(float, boolean)`|Applies the given factor to the current zoom, animating if needed. OK for both types.|`-`|
