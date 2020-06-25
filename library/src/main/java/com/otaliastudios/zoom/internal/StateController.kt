@@ -3,6 +3,7 @@ package com.otaliastudios.zoom.internal
 import android.view.MotionEvent
 import androidx.annotation.IntDef
 import com.otaliastudios.zoom.ZoomLogger
+import com.otaliastudios.zoom.internal.StateController.Callback
 
 /**
  * Deals with touch input, holds the internal [state] integer,
@@ -50,6 +51,7 @@ internal class StateController(private val callback: Callback) {
     /**
      * Private function to set the current state.
      * External callers should use [setPinching], [setScrolling], [makeIdle]... instead.
+     * @return true if the new state was applied, false otherwise
      */
     private fun setState(@State newState: Int): Boolean {
         LOG.v("trySetState:", newState.toStateName())
