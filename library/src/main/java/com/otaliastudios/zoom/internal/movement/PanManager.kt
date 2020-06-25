@@ -16,13 +16,17 @@ import kotlin.math.min
  *
  * Does NOT hold the current pan values, which is done by the [MatrixController].
  */
-internal class PanManager(provider: () -> MatrixController) : MovementManager(provider) {
+internal class PanManager(
+        private val engine: ZoomEngine,
+        provider: () -> MatrixController) : MovementManager(provider) {
 
     internal var horizontalOverPanEnabled = true
     internal var verticalOverPanEnabled = true
     internal var horizontalPanEnabled = true
     internal var verticalPanEnabled = true
     internal var alignment = ZoomApi.ALIGNMENT_DEFAULT
+
+    internal var overPanRangeProvider: OverPanRangeProvider = DEFAULT_OVERPAN_PROVIDER
 
     /** whether overpan is enabled, horizontally or vertically */
     override val isOverEnabled get() = horizontalOverPanEnabled || verticalOverPanEnabled
@@ -109,7 +113,12 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
         val containerSize = if (horizontal) controller.containerWidth else controller.containerHeight
         @ZoomApi.ScaledPan val contentSize = if (horizontal) controller.contentScaledWidth else controller.contentScaledHeight
         val overScrollable = if (horizontal) horizontalOverPanEnabled else verticalOverPanEnabled
-        @ZoomApi.ScaledPan val overScroll = if (overScrollable && allowOverScroll) maxOverPan else 0F
+        @ZoomApi.ScaledPan val overScroll = if (overScrollable && allowOverScroll) {
+            if (horizontal) maxHorizontalOverPan else maxVerticalOverPan
+        } else {
+            0F
+        }
+
         val alignmentGravity = if (horizontal) {
             Alignment.toHorizontalGravity(alignment, Gravity.NO_GRAVITY)
         } else {
@@ -144,16 +153,18 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
     }
 
     /**
-     * The amount of overscroll that is allowed in both direction. This is currently
-     * a fixed value, but might be made configurable in the future.
+     * The amount of overscroll that is allowed in horizontal direction.
      */
     @ZoomApi.ScaledPan
-    internal val maxOverPan: Float
-        get() {
-            val overX = controller.containerWidth * DEFAULT_OVERPAN_FACTOR
-            val overY = controller.containerHeight * DEFAULT_OVERPAN_FACTOR
-            return min(overX, overY)
-        }
+    internal val maxHorizontalOverPan: Float
+        get() = overPanRangeProvider.getHorizontalOverPanRange(engine)
+
+    /**
+     * The amount of overscroll that is allowed in vertical direction.
+     */
+    @ZoomApi.ScaledPan
+    internal val maxVerticalOverPan: Float
+        get() = overPanRangeProvider.getVerticalOverPanRange(engine)
 
     /**
      * Returns 0 for 'start' gravities, [extraSpace] for 'end' gravities, and half of it
@@ -185,5 +196,15 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
          * The default overscrolling factor
          */
         private const val DEFAULT_OVERPAN_FACTOR = 0.10f
+
+        val DEFAULT_OVERPAN_PROVIDER = object : OverPanRangeProvider {
+            override fun getHorizontalOverPanRange(engine: ZoomEngine): Float {
+                return engine.containerWidth * DEFAULT_OVERPAN_FACTOR
+            }
+
+            override fun getVerticalOverPanRange(engine: ZoomEngine): Float {
+                return engine.containerHeight * DEFAULT_OVERPAN_FACTOR
+            }
+        }
     }
 }

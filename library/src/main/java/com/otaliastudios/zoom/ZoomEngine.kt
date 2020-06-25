@@ -163,7 +163,9 @@ internal constructor(context: Context) : ZoomApi {
     @Suppress("LeakingThis")
     private val dispatcher = UpdatesDispatcher(this)
     private val stateController = StateController(callbacks)
-    private val panManager = PanManager { matrixController }
+
+    @Suppress("LeakingThis")
+    private val panManager = PanManager(this) { matrixController }
 
     @Suppress("LeakingThis")
     internal val zoomManager = ZoomManager(this) { matrixController }
@@ -386,6 +388,14 @@ internal constructor(context: Context) : ZoomApi {
      */
     override fun setOverScrollVertical(overScroll: Boolean) {
         panManager.verticalOverPanEnabled = overScroll
+    }
+
+    /**
+     * Set the [OverPanRangeProvider] that specifies the amount of
+     * overpan to allow.
+     */
+    override fun setOverPanRange(provider: OverPanRangeProvider) {
+        panManager.overPanRangeProvider = provider
     }
 
     /**

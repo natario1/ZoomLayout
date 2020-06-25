@@ -8,6 +8,7 @@ interface OverZoomRangeProvider {
     /**
      * @return the maximum overzoom to allow
      */
+    @ZoomApi.RealZoom
     fun getOverZoomRange(engine: ZoomEngine): Float
 
 }

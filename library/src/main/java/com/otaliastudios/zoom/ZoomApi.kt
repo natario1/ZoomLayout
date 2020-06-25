@@ -188,6 +188,12 @@ interface ZoomApi {
     // TODO (v2) rename to var isVerticalOverPanEnabled
 
     /**
+     * Set the [OverPanRangeProvider] that specifies the amount of
+     * overpan to allow.
+     */
+    fun setOverPanRange(provider: OverPanRangeProvider)
+
+    /**
      * Controls whether horizontal panning using gestures is enabled.
      *
      * @param enabled true enables horizontal panning, false disables it
