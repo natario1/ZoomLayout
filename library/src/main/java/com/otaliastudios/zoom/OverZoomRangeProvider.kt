@@ -6,9 +6,15 @@ package com.otaliastudios.zoom
 interface OverZoomRangeProvider {
 
     /**
-     * @return the maximum overzoom to allow
+     * @return the maximum inwards overzoom to allow
      */
     @ZoomApi.RealZoom
-    fun getOverZoomRange(engine: ZoomEngine): Float
+    fun getOverZoomIn(engine: ZoomEngine): Float
+
+    /**
+     * @return the maximum outwards overzoom to allow
+     */
+    @ZoomApi.RealZoom
+    fun getOverZoomOut(engine: ZoomEngine): Float
 
 }

@@ -78,12 +78,20 @@ internal class ZoomManager(
     }
 
     /**
-     * The amount of overzoom that is allowed in both directions.
+     * The amount of overzoom that is allowed in inwards direction.
      * This value is calculated by the [overZoomRangeProvider].
      */
     @ZoomApi.RealZoom
-    internal val maxOverZoom: Float
-        get() = overZoomRangeProvider.getOverZoomRange(engine)
+    internal val maxOverZoomIn: Float
+        get() = overZoomRangeProvider.getOverZoomIn(engine)
+
+    /**
+     * The amount of overzoom that is allowed in outwards direction.
+     * This value is calculated by the [overZoomRangeProvider].
+     */
+    @ZoomApi.RealZoom
+    internal val maxOverZoomOut: Float
+        get() = overZoomRangeProvider.getOverZoomOut(engine)
 
     /**
      * Returns the current minimum zoom as a [ZoomApi.RealZoom] value.
@@ -121,8 +129,8 @@ internal class ZoomManager(
         var minZoom = getMinZoom()
         var maxZoom = getMaxZoom()
         if (allowOverZoom && isOverEnabled) {
-            minZoom -= maxOverZoom
-            maxZoom += maxOverZoom
+            minZoom -= maxOverZoomOut
+            maxZoom += maxOverZoomIn
         }
         return value.coerceIn(minZoom, maxZoom)
     }
@@ -130,7 +138,11 @@ internal class ZoomManager(
     companion object {
         const val DEFAULT_OVERZOOM_FACTOR = 0.1f
         val DEFAULT_OVERZOOM_PROVIDER = object : OverZoomRangeProvider {
-            override fun getOverZoomRange(engine: ZoomEngine): Float {
+            override fun getOverZoomIn(engine: ZoomEngine): Float {
+                return DEFAULT_OVERZOOM_FACTOR * (engine.getMaxZoom() - engine.getMinZoom())
+            }
+
+            override fun getOverZoomOut(engine: ZoomEngine): Float {
                 return DEFAULT_OVERZOOM_FACTOR * (engine.getMaxZoom() - engine.getMinZoom())
             }
         }
