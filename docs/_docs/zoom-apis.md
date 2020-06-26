@@ -90,7 +90,11 @@ will make more sense than the other - e. g., in a PDF viewer, you might want to 
 |---|-----------|-------------|
 |`getZoom()`|Returns the current zoom, not taking into account the base scale.|`1`|
 |`getRealZoom()`|Returns the current zoom taking into account the base scale. This is the matrix scale.|`-`|
+|`getMinZoom()`|Returns the current min zoom.|`0.8`|
+|`getMinZoomType()`|Returns the current min zoom type.|`TYPE_ZOOM`|
 |`setMinZoom(float, @ZoomType int)`|Sets the lower bound when pinching out.|`0.8`, `TYPE_ZOOM`|
+|`getMaxZoom()`|Returns the current max zoom.|`2.5`|
+|`getMaxZoomType()`|Returns the current max zoom type.|`TYPE_ZOOM`|
 |`setMaxZoom(float, @ZoomType int)`|Sets the upper bound when pinching in.|`2.5`, `TYPE_REAL_ZOOM`|
 |`setOverPinchable(boolean)`|If true, the content will be allowed to zoom outside its bounds, then return to its position.|`true`|
 |`setOverZoomRange(provider)`|Sets an OverZoomRangeProvider that defines the allowed amount to zoom outside the content's bounds.|`DEFAULT_OVERZOOM_PROVIDER`|

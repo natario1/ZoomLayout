@@ -21,10 +21,10 @@ internal class ZoomManager(
 
     internal var transformationZoom = 0F
 
-    private var minZoom = ZoomApi.MIN_ZOOM_DEFAULT
-    private var minZoomMode = ZoomApi.MIN_ZOOM_DEFAULT_TYPE
-    private var maxZoom = ZoomApi.MAX_ZOOM_DEFAULT
-    private var maxZoomMode = ZoomApi.MAX_ZOOM_DEFAULT_TYPE
+    var minZoom = ZoomApi.MIN_ZOOM_DEFAULT
+    var minZoomMode = ZoomApi.MIN_ZOOM_DEFAULT_TYPE
+    var maxZoom = ZoomApi.MAX_ZOOM_DEFAULT
+    var maxZoomMode = ZoomApi.MAX_ZOOM_DEFAULT_TYPE
 
     internal var overZoomRangeProvider: OverZoomRangeProvider = DEFAULT_OVERZOOM_PROVIDER
 
@@ -131,7 +131,7 @@ internal class ZoomManager(
         const val DEFAULT_OVERZOOM_FACTOR = 0.1f
         val DEFAULT_OVERZOOM_PROVIDER = object : OverZoomRangeProvider {
             override fun getOverZoomRange(engine: ZoomEngine): Float {
-                return DEFAULT_OVERZOOM_FACTOR * (engine.zoomManager.getMaxZoom() - engine.zoomManager.getMinZoom())
+                return DEFAULT_OVERZOOM_FACTOR * (engine.getMaxZoom() - engine.getMinZoom())
             }
         }
     }

@@ -386,6 +386,24 @@ interface ZoomApi {
     // TODO (v2) if not removed, rename to zoomTo
 
     /**
+     * Get the currently allowed max zoom.
+     * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
+     * for a brief time.
+     *
+     * @see zoom
+     * @see realZoom
+     */
+    fun getMaxZoom(): Float
+
+    /**
+     * Get the currently set max zoom type.
+     *
+     * @see getMaxZoom
+     */
+    @ZoomType
+    fun getMaxZoomType(): Int
+
+    /**
      * Which is the max zoom that should be allowed.
      * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
      * for a brief time.
@@ -396,6 +414,24 @@ interface ZoomApi {
      * @see realZoom
      */
     fun setMaxZoom(maxZoom: Float, @ZoomType type: Int)
+
+    /**
+     * Get the currently allowed min zoom.
+     * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
+     * for a brief time.
+     *
+     * @see zoom
+     * @see realZoom
+     */
+    fun getMinZoom(): Float
+
+    /**
+     * Get the currently set min zoom type.
+     *
+     * @see getMinZoom
+     */
+    @ZoomType
+    fun getMinZoomType(): Int
 
     /**
      * Which is the min zoom that should be allowed.

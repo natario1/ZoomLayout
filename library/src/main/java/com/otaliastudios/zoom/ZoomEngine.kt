@@ -792,6 +792,24 @@ internal constructor(context: Context) : ZoomApi {
     }
 
     /**
+     * Get the currently allowed max zoom.
+     * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
+     * for a brief time.
+     *
+     * @see zoom
+     * @see realZoom
+     */
+    override fun getMaxZoom(): Float  = zoomManager.maxZoom
+
+    /**
+     * Get the currently set max zoom type.
+     *
+     * @see getMaxZoom
+     */
+    @ZoomType
+    override fun getMaxZoomType(): Int = zoomManager.maxZoomMode
+
+    /**
      * Which is the max zoom that should be allowed.
      * If [setOverPinchable] is set to true, this can be over-pinched
      * for a brief time.
@@ -810,6 +828,24 @@ internal constructor(context: Context) : ZoomApi {
             realZoomTo(zoomManager.getMaxZoom(), animate = true)
         }
     }
+
+    /**
+     * Get the currently allowed min zoom.
+     * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
+     * for a brief time.
+     *
+     * @see zoom
+     * @see realZoom
+     */
+    override fun getMinZoom(): Float  = zoomManager.minZoom
+
+    /**
+     * Get the currently set min zoom type.
+     *
+     * @see getMinZoom
+     */
+    @ZoomType
+    override fun getMinZoomType(): Int = zoomManager.minZoomMode
 
     /**
      * Which is the min zoom that should be allowed.
