@@ -684,6 +684,16 @@ internal constructor(context: Context) : ZoomApi {
     }
 
     /**
+     * Moves to the center of the content.
+     *
+     * @param zoom    the desired zoom value
+     * @param animate whether to animate the transition
+     */
+    override fun moveToCenter(@Zoom zoom: Float?, animate: Boolean) {
+        TODO("Not yet implemented")
+    }
+
+    /**
      * Pans the content until the top-left coordinates match the given x-y
      * values. These are referred to the content size passed in [setContentSize],
      * so they do not depend on current zoom.
