@@ -413,7 +413,7 @@ interface ZoomApi {
      * @see zoom
      * @see realZoom
      */
-    fun setMaxZoom(maxZoom: Float, @ZoomType type: Int)
+    fun setMaxZoom(maxZoom: Float, @ZoomType type: Int = TYPE_ZOOM)
 
     /**
      * Get the currently allowed min zoom.
@@ -443,7 +443,7 @@ interface ZoomApi {
      * @see zoom
      * @see realZoom
      */
-    fun setMinZoom(minZoom: Float, @ZoomType type: Int)
+    fun setMinZoom(minZoom: Float, @ZoomType type: Int = TYPE_ZOOM)
 
     /**
      * Sets the duration of animations triggered by zoom and pan APIs.
