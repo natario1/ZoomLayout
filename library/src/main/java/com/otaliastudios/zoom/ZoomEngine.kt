@@ -537,7 +537,7 @@ internal constructor(context: Context) : ZoomApi {
      */
     internal fun setContainer(container: View) {
         this.container = container
-        this.container.addOnAttachStateChangeListener(object: View.OnAttachStateChangeListener {
+        this.container.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(view: View) {
                 view.viewTreeObserver.addOnGlobalLayoutListener(callbacks)
             }
@@ -890,7 +890,10 @@ internal constructor(context: Context) : ZoomApi {
      * @return true if anything was cancelled, false otherwise
      */
     override fun cancelAnimations(): Boolean {
-        if (stateController.isFlinging() || stateController.isAnimating()) {
+        if (stateController.isFlinging()) {
+            scrollFlingDetector.cancelFling()
+            return true
+        } else if (stateController.isAnimating()) {
             stateController.makeIdle()
             return true
         }
