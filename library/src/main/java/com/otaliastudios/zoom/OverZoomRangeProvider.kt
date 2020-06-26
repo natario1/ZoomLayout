@@ -6,15 +6,22 @@ package com.otaliastudios.zoom
 interface OverZoomRangeProvider {
 
     /**
-     * @return the maximum inwards overzoom to allow
+     * Calculates the maximum overzoom to allow
+     *
+     * @param engine the zoom engine
+     * @param inwards true for inwards, false for outwards
+     * @return the maximum overzoom to allow
      */
     @ZoomApi.RealZoom
-    fun getOverZoomIn(engine: ZoomEngine): Float
+    fun getOverZoom(engine: ZoomEngine, inwards: Boolean): Float
 
-    /**
-     * @return the maximum outwards overzoom to allow
-     */
-    @ZoomApi.RealZoom
-    fun getOverZoomOut(engine: ZoomEngine): Float
+    companion object {
+        private const val DEFAULT_OVERZOOM_FACTOR = 0.1f
+        val DEFAULT = object : OverZoomRangeProvider {
+            override fun getOverZoom(engine: ZoomEngine, inwards: Boolean): Float {
+                return DEFAULT_OVERZOOM_FACTOR * (engine.getMaxZoom() - engine.getMinZoom())
+            }
+        }
+    }
 
 }

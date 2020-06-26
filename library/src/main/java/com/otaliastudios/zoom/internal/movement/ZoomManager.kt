@@ -3,6 +3,7 @@ package com.otaliastudios.zoom.internal.movement
 import com.otaliastudios.zoom.OverZoomRangeProvider
 import com.otaliastudios.zoom.ZoomApi
 import com.otaliastudios.zoom.ZoomEngine
+import com.otaliastudios.zoom.ZoomLogger
 import com.otaliastudios.zoom.internal.matrix.MatrixController
 
 /**
@@ -26,7 +27,7 @@ internal class ZoomManager(
     var maxZoom = ZoomApi.MAX_ZOOM_DEFAULT
     var maxZoomMode = ZoomApi.MAX_ZOOM_DEFAULT_TYPE
 
-    internal var overZoomRangeProvider: OverZoomRangeProvider = DEFAULT_OVERZOOM_PROVIDER
+    internal var overZoomRangeProvider: OverZoomRangeProvider = OverZoomRangeProvider.DEFAULT
 
     override var isEnabled = true
     override var isOverEnabled = true
@@ -83,7 +84,14 @@ internal class ZoomManager(
      */
     @ZoomApi.RealZoom
     internal val maxOverZoomIn: Float
-        get() = overZoomRangeProvider.getOverZoomIn(engine)
+        get() {
+            var value = overZoomRangeProvider.getOverZoom(engine, inwards = true)
+            if (value < 0F) {
+                LOG.w("Received negative maxOverZoomIn value, coercing to 0")
+                value = value.coerceAtLeast(0F)
+            }
+            return value
+        }
 
     /**
      * The amount of overzoom that is allowed in outwards direction.
@@ -91,7 +99,14 @@ internal class ZoomManager(
      */
     @ZoomApi.RealZoom
     internal val maxOverZoomOut: Float
-        get() = overZoomRangeProvider.getOverZoomOut(engine)
+        get() {
+            var value = overZoomRangeProvider.getOverZoom(engine, inwards = false)
+            if (value < 0F) {
+                LOG.w("Received negative maxOverZoomOut value, coercing to 0")
+                value = value.coerceAtLeast(0F)
+            }
+            return value
+        }
 
     /**
      * Returns the current minimum zoom as a [ZoomApi.RealZoom] value.
@@ -136,16 +151,10 @@ internal class ZoomManager(
     }
 
     companion object {
-        const val DEFAULT_OVERZOOM_FACTOR = 0.1f
-        val DEFAULT_OVERZOOM_PROVIDER = object : OverZoomRangeProvider {
-            override fun getOverZoomIn(engine: ZoomEngine): Float {
-                return DEFAULT_OVERZOOM_FACTOR * (engine.getMaxZoom() - engine.getMinZoom())
-            }
 
-            override fun getOverZoomOut(engine: ZoomEngine): Float {
-                return DEFAULT_OVERZOOM_FACTOR * (engine.getMaxZoom() - engine.getMinZoom())
-            }
-        }
+        private val TAG = ZoomManager::class.java.simpleName
+        private val LOG = ZoomLogger.create(TAG)
+
     }
 
 }

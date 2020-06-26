@@ -26,7 +26,7 @@ internal class PanManager(
     internal var verticalPanEnabled = true
     internal var alignment = ZoomApi.ALIGNMENT_DEFAULT
 
-    internal var overPanRangeProvider: OverPanRangeProvider = DEFAULT_OVERPAN_PROVIDER
+    internal var overPanRangeProvider: OverPanRangeProvider = OverPanRangeProvider.DEFAULT
 
     /** whether overpan is enabled, horizontally or vertically */
     override val isOverEnabled get() = horizontalOverPanEnabled || verticalOverPanEnabled
@@ -157,14 +157,28 @@ internal class PanManager(
      */
     @ZoomApi.ScaledPan
     internal val maxHorizontalOverPan: Float
-        get() = overPanRangeProvider.getHorizontalOverPanRange(engine)
+        get() {
+            var value = overPanRangeProvider.getOverPanRange(engine, horizontal = true)
+            if (value < 0) {
+                LOG.w("Received negative maxHorizontalOverPan value, coercing to 0")
+                value = value.coerceAtLeast(0F)
+            }
+            return value
+        }
 
     /**
      * The amount of overscroll that is allowed in vertical direction.
      */
     @ZoomApi.ScaledPan
     internal val maxVerticalOverPan: Float
-        get() = overPanRangeProvider.getVerticalOverPanRange(engine)
+        get() {
+            var value = overPanRangeProvider.getOverPanRange(engine, horizontal = false)
+            if (value < 0) {
+                LOG.w("Received negative maxVerticalOverPan value, coercing to 0")
+                value = value.coerceAtLeast(0F)
+            }
+            return value
+        }
 
     /**
      * Returns 0 for 'start' gravities, [extraSpace] for 'end' gravities, and half of it
@@ -188,23 +202,9 @@ internal class PanManager(
 
     companion object {
 
-        // TODO add OverScrollCallback and OverPinchCallback.
-        // Should notify the user when the boundaries are reached.
-        // TODO expose friction parameters, use an interpolator.
-        // TODO Make public, add API.
-        /**
-         * The default overscrolling factor
-         */
-        private const val DEFAULT_OVERPAN_FACTOR = 0.10f
+        private val TAG = PanManager::class.java.simpleName
+        private val LOG = ZoomLogger.create(TAG)
 
-        val DEFAULT_OVERPAN_PROVIDER = object : OverPanRangeProvider {
-            override fun getHorizontalOverPanRange(engine: ZoomEngine): Float {
-                return engine.containerWidth * DEFAULT_OVERPAN_FACTOR
-            }
-
-            override fun getVerticalOverPanRange(engine: ZoomEngine): Float {
-                return engine.containerHeight * DEFAULT_OVERPAN_FACTOR
-            }
-        }
     }
+
 }
