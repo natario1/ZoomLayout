@@ -690,7 +690,20 @@ internal constructor(context: Context) : ZoomApi {
      * @param animate whether to animate the transition
      */
     override fun moveToCenter(@Zoom zoom: Float?, animate: Boolean) {
-        TODO("Not yet implemented")
+        val targetZoom = zoom?.coerceIn(
+                zoomManager.realZoomToZoom(zoomManager.getMinZoom()),
+                zoomManager.realZoomToZoom(zoomManager.getMaxZoom())
+        ) ?: this.zoom
+        val targetRealZoom = zoomManager.zoomToRealZoom(targetZoom)
+
+        val zoomLayoutCenterX: Float = (containerWidth / targetRealZoom) / 2f
+        val zoomLayoutCenterY: Float = (containerHeight / targetRealZoom) / 2f
+        val contentCenterX: Float = contentWidth / 2f
+        val contentCenterY: Float = contentHeight / 2f
+        val diffX = (contentCenterX - zoomLayoutCenterX)
+        val diffY = (contentCenterY - zoomLayoutCenterY)
+
+        moveTo(targetZoom, -diffX, -diffY, animate)
     }
 
     /**
