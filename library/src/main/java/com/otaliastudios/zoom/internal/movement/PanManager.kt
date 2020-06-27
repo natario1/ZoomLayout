@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.view.Gravity
 import com.otaliastudios.zoom.*
 import com.otaliastudios.zoom.internal.matrix.MatrixController
-import kotlin.math.min
 
 /**
  * Contains:
@@ -158,7 +157,7 @@ internal class PanManager(
     @ZoomApi.ScaledPan
     internal val maxHorizontalOverPan: Float
         get() {
-            var value = overPanRangeProvider.getOverPanRange(engine, horizontal = true)
+            var value = overPanRangeProvider.getOverPan(engine, horizontal = true)
             if (value < 0) {
                 LOG.w("Received negative maxHorizontalOverPan value, coercing to 0")
                 value = value.coerceAtLeast(0F)
@@ -172,7 +171,7 @@ internal class PanManager(
     @ZoomApi.ScaledPan
     internal val maxVerticalOverPan: Float
         get() {
-            var value = overPanRangeProvider.getOverPanRange(engine, horizontal = false)
+            var value = overPanRangeProvider.getOverPan(engine, horizontal = false)
             if (value < 0) {
                 LOG.w("Received negative maxVerticalOverPan value, coercing to 0")
                 value = value.coerceAtLeast(0F)
