@@ -188,6 +188,12 @@ interface ZoomApi {
     // TODO (v2) rename to var isVerticalOverPanEnabled
 
     /**
+     * Set the [OverPanRangeProvider] that specifies the amount of
+     * overpan to allow.
+     */
+    fun setOverPanRange(provider: OverPanRangeProvider)
+
+    /**
      * Controls whether horizontal panning using gestures is enabled.
      *
      * @param enabled true enables horizontal panning, false disables it
@@ -204,6 +210,14 @@ interface ZoomApi {
     // TODO (v2) rename to var isVerticalPanEnabled
 
     /**
+     * Controls whether zoom using pinch gesture is enabled or not.
+     *
+     * @param enabled true enables zooming, false disables it
+     */
+    fun setZoomEnabled(enabled: Boolean)
+    // TODO (v2) rename to var isZoomEnabled
+
+    /**
      * Controls whether the content should be overPinchable.
      * If it is, pinch events can change the zoom outside the safe bounds,
      * than return to safe values.
@@ -214,12 +228,12 @@ interface ZoomApi {
     // TODO (v2) rename to var isOverZoomEnabled
 
     /**
-     * Controls whether zoom using pinch gesture is enabled or not.
+     * Set the [OverZoomRangeProvider] that specifies the amount of
+     * overzoom to allow.
      *
-     * @param enabled true enables zooming, false disables it
+     * @param provider the range provider
      */
-    fun setZoomEnabled(enabled: Boolean)
-    // TODO (v2) rename to var isZoomEnabled
+    fun setOverZoomRange(provider: OverZoomRangeProvider)
 
     /**
      * Controls whether fling gesture is enabled or not.
@@ -372,6 +386,24 @@ interface ZoomApi {
     // TODO (v2) if not removed, rename to zoomTo
 
     /**
+     * Get the currently allowed max zoom.
+     * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
+     * for a brief time.
+     *
+     * @see zoom
+     * @see realZoom
+     */
+    fun getMaxZoom(): Float
+
+    /**
+     * Get the currently set max zoom type.
+     *
+     * @see getMaxZoom
+     */
+    @ZoomType
+    fun getMaxZoomType(): Int
+
+    /**
      * Which is the max zoom that should be allowed.
      * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
      * for a brief time.
@@ -382,6 +414,24 @@ interface ZoomApi {
      * @see realZoom
      */
     fun setMaxZoom(maxZoom: Float, @ZoomType type: Int)
+
+    /**
+     * Get the currently allowed min zoom.
+     * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
+     * for a brief time.
+     *
+     * @see zoom
+     * @see realZoom
+     */
+    fun getMinZoom(): Float
+
+    /**
+     * Get the currently set min zoom type.
+     *
+     * @see getMinZoom
+     */
+    @ZoomType
+    fun getMinZoomType(): Int
 
     /**
      * Which is the min zoom that should be allowed.
