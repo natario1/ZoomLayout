@@ -5,6 +5,7 @@ import com.otaliastudios.zoom.ZoomApi
 import com.otaliastudios.zoom.ZoomEngine
 import com.otaliastudios.zoom.ZoomLogger
 import com.otaliastudios.zoom.internal.matrix.MatrixController
+import java.lang.IllegalStateException
 
 /**
  * Contains:
@@ -147,6 +148,20 @@ internal class ZoomManager(
             minZoom -= maxOverZoomOut
             maxZoom += maxOverZoomIn
         }
+
+        if (maxZoom < minZoom) {
+            if (maxZoomMode == minZoomMode) {
+                throw IllegalStateException("maxZoom is less than minZoom: $maxZoom < $minZoom")
+            } else {
+                // align REAL_ZOOM value to ZOOM value
+                if (maxZoomMode == ZoomApi.TYPE_ZOOM) {
+                    minZoom = maxZoom
+                } else {
+                    maxZoom = minZoom
+                }
+            }
+        }
+
         return value.coerceIn(minZoom, maxZoom)
     }
 
