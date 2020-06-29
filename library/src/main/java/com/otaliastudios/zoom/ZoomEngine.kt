@@ -704,6 +704,29 @@ internal constructor(context: Context) : ZoomApi {
     }
 
     /**
+     * Moves to the center of the content.
+     *
+     * @param zoom    the desired zoom value
+     * @param animate whether to animate the transition
+     */
+    override fun moveToCenter(@Zoom zoom: Float?, animate: Boolean) {
+        val targetZoom = zoom?.coerceIn(
+                zoomManager.realZoomToZoom(zoomManager.getMinZoom()),
+                zoomManager.realZoomToZoom(zoomManager.getMaxZoom())
+        ) ?: this.zoom
+        val targetRealZoom = zoomManager.zoomToRealZoom(targetZoom)
+
+        val zoomLayoutCenterX: Float = (containerWidth / targetRealZoom) / 2f
+        val zoomLayoutCenterY: Float = (containerHeight / targetRealZoom) / 2f
+        val contentCenterX: Float = contentWidth / 2f
+        val contentCenterY: Float = contentHeight / 2f
+        val diffX = (contentCenterX - zoomLayoutCenterX)
+        val diffY = (contentCenterY - zoomLayoutCenterY)
+
+        moveTo(targetZoom, -diffX, -diffY, animate)
+    }
+
+    /**
      * Pans the content until the top-left coordinates match the given x-y
      * values. These are referred to the content size passed in [setContentSize],
      * so they do not depend on current zoom.

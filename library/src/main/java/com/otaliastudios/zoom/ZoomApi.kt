@@ -325,6 +325,14 @@ interface ZoomApi {
     // TODO (v2) revisit these control APIs, possibly leveraging MatrixUpdate syntax and using AbsolutePoint
 
     /**
+     * Moves to the center of the content.
+     *
+     * @param zoom    the desired zoom value
+     * @param animate whether to animate the transition
+     */
+    fun moveToCenter(@Zoom zoom: Float? = null, animate: Boolean)
+
+    /**
      * Pans the content until the top-left coordinates match the given x-y
      * values. These are referred to the content size so they do not depend on current zoom.
      *
