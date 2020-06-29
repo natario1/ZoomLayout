@@ -417,6 +417,17 @@ interface ZoomApi {
      * for a brief time.
      *
      * @param maxZoom the max zoom
+     */
+    fun setMaxZoom(@Zoom maxZoom: Float) {
+        setMaxZoom(maxZoom, TYPE_ZOOM)
+    }
+
+    /**
+     * Which is the max zoom that should be allowed.
+     * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
+     * for a brief time.
+     *
+     * @param maxZoom the max zoom
      * @param type    the constraint mode
      * @see zoom
      * @see realZoom
@@ -440,6 +451,17 @@ interface ZoomApi {
      */
     @ZoomType
     fun getMinZoomType(): Int
+
+    /**
+     * Which is the min zoom that should be allowed.
+     * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
+     * for a brief time.
+     *
+     * @param minZoom the min zoom
+     */
+    fun setMinZoom(@Zoom minZoom: Float) {
+        setMinZoom(minZoom, TYPE_ZOOM)
+    }
 
     /**
      * Which is the min zoom that should be allowed.
