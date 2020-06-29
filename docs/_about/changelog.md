@@ -100,10 +100,10 @@ Companies can share a tiny part of their revenue and get private support hours i
 [105]: https://github.com/natario1/ZoomLayout/pull/105
 [114]: https://github.com/natario1/ZoomLayout/pull/114
 [136]: https://github.com/natario1/ZoomLayout/pull/136
-[136]: https://github.com/natario1/ZoomLayout/pull/157
-[136]: https://github.com/natario1/ZoomLayout/pull/164
-[136]: https://github.com/natario1/ZoomLayout/pull/166
-[136]: https://github.com/natario1/ZoomLayout/pull/167
-[136]: https://github.com/natario1/ZoomLayout/pull/159
-[136]: https://github.com/natario1/ZoomLayout/pull/158
-[136]: https://github.com/natario1/ZoomLayout/pull/156
+[157]: https://github.com/natario1/ZoomLayout/pull/157
+[164]: https://github.com/natario1/ZoomLayout/pull/164
+[166]: https://github.com/natario1/ZoomLayout/pull/166
+[167]: https://github.com/natario1/ZoomLayout/pull/167
+[159]: https://github.com/natario1/ZoomLayout/pull/159
+[158]: https://github.com/natario1/ZoomLayout/pull/158
+[156]: https://github.com/natario1/ZoomLayout/pull/156
