@@ -13,7 +13,7 @@ android {
     defaultConfig {
         setMinSdkVersion(property("minSdkVersion") as Int)
         setTargetSdkVersion(property("targetSdkVersion") as Int)
-        versionName = "1.7.1"
+        versionName = "1.8.0"
     }
 
     buildTypes {
