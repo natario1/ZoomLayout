@@ -9,6 +9,18 @@ New versions are released through GitHub, so the reference page is the [GitHub R
 Starting from 1.7.0, you can now [support development](https://github.com/natario1/ZoomLayout/issues/125) through the GitHub Sponsors program. 
 Companies can share a tiny part of their revenue and get private support hours in return. Thanks!
 
+#### v1.8.0
+
+- Enhancement: raise an exception if a drawable without intrinsic dimensions is used ([#157][157])
+- Enhancement: overzoom customization ([#164][164])
+- Enhancement: max less than min ([#166][166])
+- Enhancement: move to center ([#167][167])
+- Fix: cancel fling with touch ([#159][159])
+- Fix: pan to center ([#158][158])
+- Fix: updated video url ([#156][156])
+
+<https://github.com/natario1/ZoomLayout/compare/v1.7.1...v1.8.0>
+
 #### v1.7.1
 
 - Enhancement: the Egloo library is now a declared dependency and you don't need to add it separately. ([#136][136]) 
@@ -88,3 +100,10 @@ Companies can share a tiny part of their revenue and get private support hours i
 [105]: https://github.com/natario1/ZoomLayout/pull/105
 [114]: https://github.com/natario1/ZoomLayout/pull/114
 [136]: https://github.com/natario1/ZoomLayout/pull/136
+[157]: https://github.com/natario1/ZoomLayout/pull/157
+[164]: https://github.com/natario1/ZoomLayout/pull/164
+[166]: https://github.com/natario1/ZoomLayout/pull/166
+[167]: https://github.com/natario1/ZoomLayout/pull/167
+[159]: https://github.com/natario1/ZoomLayout/pull/159
+[158]: https://github.com/natario1/ZoomLayout/pull/158
+[156]: https://github.com/natario1/ZoomLayout/pull/156
