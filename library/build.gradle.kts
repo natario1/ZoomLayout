@@ -14,6 +14,7 @@ android {
         setMinSdkVersion(property("minSdkVersion") as Int)
         setTargetSdkVersion(property("targetSdkVersion") as Int)
         versionName = "1.8.0"
+        versionNameSuffix = ""
     }
 
     buildTypes {
