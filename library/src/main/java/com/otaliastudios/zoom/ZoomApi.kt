@@ -449,10 +449,10 @@ interface ZoomApi {
      * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
      * for a brief time.
      *
-     * @param maxZoom the min zoom
+     * @param minZoom the min zoom
      */
-    fun setMinZoom(@Zoom maxZoom: Float) {
-        setMinZoom(maxZoom, TYPE_ZOOM)
+    fun setMinZoom(@Zoom minZoom: Float) {
+        setMinZoom(minZoom, TYPE_ZOOM)
     }
 
     /**
