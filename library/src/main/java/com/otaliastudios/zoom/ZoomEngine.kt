@@ -163,8 +163,12 @@ internal constructor(context: Context) : ZoomApi {
     @Suppress("LeakingThis")
     private val dispatcher = UpdatesDispatcher(this)
     private val stateController = StateController(callbacks)
-    private val panManager = PanManager { matrixController }
-    private val zoomManager = ZoomManager { matrixController }
+
+    @Suppress("LeakingThis")
+    private val panManager = PanManager(this) { matrixController }
+
+    @Suppress("LeakingThis")
+    internal val zoomManager = ZoomManager(this) { matrixController }
     private val matrixController: MatrixController = MatrixController(zoomManager, panManager, stateController, callbacks)
 
     // Gestures
@@ -387,6 +391,14 @@ internal constructor(context: Context) : ZoomApi {
     }
 
     /**
+     * Set the [OverPanRangeProvider] that specifies the amount of
+     * overpan to allow.
+     */
+    override fun setOverPanRange(provider: OverPanRangeProvider) {
+        panManager.overPanRangeProvider = provider
+    }
+
+    /**
      * Controls whether horizontal panning using gestures is enabled.
      *
      * @param enabled true enables horizontal panning, false disables it
@@ -413,6 +425,14 @@ internal constructor(context: Context) : ZoomApi {
      */
     override fun setOverPinchable(overPinchable: Boolean) {
         zoomManager.isOverEnabled = overPinchable
+    }
+
+    /**
+     * Set the [OverZoomRangeProvider] that specifies the amount of
+     * overzoom to allow.
+     */
+    override fun setOverZoomRange(provider: OverZoomRangeProvider) {
+        zoomManager.overZoomRangeProvider = provider
     }
 
     /**
@@ -795,6 +815,24 @@ internal constructor(context: Context) : ZoomApi {
     }
 
     /**
+     * Get the currently allowed max zoom.
+     * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
+     * for a brief time.
+     *
+     * @see zoom
+     * @see realZoom
+     */
+    override fun getMaxZoom(): Float  = zoomManager.maxZoom
+
+    /**
+     * Get the currently set max zoom type.
+     *
+     * @see getMaxZoom
+     */
+    @ZoomType
+    override fun getMaxZoomType(): Int = zoomManager.maxZoomMode
+
+    /**
      * Which is the max zoom that should be allowed.
      * If [setOverPinchable] is set to true, this can be over-pinched
      * for a brief time.
@@ -813,6 +851,24 @@ internal constructor(context: Context) : ZoomApi {
             realZoomTo(zoomManager.getMaxZoom(), animate = true)
         }
     }
+
+    /**
+     * Get the currently allowed min zoom.
+     * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
+     * for a brief time.
+     *
+     * @see zoom
+     * @see realZoom
+     */
+    override fun getMinZoom(): Float  = zoomManager.minZoom
+
+    /**
+     * Get the currently set min zoom type.
+     *
+     * @see getMinZoom
+     */
+    @ZoomType
+    override fun getMinZoomType(): Int = zoomManager.minZoomMode
 
     /**
      * Which is the min zoom that should be allowed.

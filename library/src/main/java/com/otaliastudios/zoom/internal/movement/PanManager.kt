@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.view.Gravity
 import com.otaliastudios.zoom.*
 import com.otaliastudios.zoom.internal.matrix.MatrixController
-import kotlin.math.min
 
 /**
  * Contains:
@@ -16,13 +15,17 @@ import kotlin.math.min
  *
  * Does NOT hold the current pan values, which is done by the [MatrixController].
  */
-internal class PanManager(provider: () -> MatrixController) : MovementManager(provider) {
+internal class PanManager(
+        private val engine: ZoomEngine,
+        provider: () -> MatrixController) : MovementManager(provider) {
 
     internal var horizontalOverPanEnabled = true
     internal var verticalOverPanEnabled = true
     internal var horizontalPanEnabled = true
     internal var verticalPanEnabled = true
     internal var alignment = ZoomApi.ALIGNMENT_DEFAULT
+
+    internal var overPanRangeProvider: OverPanRangeProvider = OverPanRangeProvider.DEFAULT
 
     /** whether overpan is enabled, horizontally or vertically */
     override val isOverEnabled get() = horizontalOverPanEnabled || verticalOverPanEnabled
@@ -109,7 +112,12 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
         val containerSize = if (horizontal) controller.containerWidth else controller.containerHeight
         @ZoomApi.ScaledPan val contentSize = if (horizontal) controller.contentScaledWidth else controller.contentScaledHeight
         val overScrollable = if (horizontal) horizontalOverPanEnabled else verticalOverPanEnabled
-        @ZoomApi.ScaledPan val overScroll = if (overScrollable && allowOverScroll) maxOverPan else 0F
+        @ZoomApi.ScaledPan val overScroll = if (overScrollable && allowOverScroll) {
+            if (horizontal) maxHorizontalOverPan else maxVerticalOverPan
+        } else {
+            0F
+        }
+
         val alignmentGravity = if (horizontal) {
             Alignment.toHorizontalGravity(alignment, Gravity.NO_GRAVITY)
         } else {
@@ -144,15 +152,31 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
     }
 
     /**
-     * The amount of overscroll that is allowed in both direction. This is currently
-     * a fixed value, but might be made configurable in the future.
+     * The amount of overscroll that is allowed in horizontal direction.
      */
     @ZoomApi.ScaledPan
-    internal val maxOverPan: Float
+    internal val maxHorizontalOverPan: Float
         get() {
-            val overX = controller.containerWidth * DEFAULT_OVERPAN_FACTOR
-            val overY = controller.containerHeight * DEFAULT_OVERPAN_FACTOR
-            return min(overX, overY)
+            var value = overPanRangeProvider.getOverPan(engine, horizontal = true)
+            if (value < 0) {
+                LOG.w("Received negative maxHorizontalOverPan value, coercing to 0")
+                value = value.coerceAtLeast(0F)
+            }
+            return value
+        }
+
+    /**
+     * The amount of overscroll that is allowed in vertical direction.
+     */
+    @ZoomApi.ScaledPan
+    internal val maxVerticalOverPan: Float
+        get() {
+            var value = overPanRangeProvider.getOverPan(engine, horizontal = false)
+            if (value < 0) {
+                LOG.w("Received negative maxVerticalOverPan value, coercing to 0")
+                value = value.coerceAtLeast(0F)
+            }
+            return value
         }
 
     /**
@@ -177,13 +201,9 @@ internal class PanManager(provider: () -> MatrixController) : MovementManager(pr
 
     companion object {
 
-        // TODO add OverScrollCallback and OverPinchCallback.
-        // Should notify the user when the boundaries are reached.
-        // TODO expose friction parameters, use an interpolator.
-        // TODO Make public, add API.
-        /**
-         * The default overscrolling factor
-         */
-        private const val DEFAULT_OVERPAN_FACTOR = 0.10f
+        private val TAG = PanManager::class.java.simpleName
+        private val LOG = ZoomLogger.create(TAG)
+
     }
+
 }

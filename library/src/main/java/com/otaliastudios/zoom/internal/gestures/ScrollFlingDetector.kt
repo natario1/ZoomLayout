@@ -122,8 +122,8 @@ internal class ScrollFlingDetector(
         // to prevent long presses from interrupting a possible followup scroll gesture
         detector.setIsLongpressEnabled(false)
 
-        @ZoomApi.ScaledPan val overScrollX = if (panManager.horizontalOverPanEnabled) panManager.maxOverPan else 0F
-        @ZoomApi.ScaledPan val overScrollY = if (panManager.verticalOverPanEnabled) panManager.maxOverPan else 0F
+        @ZoomApi.ScaledPan val overScrollX = if (panManager.horizontalOverPanEnabled) panManager.maxHorizontalOverPan else 0F
+        @ZoomApi.ScaledPan val overScrollY = if (panManager.verticalOverPanEnabled) panManager.maxVerticalOverPan else 0F
         LOG.i("startFling", "velocityX:", velX, "velocityY:", velY)
         LOG.i("startFling", "flingX:", "min:", minX, "max:", maxX, "start:", startX, "overScroll:", overScrollY)
         LOG.i("startFling", "flingY:", "min:", minY, "max:", maxY, "start:", startY, "overScroll:", overScrollX)
@@ -186,13 +186,13 @@ internal class ScrollFlingDetector(
         if (panFix.x < 0 && delta.x > 0 || panFix.x > 0 && delta.x < 0) {
             // Compute friction: a factor for distances. Must be 1 if we are not overscrolling,
             // and 0 if we are at the end of the available overscroll. This works:
-            val overScrollX = abs(panFix.x) / panManager.maxOverPan // 0 ... 1
+            val overScrollX = abs(panFix.x) / panManager.maxHorizontalOverPan // 0 ... 1
             val frictionX = 0.6f * (1f - overScrollX.toDouble().pow(0.4).toFloat()) // 0 ... 0.6
             LOG.i("onScroll", "applying friction X:", frictionX)
             delta.x *= frictionX
         }
         if (panFix.y < 0 && delta.y > 0 || panFix.y > 0 && delta.y < 0) {
-            val overScrollY = abs(panFix.y) / panManager.maxOverPan // 0 ... 1
+            val overScrollY = abs(panFix.y) / panManager.maxVerticalOverPan // 0 ... 1
             val frictionY = 0.6f * (1f - overScrollY.toDouble().pow(0.4).toFloat()) // 0 ... 10.6
             LOG.i("onScroll", "applying friction Y:", frictionY)
             delta.y *= frictionY
