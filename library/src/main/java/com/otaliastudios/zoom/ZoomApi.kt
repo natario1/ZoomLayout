@@ -424,7 +424,7 @@ interface ZoomApi {
      * @see zoom
      * @see realZoom
      */
-    fun setMaxZoom(maxZoom: Float, @ZoomType type: Int = TYPE_ZOOM)
+    fun setMaxZoom(maxZoom: Float, @ZoomType type: Int)
 
     /**
      * Get the currently allowed min zoom.
@@ -449,12 +449,23 @@ interface ZoomApi {
      * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
      * for a brief time.
      *
+     * @param maxZoom the min zoom
+     */
+    fun setMinZoom(@Zoom maxZoom: Float) {
+        setMinZoom(maxZoom, TYPE_ZOOM)
+    }
+
+    /**
+     * Which is the min zoom that should be allowed.
+     * If [ZoomApi.setOverPinchable] is set to true, this can be over-pinched
+     * for a brief time.
+     *
      * @param minZoom the min zoom
      * @param type    the constraint mode
      * @see zoom
      * @see realZoom
      */
-    fun setMinZoom(minZoom: Float, @ZoomType type: Int = TYPE_ZOOM)
+    fun setMinZoom(minZoom: Float, @ZoomType type: Int)
 
     /**
      * Sets the duration of animations triggered by zoom and pan APIs.
