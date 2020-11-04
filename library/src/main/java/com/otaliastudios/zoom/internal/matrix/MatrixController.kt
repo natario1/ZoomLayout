@@ -322,10 +322,12 @@ internal class MatrixController(
         val holders = mutableListOf<PropertyValuesHolder>()
         if (update.pan != null) {
             val target = if (update.isPanRelative) pan + update.pan else update.pan
+            // ofObject doesn't respect animator.interpolator, so we use ofFloat instead
             holders.add(PropertyValuesHolder.ofFloat("panX", panX, target.x))
             holders.add(PropertyValuesHolder.ofFloat("panY", panY, target.y))
         } else if (update.scaledPan != null) {
             val target = if (update.isPanRelative) scaledPan + update.scaledPan else update.scaledPan
+            // ofObject doesn't respect animator.interpolator, so we use ofFloat instead
             holders.add(PropertyValuesHolder.ofFloat("panX", scaledPanX, target.x))
             holders.add(PropertyValuesHolder.ofFloat("panY", scaledPanY, target.y))
         }
