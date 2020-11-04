@@ -302,14 +302,6 @@ internal class MatrixController(
         activeAnimators.clear()
     }
 
-    private val absolutePointEvaluator = TypeEvaluator { fraction: Float, startValue: AbsolutePoint, endValue: AbsolutePoint ->
-        startValue + (endValue - startValue) * fraction
-    }
-
-    private val scaledPointEvaluator = TypeEvaluator { fraction: Float, startValue: ScaledPoint, endValue: ScaledPoint ->
-        startValue + (endValue - startValue) * fraction
-    }
-
     /**
      * Builds and applies the given [MatrixUpdate] by calling [applyUpdate]
      * repeatedly until the final position is reached, interpolating in the middle.
@@ -330,18 +322,14 @@ internal class MatrixController(
         val holders = mutableListOf<PropertyValuesHolder>()
         if (update.pan != null) {
             val target = if (update.isPanRelative) pan + update.pan else update.pan
-            holders.add(PropertyValuesHolder.ofObject("pan",
-                    absolutePointEvaluator,
-                    pan,
-                    target
-            ))
+            // ofObject doesn't respect animator.interpolator, so we use ofFloat instead
+            holders.add(PropertyValuesHolder.ofFloat("panX", panX, target.x))
+            holders.add(PropertyValuesHolder.ofFloat("panY", panY, target.y))
         } else if (update.scaledPan != null) {
             val target = if (update.isPanRelative) scaledPan + update.scaledPan else update.scaledPan
-            holders.add(PropertyValuesHolder.ofObject("pan",
-                    scaledPointEvaluator,
-                    scaledPan,
-                    target
-            ))
+            // ofObject doesn't respect animator.interpolator, so we use ofFloat instead
+            holders.add(PropertyValuesHolder.ofFloat("panX", scaledPanX, target.x))
+            holders.add(PropertyValuesHolder.ofFloat("panY", scaledPanY, target.y))
         }
         if (update.hasZoom) {
             var newZoom = if (update.isZoomRelative) zoom * update.zoom else update.zoom
@@ -360,11 +348,13 @@ internal class MatrixController(
                     zoomTo(newZoom, update.canOverZoom)
                 }
                 if (update.pan != null) {
-                    val newPan = it.getAnimatedValue("pan") as AbsolutePoint
-                    panTo(newPan, update.canOverPan)
+                    val newPanX = it.getAnimatedValue("panX") as Float
+                    val newPanY = it.getAnimatedValue("panY") as Float
+                    panTo(AbsolutePoint(newPanX, newPanY), update.canOverPan)
                 } else if (update.scaledPan != null) {
-                    val newPan = it.getAnimatedValue("pan") as ScaledPoint
-                    panTo(newPan, update.canOverPan)
+                    val newPanX = it.getAnimatedValue("panX") as Float
+                    val newPanY = it.getAnimatedValue("panY") as Float
+                    panTo(ScaledPoint(newPanX, newPanY), update.canOverPan)
                 }
                 pivot(update.pivotX, update.pivotY)
                 notify = update.notify
