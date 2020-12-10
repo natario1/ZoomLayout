@@ -35,10 +35,11 @@ import kotlin.math.min
 open class ZoomEngine
 /**
  * Constructs an helper instance.
+ * The creator has to ensure that [setContainer] is called before any other operation is performed.
  *
  * @param context a valid context
  */
-internal constructor(context: Context) : ZoomApi {
+constructor(context: Context) : ZoomApi {
 
     /**
      * Constructs an helper instance.
@@ -351,6 +352,10 @@ internal constructor(context: Context) : ZoomApi {
      *
      */
     fun addListener(listener: Listener) {
+        // fail fast if the engine is not initialized properly
+        if (!::container.isInitialized) {
+            error("container is not initialized.")
+        }
         dispatcher.addListener(listener)
     }
 
@@ -531,11 +536,15 @@ internal constructor(context: Context) : ZoomApi {
 
     /**
      * Set a container to perform transformations on.
-     * This method should only be called once at initialization time.
+     * This method can only be called once at initialization time. It throws an exception if
+     * it is called twice.
      *
      * @param container view
      */
-    internal fun setContainer(container: View) {
+    fun setContainer(container: View) {
+        if(this::container.isInitialized) {
+            error("container already set")
+        }
         this.container = container
         this.container.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(view: View) {
