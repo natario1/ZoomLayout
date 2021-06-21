@@ -12,6 +12,7 @@ exemptLabels:
   - is:bug
   - is:enhancement
   - is:discussion
+  - "is:long term"
 
 # Label to use when marking as stale
 staleLabel: status:stale
