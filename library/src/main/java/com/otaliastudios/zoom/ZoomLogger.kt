@@ -59,7 +59,7 @@ class ZoomLogger private constructor(private val mTag: String) {
     }
 
     internal fun v(vararg data: Any) {
-        i(string(LEVEL_VERBOSE, *data))
+        v(string(LEVEL_VERBOSE, *data))
     }
 
     internal fun i(vararg data: Any) {
