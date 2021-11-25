@@ -9,7 +9,17 @@ New versions are released through GitHub, so the reference page is the [GitHub R
 Starting from 1.7.0, you can now [support development](https://github.com/natario1/ZoomLayout/issues/125) through the GitHub Sponsors program. 
 Companies can share a tiny part of their revenue and get private support hours in return. Thanks!
 
-#### v1.8.0
+## v1.9.0
+
+The library is now hosted on the Maven Central repository.
+
+- Enhancement: open ZoomEngine constructor, thanks to [@coffeemakr][coffeemakr] ([#193][193])
+- Fix: improved moveTo animation ([#189][189])
+- Fix: fix verbose logging, thanks to [@r4zzz4k][r4zzz4k] ([#214][214])
+
+<https://github.com/natario1/ZoomLayout/compare/v1.8.0...v1.9.0>
+
+## v1.8.0
 
 - Enhancement: raise an exception if a drawable without intrinsic dimensions is used ([#157][157])
 - Enhancement: overzoom customization ([#164][164])
@@ -82,6 +92,7 @@ Companies can share a tiny part of their revenue and get private support hours i
 [Sly112]: https://github.com/Sly112
 [RayyanTahir]: https://github.com/RayyanTahir
 [r4zzz4k]: https://github.com/r4zzz4k
+[coffeemakr]: https://github.com/coffeemakr
 
 [38]: https://github.com/natario1/ZoomLayout/pull/38
 [70]: https://github.com/natario1/ZoomLayout/pull/70
@@ -107,3 +118,6 @@ Companies can share a tiny part of their revenue and get private support hours i
 [159]: https://github.com/natario1/ZoomLayout/pull/159
 [158]: https://github.com/natario1/ZoomLayout/pull/158
 [156]: https://github.com/natario1/ZoomLayout/pull/156
+[193]: https://github.com/natario1/ZoomLayout/pull/193
+[189]: https://github.com/natario1/ZoomLayout/pull/189
+[214]: https://github.com/natario1/ZoomLayout/pull/214

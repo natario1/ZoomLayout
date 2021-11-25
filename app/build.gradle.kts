@@ -3,12 +3,12 @@ plugins {
 }
 
 android {
-    setCompileSdkVersion(rootProject.extra["compileSdkVersion"] as Int)
+    compileSdk = 31
 
     defaultConfig {
         applicationId = "com.otaliastudios.zoom.demo"
-        setMinSdkVersion(rootProject.extra["minSdkVersion"] as Int)
-        setTargetSdkVersion(rootProject.extra["targetSdkVersion"] as Int)
+        minSdk = 21
+        targetSdk = 31
         versionCode = 1
         versionName = "1.0"
         setProperty("archivesBaseName", "ZoomLayout_v${versionName}_($versionCode)")
@@ -21,9 +21,9 @@ android {
 }
 
 dependencies {
-    implementation("androidx.appcompat:appcompat:1.1.0")
-    implementation("com.google.android.exoplayer:exoplayer-core:2.9.3")
-    implementation("com.google.android.exoplayer:exoplayer-ui:2.9.3")
-    implementation("com.otaliastudios.opengl:egloo:0.4.0")
+    implementation("androidx.appcompat:appcompat:1.4.0")
+    implementation("com.google.android.exoplayer:exoplayer-core:2.16.1")
+    implementation("com.google.android.exoplayer:exoplayer-ui:2.16.1")
+    implementation("com.otaliastudios.opengl:egloo:0.6.1")
     implementation(project(":library"))
 }

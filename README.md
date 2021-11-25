@@ -17,8 +17,8 @@
 A collection of flexible Android components that support zooming and panning of View hierarchies, 
 images, video streams, and much more - either programmatically or through touch events.
 
-```groovy
-implementation 'com.otaliastudios:zoomlayout:1.8.0'
+```kotlin
+implementation("com.otaliastudios:zoomlayout:1.9.0")
 ```
 
 - `ZoomLayout`: a container that supports 2D pan and zoom to a View hierarchy, even supporting clicks [[docs]](https://natario1.github.io/ZoomLayout/docs/zoom-layout)
