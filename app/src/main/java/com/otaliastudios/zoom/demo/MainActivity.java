@@ -8,29 +8,27 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
-import com.google.android.exoplayer2.ExoPlayerFactory;
-import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.source.ExtractorMediaSource;
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.source.MediaSource;
+import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.ui.PlayerControlView;
 import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
-import com.google.android.exoplayer2.util.Util;
-import com.google.android.exoplayer2.video.VideoListener;
+import com.google.android.exoplayer2.upstream.DefaultDataSource;
+import com.google.android.exoplayer2.video.VideoSize;
 import com.otaliastudios.zoom.ZoomImageView;
 import com.otaliastudios.zoom.ZoomLayout;
 import com.otaliastudios.zoom.ZoomLogger;
 import com.otaliastudios.zoom.ZoomSurfaceView;
 
-import org.jetbrains.annotations.NotNull;
-
-
 public class MainActivity extends AppCompatActivity {
 
-    private SimpleExoPlayer player;
+    private ExoPlayer player;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -111,34 +109,34 @@ public class MainActivity extends AppCompatActivity {
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
     private void setUpVideoPlayer() {
-        player = ExoPlayerFactory.newSimpleInstance(this);
+        player = new ExoPlayer.Builder(this).build();
         PlayerControlView controls = findViewById(R.id.player_control_view);
         final ZoomSurfaceView surface = findViewById(R.id.surface_view);
-        player.addVideoListener(new VideoListener() {
+        player.addListener(new Player.Listener() {
             @Override
-            public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees, float pixelWidthHeightRatio) {
-                surface.setContentSize(width, height);
+            public void onVideoSizeChanged(@NonNull VideoSize videoSize) {
+                surface.setContentSize(videoSize.width, videoSize.height);
             }
         });
         surface.setBackgroundColor(ContextCompat.getColor(this, R.color.background));
         surface.addCallback(new ZoomSurfaceView.Callback() {
             @Override
-            public void onZoomSurfaceCreated(@NotNull ZoomSurfaceView view) {
+            public void onZoomSurfaceCreated(@NonNull ZoomSurfaceView view) {
                 player.setVideoSurface(view.getSurface());
             }
 
             @Override
-            public void onZoomSurfaceDestroyed(@NotNull ZoomSurfaceView view) { }
+            public void onZoomSurfaceDestroyed(@NonNull ZoomSurfaceView view) { }
         });
         controls.setPlayer(player);
         controls.setShowTimeoutMs(0);
         controls.show();
-        DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(this,
-                Util.getUserAgent(this, "ZoomLayoutLib"));
+        DataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(this);
         Uri videoUri = Uri.parse("https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4");
-        MediaSource videoSource = new ExtractorMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(videoUri);
-        player.prepare(videoSource);
+        MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(MediaItem.fromUri(videoUri));
+        player.setMediaSource(videoSource);
+        player.prepare();
     }
 
     @Override
