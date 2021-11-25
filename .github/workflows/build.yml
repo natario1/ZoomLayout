@@ -20,7 +20,7 @@ jobs:
           distribution: temurin
           cache: gradle
       - name: 'Perform base checks'
-        run: ./gradlew app:assembleDebug library:dokka
+        run: ./gradlew app:assembleDebug library:dokkaJavadoc
 
   ANDROID_UNIT_TESTS:
     name: 'Unit Tests'
