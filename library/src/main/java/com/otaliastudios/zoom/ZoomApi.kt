@@ -418,7 +418,7 @@ interface ZoomApi {
      *
      * @param maxZoom the max zoom
      */
-    fun setMaxZoom(@Zoom maxZoom: Float) {
+    fun setMaxZoom(@Zoom maxZoom: Float,scaleView:Boolean = true) {
         setMaxZoom(maxZoom, TYPE_ZOOM)
     }
 
@@ -432,7 +432,7 @@ interface ZoomApi {
      * @see zoom
      * @see realZoom
      */
-    fun setMaxZoom(maxZoom: Float, @ZoomType type: Int)
+    fun setMaxZoom(maxZoom: Float, @ZoomType type: Int,scaleView:Boolean = true)
 
     /**
      * Get the currently allowed min zoom.
@@ -459,7 +459,7 @@ interface ZoomApi {
      *
      * @param minZoom the min zoom
      */
-    fun setMinZoom(@Zoom minZoom: Float) {
+    fun setMinZoom(@Zoom minZoom: Float,scaleView:Boolean = true) {
         setMinZoom(minZoom, TYPE_ZOOM)
     }
 
@@ -473,7 +473,7 @@ interface ZoomApi {
      * @see zoom
      * @see realZoom
      */
-    fun setMinZoom(minZoom: Float, @ZoomType type: Int)
+    fun setMinZoom(minZoom: Float, @ZoomType type: Int,scaleView:Boolean = true)
 
     /**
      * Sets the duration of animations triggered by zoom and pan APIs.
