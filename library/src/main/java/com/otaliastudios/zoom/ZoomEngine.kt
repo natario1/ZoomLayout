@@ -854,9 +854,9 @@ constructor(context: Context) : ZoomApi {
      *
      * @see ZoomApi.TYPE_REAL_ZOOM
      */
-    override fun setMaxZoom(maxZoom: Float, @ZoomType type: Int) {
+    override fun setMaxZoom(maxZoom: Float, @ZoomType type: Int,scaleView:Boolean) {
         zoomManager.setMaxZoom(maxZoom, type)
-        if (zoom > zoomManager.getMaxZoom()) {
+        if (zoom > zoomManager.getMaxZoom() && scaleView) {
             realZoomTo(zoomManager.getMaxZoom(), animate = true)
         }
     }
@@ -889,9 +889,9 @@ constructor(context: Context) : ZoomApi {
      * @see ZoomApi.zoom
      * @see ZoomApi.realZoom
      */
-    override fun setMinZoom(minZoom: Float, @ZoomType type: Int) {
+    override fun setMinZoom(minZoom: Float, @ZoomType type: Int,scaleView:Boolean = true) {
         zoomManager.setMinZoom(minZoom, type)
-        if (realZoom <= zoomManager.getMinZoom()) {
+        if (realZoom <= zoomManager.getMinZoom() && scaleView) {
             realZoomTo(zoomManager.getMinZoom(), animate = true)
         }
     }
