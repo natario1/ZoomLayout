@@ -856,7 +856,7 @@ constructor(context: Context) : ZoomApi {
      */
     override fun setMaxZoom(maxZoom: Float, @ZoomType type: Int) {
         zoomManager.setMaxZoom(maxZoom, type)
-        if (zoom > zoomManager.getMaxZoom()) {
+        if (realZoom > zoomManager.getMaxZoom()) {
             realZoomTo(zoomManager.getMaxZoom(), animate = true)
         }
     }
